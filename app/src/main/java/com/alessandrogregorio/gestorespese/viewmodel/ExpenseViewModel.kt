@@ -39,11 +39,20 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _earliestMonth = MutableStateFlow(YearMonth.now())
     val earliestMonth = _earliestMonth.asStateFlow()
 
+    // STATO NAVIGAZIONE DASHBOARD
+    // Mantiene il mese visualizzato sulla dashboard anche dopo navigazioni
+    private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
+    val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
+
     init {
         // Carica il mese più vecchio all'avvio
         viewModelScope.launch {
             loadEarliestMonth()
         }
+    }
+
+    fun updateDashboardMonth(month: YearMonth) {
+        _currentDashboardMonth.value = month
     }
 
     private suspend fun loadEarliestMonth() {
@@ -70,10 +79,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun saveTransaction(transaction: TransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             dao.insert(transaction)
-            // Ricarica il mese più vecchio nel caso in cui la nuova transazione sia la più vecchia
-            // Anche se loadEarliestMonth è in un collect, lo chiamo qui per sicurezza,
-            // ma l'osservazione del flow dovrebbe gestirlo. Lo lascio per ora come side effect.
-            // loadEarliestMonth()
         }
     }
 

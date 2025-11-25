@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -51,7 +50,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -79,25 +77,23 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentCcLimit by viewModel.ccLimit.collectAsState()
     val currentCcDelay by viewModel.ccDelay.collectAsState()
     val currentDateFormat by viewModel.dateFormat.collectAsState()
-    val earliestMonth by viewModel.earliestMonth.collectAsState() // NUOVO: Mese più vecchio
+    val earliestMonth by viewModel.earliestMonth.collectAsState()
+    val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState() // RECUPERO LO STATO DEL MESE DASHBOARD
 
     // --- Activity Result Launchers per Backup/Restore/Export ---
 
-    // Launcher per il ripristino
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let { performRestore(context, viewModel, it) }
     }
 
-    // Launcher per il backup
     val backupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         uri?.let { performBackup(context, viewModel, it) }
     }
 
-    // Launcher per l'esportazione CSV
     val exportCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: Uri? ->
@@ -168,7 +164,9 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         currencySymbol = currentCurrency,
                         ccLimit = currentCcLimit,
                         dateFormat = currentDateFormat,
-                        earliestMonth = earliestMonth, // PASSATO IL MESE PIÙ VECCHIO
+                        earliestMonth = earliestMonth,
+                        currentDashboardMonth = currentDashboardMonth, // PASSATO LO STATO AL SCREEN
+                        onMonthChange = viewModel::updateDashboardMonth, // CALLBACK PER AGGIORNARE LO STATO
                         onDelete = viewModel::deleteTransaction,
                         onEdit = { transactionId ->
                             navController.navigate("add_transaction/$transactionId")
@@ -238,7 +236,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     }
 
                     if (isLoading && transactionId != 0L) {
-                        // Mostra un loading se necessario
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             CircularProgressIndicator()
                         }
@@ -250,7 +247,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             dateFormatString = currentDateFormat,
                             onSave = { transaction ->
                                 viewModel.saveTransaction(transaction)
-                                navController.popBackStack() // Torna indietro dopo il salvataggio
+                                navController.popBackStack()
+                            },
+                            onDelete = { id ->
+                                viewModel.deleteTransaction(id)
+                                navController.popBackStack() // Torna indietro anche dopo delete da questa schermata
                             },
                             transactionToEdit = transactionToEdit
                         )
@@ -262,8 +263,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 }
 
 // --- Funzioni di gestione file (Backup/Restore/Export) ---
-
-// Funzione di esportazione CSV (AGGIORNATA per usare il formato data)
 suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
     val formatter = DateTimeFormatter.ofPattern(dateFormat)
     val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
@@ -274,16 +273,15 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
             val csvContent = StringBuilder(csvHeader)
 
             expenses.forEach { t ->
-                // Formatta la data in base alla preferenza dell'utente
                 val dateStr = try {
                     LocalDate.parse(t.date).format(formatter)
                 } catch (e: Exception) {
-                    t.date // Fallback se la conversione fallisce
+                    t.date
                 }
                 val effectiveDateStr = try {
                     LocalDate.parse(t.effectiveDate).format(formatter)
                 } catch (e: Exception) {
-                    t.effectiveDate // Fallback
+                    t.effectiveDate
                 }
 
                 csvContent.append("${t.id},\"$dateStr\",\"${t.description.replace('\"', '\'')}\",${String.format(Locale.US, "%.2f", t.amount)},${t.categoryId},${if (t.isCreditCard) "Sì" else "No"},\"$effectiveDateStr\"\n")
@@ -306,7 +304,6 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
     }
 }
 
-// Funzione di Backup (JSON)
 fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
     val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
     coroutineScope.launch {
@@ -331,7 +328,6 @@ fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
     }
 }
 
-// Funzione di Ripristino (JSON)
 fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
     val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
     scope.launch {
@@ -342,11 +338,8 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
                     reader.forEachLine { sb.append(it) }
                 }
             }
-            // Converte il JSON in lista
             val type = object : TypeToken<List<TransactionEntity>>() {}.type
             val list: List<TransactionEntity> = Gson().fromJson(sb.toString(), type)
-
-            // Passa i dati al ViewModel per salvarli nel DB
             viewModel.restoreData(list)
 
             withContext(Dispatchers.Main) {

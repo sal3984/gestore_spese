@@ -36,17 +36,18 @@ fun DashboardScreen(
     ccLimit: Float,
     dateFormat: String,
     earliestMonth: YearMonth,
+    currentDashboardMonth: YearMonth, // NUOVO: Stato ricevuto dal VM
+    onMonthChange: (YearMonth) -> Unit, // NUOVO: Callback per aggiornare lo stato
     onDelete: (Long) -> Unit,
     onEdit: (Long) -> Unit
 ) {
     val today = YearMonth.now()
-    var currentDisplayedMonth by remember { mutableStateOf(today) }
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
 
     val currentTrans = transactions
         .filter {
             try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate)) == currentDisplayedMonth
+                YearMonth.from(LocalDate.parse(it.effectiveDate)) == currentDashboardMonth
             } catch (e: Exception) {
                 false
             }
@@ -61,7 +62,7 @@ fun DashboardScreen(
     val totalExpense = currentTrans.filter { it.type == "expense" }.sumOf { it.amount }
     val netBalance = totalIncome - totalExpense
 
-    val isViewingCurrentMonth = currentDisplayedMonth == today
+    val isViewingCurrentMonth = currentDashboardMonth == today
     val creditCardUsed = transactions
         .filter { it.isCreditCard && it.type == "expense" }
         .filter {
@@ -102,22 +103,22 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { currentDisplayedMonth = currentDisplayedMonth.minusMonths(1) },
-                    enabled = currentDisplayedMonth > earliestMonth
+                    onClick = { onMonthChange(currentDashboardMonth.minusMonths(1)) },
+                    enabled = currentDashboardMonth > earliestMonth
                 ) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Mese Precedente", tint = Color.White)
                 }
 
                 Text(
-                    currentDisplayedMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ITALIAN) else it.toString() },
+                    currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ITALIAN) else it.toString() },
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
 
                 IconButton(
-                    onClick = { currentDisplayedMonth = currentDisplayedMonth.plusMonths(1) },
-                    enabled = currentDisplayedMonth < today
+                    onClick = { onMonthChange(currentDashboardMonth.plusMonths(1)) },
+                    enabled = currentDashboardMonth < today
                 ) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Mese Successivo", tint = Color.White)
                 }
