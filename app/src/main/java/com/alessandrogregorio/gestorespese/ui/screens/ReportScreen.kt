@@ -1,6 +1,8 @@
 package com.alessandrogregorio.gestorespese.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import java.time.LocalDate
@@ -246,82 +249,129 @@ fun ReportScreen(
 fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String) {
     if (data.isEmpty()) return
 
-    // Trova il valore assoluto massimo per scalare il grafico
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
+    var selectedMonth by remember { mutableStateOf<YearMonth?>(null) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp), // Altezza fissa del grafico
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        data.forEach { (month, balance) ->
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Area del grafico (Divisa in due: Positiva e Negativa)
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            data.forEach { (month, balance) ->
                 Column(
                     modifier = Modifier
-                        .weight(1f) // Occupa lo spazio disponibile verticalmente
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center
+                        .weight(1f)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null // Rimuovi il ripple effect
+                        ) { selectedMonth = if (selectedMonth == month) null else month },
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // PARTE POSITIVA (Sopra la linea)
-                    Box(
+                    // Area del grafico (Divisa in due: Positiva e Negativa)
+                    Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
-                        contentAlignment = Alignment.BottomCenter
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        if (balance > 0) {
-                            val heightFraction = (balance.toFloat() / maxAbs).coerceIn(0f, 1f)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight(heightFraction)
-                                    .width(16.dp)
-                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                    .background(Color(0xFF43A047)) // Verde
-                            )
+                        // PARTE POSITIVA (Sopra la linea)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            if (balance > 0) {
+                                val heightFraction = (balance.toFloat() / maxAbs).coerceIn(0f, 1f)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight(heightFraction)
+                                        .width(16.dp)
+                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .background(
+                                            if (selectedMonth == month) Color(0xFF2E7D32) else Color(0xFF43A047) // Verde scuro se selezionato
+                                        )
+                                )
+                            }
+                        }
+
+                        // Linea dello Zero
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+
+                        // PARTE NEGATIVA (Sotto la linea)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            if (balance < 0) {
+                                val heightFraction = (kotlin.math.abs(balance).toFloat() / maxAbs).coerceIn(0f, 1f)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight(heightFraction)
+                                        .width(16.dp)
+                                        .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                                        .background(
+                                            if (selectedMonth == month) Color(0xFFB71C1C) else MaterialTheme.colorScheme.error // Rosso scuro se selezionato
+                                        )
+                                )
+                            }
                         }
                     }
 
-                    // Linea dello Zero
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // PARTE NEGATIVA (Sotto la linea)
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.TopCenter
+                    // Etichetta Mese
+                    Text(
+                        text = month.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase().take(3),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (selectedMonth == month) FontWeight.ExtraBold else FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = if (selectedMonth == month) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        // Popup informativo
+        selectedMonth?.let { month ->
+            val balance = data.find { it.first == month }?.second ?: 0.0
+
+            // Posizionamento semplice al centro (o in alto/basso a seconda di dove vuoi)
+            // Per semplicità lo metto in alto al centro del grafico per ora
+            Popup(
+                alignment = Alignment.TopCenter,
+                onDismissRequest = { selectedMonth = null }
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    modifier = Modifier.padding(top = 16.dp) // Un po' di offset
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (balance < 0) {
-                            val heightFraction = (kotlin.math.abs(balance).toFloat() / maxAbs).coerceIn(0f, 1f)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight(heightFraction)
-                                    .width(16.dp)
-                                    .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
-                                    .background(MaterialTheme.colorScheme.error) // Rosso
-                            )
-                        }
+                         Text(
+                             text = month.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).replaceFirstChar { it.uppercase() },
+                             style = MaterialTheme.typography.labelMedium,
+                             color = MaterialTheme.colorScheme.inverseOnSurface
+                         )
+                         Text(
+                             text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", balance)}",
+                             style = MaterialTheme.typography.bodyLarge,
+                             fontWeight = FontWeight.Bold,
+                             color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
+                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Etichetta Mese
-                Text(
-                    text = month.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase().take(3),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
             }
         }
     }
