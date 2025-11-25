@@ -15,13 +15,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 // Definiamo le Categorie qui per utilità grafica
 // Modello dati per la categoria con icona
 data class Category(val id: String, val label: String, val icon: String)
+
 val CATEGORIES = listOf(
-    Category("cibo", "Cibo & Spesa", "🍕"),
-    Category("casa", "Casa & Bollette", "🏠"),
-    Category("trasporti", "Trasporti", "🚗"),
-    Category("salute", "Salute", "⚕️"),
-    Category("divertimento", "Divertimento", "🎉"),
-    Category("regalo", "Regalo", "\uD83C\uDF81"), // PACCHETTO REGALO (🎁)
-    Category("stipendio", "Stipendio", "💰"),
-    Category("altro", "Altro", "✨")
+    Category("food", "Cibo \uD83C\uDF7D️", "\uD83C\uDF7D"),
+    Category("transport", "Trasporti \uD83D\uDE97", "\uD83D\uDE97"),
+    Category("housing", "Casa \uD83C\uDFE0", "\uD83C\uDFE0"),
+    Category("entertainment", "Svago \uD83C\uDFC1", "\uD83C\uDFC1"),
+    Category("salary", "Stipendio \uD83D\uDCB0", "\uD83D\uDCB0"),
+    Category("income", "Entrata \uD83D\uDCB8", "\uD83D\uDCB8"),
+    Category("other", "Altro \uD83C\uDFC6", "\uD83C\uDFC6")
 )

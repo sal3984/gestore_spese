@@ -13,22 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
+import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
+import com.alessandrogregorio.gestorespese.ui.screens.category.Category
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-// Le categorie restano qui per la selezione
-data class Category(val id: String, val label: String, val icon: String)
-val CATEGORIES = listOf(
-    Category("food", "Cibo \uD83C\uDF7D️", "Cibo"),
-    Category("transport", "Trasporti \uD83D\uDE97", "Auto"),
-    Category("housing", "Casa \uD83C\uDFE0", "Casa"),
-    Category("entertainment", "Svago \uD83C\uDFC1", "Svago"),
-    Category("salary", "Stipendio \uD83D\uDCB0", "Stipendio"),
-    Category("income", "Altro Entrata \uD83D\uDCB8", "Entrata"),
-    Category("other", "Altro \uD83C\uDFC6", "Altro")
-)
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
