@@ -9,8 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,10 +17,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
@@ -60,6 +63,24 @@ fun ReportScreen(
     }
 
     val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
+
+    // Calcolo Bilancio Mensile (Ultimi 6 Mesi)
+    val monthlyBalances = remember(transactions) {
+        val currentYearMonth = YearMonth.now()
+        (0..5).map { i ->
+            val targetMonth = currentYearMonth.minusMonths(5 - i.toLong())
+            val monthlyTransactions = transactions.filter {
+                try {
+                    YearMonth.from(LocalDate.parse(it.effectiveDate)) == targetMonth
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            val income = monthlyTransactions.filter { it.type == "income" }.sumOf { it.amount }
+            val expense = monthlyTransactions.filter { it.type == "expense" }.sumOf { it.amount }
+            targetMonth to (income - expense)
+        }
+    }
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -122,7 +143,7 @@ fun ReportScreen(
                 .offset(y = (-20).dp)
                 .padding(horizontal = 16.dp)
         ) {
-            // Card Riepilogo Mensile
+            // Grafico a Barre Mensili
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
@@ -131,23 +152,19 @@ fun ReportScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Spese Mese Corrente",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "Bilancio Ultimi 6 Mesi",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        "Totale: $currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalMonthlyExpense)}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    MonthlyBarChart(monthlyBalances, currencySymbol)
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "Dettaglio Categorie",
+                "Dettaglio Categorie (Mese Corrente)",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
@@ -220,6 +237,91 @@ fun ReportScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String) {
+    if (data.isEmpty()) return
+
+    // Trova il valore assoluto massimo per scalare il grafico
+    val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp), // Altezza fissa del grafico
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        data.forEach { (month, balance) ->
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Area del grafico (Divisa in due: Positiva e Negativa)
+                Column(
+                    modifier = Modifier
+                        .weight(1f) // Occupa lo spazio disponibile verticalmente
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // PARTE POSITIVA (Sopra la linea)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        if (balance > 0) {
+                            val heightFraction = (balance.toFloat() / maxAbs).coerceIn(0f, 1f)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight(heightFraction)
+                                    .width(16.dp)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(Color(0xFF43A047)) // Verde
+                            )
+                        }
+                    }
+
+                    // Linea dello Zero
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+
+                    // PARTE NEGATIVA (Sotto la linea)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        if (balance < 0) {
+                            val heightFraction = (kotlin.math.abs(balance).toFloat() / maxAbs).coerceIn(0f, 1f)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight(heightFraction)
+                                    .width(16.dp)
+                                    .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                                    .background(MaterialTheme.colorScheme.error) // Rosso
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Etichetta Mese
+                Text(
+                    text = month.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase().take(3),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
             }
         }
     }
