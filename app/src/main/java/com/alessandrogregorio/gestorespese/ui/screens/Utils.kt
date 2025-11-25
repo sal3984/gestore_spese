@@ -7,21 +7,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import java.text.NumberFormat
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // --- COMPONENTI UI CONDIVISI ---
@@ -36,8 +32,33 @@ fun TransactionItem(
 ) {
     val category = getCategory(transaction.categoryId)
     val isIncome = transaction.type == "income"
-    // Use theme colors ideally, but hardcoded for specific red/green logic is fine for financial apps
     val amountColor = if (isIncome) Color(0xFF43A047) else MaterialTheme.colorScheme.onSurface
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Elimina Movimento") },
+            text = { Text("Sei sicuro di voler eliminare questa transazione?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete(transaction.id)
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("ELIMINA")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("ANNULLA")
+                }
+            }
+        )
+    }
 
     Card(
         modifier = Modifier
@@ -107,7 +128,7 @@ fun TransactionItem(
                 }
             }
 
-            // Sezione Importo
+            // Sezione Importo e Delete
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.ITALIAN, "%.2f", transaction.amount)}",
@@ -115,6 +136,18 @@ fun TransactionItem(
                     color = amountColor,
                     fontWeight = FontWeight.Bold
                 )
+
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.size(24.dp).offset(x = 8.dp, y = 4.dp) // Piccolo aggiustamento posizionale
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Elimina",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

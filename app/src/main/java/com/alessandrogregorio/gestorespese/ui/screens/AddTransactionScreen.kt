@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ fun AddTransactionScreen(
     dateFormatString: String,
     onGetSuggestions: suspend (String) -> List<String>,
     onSave: (TransactionEntity) -> Unit,
+    onDelete: (Long) -> Unit = {}, // Default a vuoto per compatibilità o passato dal chiamante
     transactionToEdit: TransactionEntity? = null
 ) {
     val isEditing = transactionToEdit != null
@@ -70,6 +72,7 @@ fun AddTransactionScreen(
     var categoryId by remember { mutableStateOf(transactionToEdit?.categoryId ?: CATEGORIES.first { it.label != "Stipendio 💰" }.id) }
     var isCreditCard by remember { mutableStateOf(transactionToEdit?.isCreditCard ?: false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val initialDateMillis = remember(dateStr) {
         parseDate(dateStr, displayFormatter)?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
@@ -89,13 +92,28 @@ fun AddTransactionScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // Header
-        Text(
-            if(isEditing) "Modifica Movimento" else "Nuovo Movimento",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                if(isEditing) "Modifica Movimento" else "Nuovo Movimento",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+
+            if(isEditing) {
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Elimina")
+                }
+            }
+        }
 
         // Toggle Tipo Transazione (Segmented Control Custom)
         Row(
@@ -367,6 +385,7 @@ fun AddTransactionScreen(
             Text(if(isEditing) "AGGIORNA" else "SALVA", fontSize = 18.sp)
         }
 
+        // DatePicker Dialog
         if (showDatePicker) {
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
@@ -379,6 +398,31 @@ fun AddTransactionScreen(
                     }) { Text("OK") }
                 }
             ) { DatePicker(state = datePickerState) }
+        }
+
+        // Dialog Conferma Cancellazione
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Elimina Movimento") },
+                text = { Text("Sei sicuro di voler eliminare questa transazione? L'azione non può essere annullata.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            transactionToEdit?.let { onDelete(it.id) }
+                            showDeleteDialog = false
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("ELIMINA")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("ANNULLA")
+                    }
+                }
+            )
         }
     }
 }
