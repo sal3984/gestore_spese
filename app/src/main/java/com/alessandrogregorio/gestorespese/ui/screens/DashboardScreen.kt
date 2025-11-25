@@ -1,41 +1,25 @@
 package com.alessandrogregorio.gestorespese.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
@@ -44,48 +28,44 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     transactions: List<TransactionEntity>,
     currencySymbol: String,
     ccLimit: Float,
     dateFormat: String,
-    earliestMonth: YearMonth, // NUOVO PARAMETRO: Il mese della prima transazione
+    earliestMonth: YearMonth,
     onDelete: (Long) -> Unit,
     onEdit: (Long) -> Unit
 ) {
     val today = YearMonth.now()
-    // Stato per il mese attualmente visualizzato (inizializzato al mese corrente)
     var currentDisplayedMonth by remember { mutableStateOf(today) }
-
-    // Funzione per formattare il mese in Italiano (es: "Novembre 2025")
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
 
-    // Filtra transazioni per il MESE CORRENTE VISUALIZZATO (basato sulla data di addebito effettiva)
     val currentTrans = transactions
         .filter {
             try {
                 YearMonth.from(LocalDate.parse(it.effectiveDate)) == currentDisplayedMonth
             } catch (e: Exception) {
-                false // Ignora transazioni con data non valida
+                false
             }
         }
-        .sortedByDescending { it.effectiveDate } // Ordina per data addebito
+        .sortedByDescending { it.effectiveDate }
 
-    // Calcolo Totali
+    val groupedTransactions = remember(currentTrans) {
+        currentTrans.groupBy { it.effectiveDate }
+    }
+
     val totalIncome = currentTrans.filter { it.type == "income" }.sumOf { it.amount }
     val totalExpense = currentTrans.filter { it.type == "expense" }.sumOf { it.amount }
     val netBalance = totalIncome - totalExpense
 
-    // Calcolo Carta di Credito (spese non ancora addebitate, ovvero quelle con data di addebito successiva al MESE CORRENTE VISUALIZZATO)
-    // Mostriamo l'utilizzo CC solo per il mese corrente (today) per coerenza
     val isViewingCurrentMonth = currentDisplayedMonth == today
-
     val creditCardUsed = transactions
         .filter { it.isCreditCard && it.type == "expense" }
         .filter {
             try {
-                // Filtra solo le spese CC la cui data di addebito è maggiore di OGGI
                 YearMonth.from(LocalDate.parse(it.effectiveDate)) > today
             } catch (e: Exception) {
                 false
@@ -97,158 +77,223 @@ fun DashboardScreen(
 
     Column(modifier = Modifier
         .fillMaxSize()
-        .padding(16.dp)) {
+        .background(MaterialTheme.colorScheme.background)) {
 
-        // --- CONTROLLI DI NAVIGAZIONE MESE ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // --- HEADER: Mese e Saldo Totale ---
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                )
+                .padding(bottom = 32.dp) // Spazio extra per l'overlap
         ) {
-            // Pulsante Mese Precedente
-            IconButton(
-                onClick = { currentDisplayedMonth = currentDisplayedMonth.minusMonths(1) },
-                enabled = currentDisplayedMonth > earliestMonth // Disabilita se è il mese più vecchio
-            ) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Mese Precedente", modifier = Modifier.size(32.dp))
-            }
-
-            // Mese Attuale Visualizzato
-            Text(
-                currentDisplayedMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ITALIAN) else it.toString() }, // Maiuscola la prima lettera
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            // Pulsante Mese Successivo
-            IconButton(
-                onClick = { currentDisplayedMonth = currentDisplayedMonth.plusMonths(1) },
-                enabled = currentDisplayedMonth < today // Disabilita se è il mese corrente
-            ) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Mese Successivo", modifier = Modifier.size(32.dp))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Card Riepilogo Totale - MIGLIORATA
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
+             // Navigazione Mese
+            Row(
                 modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, start = 8.dp, end = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { currentDisplayedMonth = currentDisplayedMonth.minusMonths(1) },
+                    enabled = currentDisplayedMonth > earliestMonth
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Mese Precedente", tint = Color.White)
+                }
+
+                Text(
+                    currentDisplayedMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ITALIAN) else it.toString() },
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                IconButton(
+                    onClick = { currentDisplayedMonth = currentDisplayedMonth.plusMonths(1) },
+                    enabled = currentDisplayedMonth < today
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Mese Successivo", tint = Color.White)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Saldo Centrale
+             Column(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Saldo Netto",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    "Saldo Mensile",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.8f)
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
                     text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", netBalance)}",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = if (netBalance >= 0) Color(0xFF0F9D58) else MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.ExtraBold
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    // Entrate
-                    Column(horizontalAlignment = Alignment.Start) {
-                         Row(verticalAlignment = Alignment.CenterVertically) {
-                             Icon(Icons.Default.ArrowUpward, contentDescription = null, tint = Color(0xFF0F9D58), modifier = Modifier.size(18.dp))
-                             Spacer(modifier = Modifier.width(4.dp))
-                             Text("Entrate", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
-                         }
-                         Text(
-                             "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalIncome)}",
-                             style = MaterialTheme.typography.titleMedium,
-                             fontWeight = FontWeight.Bold,
-                             color = MaterialTheme.colorScheme.onPrimaryContainer
-                         )
-                    }
-
-                    // Uscite
-                    Column(horizontalAlignment = Alignment.End) {
-                         Row(verticalAlignment = Alignment.CenterVertically) {
-                             Text("Uscite", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
-                             Spacer(modifier = Modifier.width(4.dp))
-                             Icon(Icons.Default.ArrowDownward, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                         }
-                         Text(
-                             "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalExpense)}",
-                             style = MaterialTheme.typography.titleMedium,
-                             fontWeight = FontWeight.Bold,
-                             color = MaterialTheme.colorScheme.onPrimaryContainer
-                         )
-                    }
-                }
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Card Plafond Carta di Credito (Mostrata solo se si è sul mese corrente)
-        if (ccLimit > 0 && isViewingCurrentMonth) {
-            Spacer(modifier = Modifier.height(16.dp))
+        // --- CONTENUTO (Overlap sul Header) ---
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-30).dp) // Overlap effect
+                .padding(horizontal = 16.dp)
+        ) {
+
+            // Card Entrate/Uscite
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Plafond Carta di Credito", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            "$currencySymbol ${String.format(Locale.ITALIAN, "%.0f", creditCardUsed)} / $currencySymbol ${String.format(Locale.ITALIAN, "%.0f", ccLimit)}",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Entrate
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.ArrowUpward, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Entrate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalIncome)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LinearProgressIndicator(
-                        progress = { ccProgress.coerceAtMost(1f) }, // Limita a 1 (100%)
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(10.dp)
-                            .background(Color.LightGray.copy(alpha=0.3f), RoundedCornerShape(5.dp)),
-                        color = when {
-                            ccProgress >= 1f -> MaterialTheme.colorScheme.error // Rosso
-                            ccProgress > 0.8f -> Color(0xFFFBBC05) // Giallo
-                            else -> MaterialTheme.colorScheme.primary // Blu
-                        },
-                        trackColor = Color.Transparent,
-                        strokeCap = StrokeCap.Round
-                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Uscite
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.errorContainer), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.ArrowDownward, null, tint = MaterialTheme.colorScheme.error)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Uscite", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalExpense)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
-        } else {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
 
-        // Lista Transazioni
-        Text(
-            "Movimenti",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(modifier = Modifier.fillMaxHeight()) {
-            items(currentTrans, key = { it.id }) { t ->
-                TransactionItem(t, currencySymbol, dateFormat, onDelete, onEdit)
+            // Card Carta di Credito (Se attiva)
+            if (ccLimit > 0 && isViewingCurrentMonth) {
+                 Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                             Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
+                             Spacer(modifier = Modifier.width(8.dp))
+                             Text("Plafond Carta di Credito", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LinearProgressIndicator(
+                            progress = { ccProgress.coerceAtMost(1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = if (ccProgress > 0.8f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                             Text(
+                                "Speso: $currencySymbol ${String.format(Locale.ITALIAN, "%.0f", creditCardUsed)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                             Text(
+                                "Limite: $currencySymbol ${String.format(Locale.ITALIAN, "%.0f", ccLimit)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                 }
+                 Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Lista Transazioni
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                groupedTransactions.forEach { (dateString, transactions) ->
+                    stickyHeader {
+                         DateHeader(dateString)
+                    }
+                    items(transactions, key = { it.id }) { t ->
+                        TransactionItem(t, currencySymbol, dateFormat, onDelete, onEdit)
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+fun DateHeader(dateString: String) {
+    val date = try { LocalDate.parse(dateString) } catch(e: Exception) { LocalDate.now() }
+    val today = LocalDate.now()
+    val yesterday = today.minusDays(1)
+
+    val label = when(date) {
+        today -> "Oggi"
+        yesterday -> "Ieri"
+        else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", Locale.ITALIAN))
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
