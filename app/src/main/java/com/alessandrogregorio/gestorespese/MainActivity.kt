@@ -47,6 +47,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -74,6 +75,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentCcLimit by viewModel.ccLimit.collectAsState()
     val currentCcDelay by viewModel.ccDelay.collectAsState()
     val currentDateFormat by viewModel.dateFormat.collectAsState()
+    val earliestMonth by viewModel.earliestMonth.collectAsState() // NUOVO: Mese più vecchio
 
     // --- Activity Result Launchers per Backup/Restore/Export ---
 
@@ -157,7 +159,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         transactions = allTransactions,
                         currencySymbol = currentCurrency,
                         ccLimit = currentCcLimit,
-                        dateFormat = currentDateFormat, // PASSATO IL FORMATO DATA
+                        dateFormat = currentDateFormat,
+                        earliestMonth = earliestMonth, // PASSATO IL MESE PIÙ VECCHIO
                         onDelete = viewModel::deleteTransaction,
                         onEdit = { transactionId ->
                             navController.navigate("add_transaction/$transactionId")
@@ -169,7 +172,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     ReportScreen(
                         transactions = allTransactions,
                         currencySymbol = currentCurrency,
-                        dateFormat = currentDateFormat // PASSATO IL FORMATO DATA
+                        dateFormat = currentDateFormat
                     )
                 }
 

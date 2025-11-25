@@ -32,4 +32,8 @@ interface TransactionDao {
     // NUOVO: Cerca descrizioni uniche per l'autocomplete
     @Query("SELECT DISTINCT description FROM transactions WHERE description LIKE :query || '%' LIMIT 5")
     fun getDescriptionSuggestions(query: String): List<String>
+
+    // NUOVO: Ottieni la data di addebito più vecchia
+    @Query("SELECT MIN(effectiveDate) FROM transactions")
+    suspend fun getMinEffectiveDate(): String?
 }

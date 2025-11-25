@@ -13,12 +13,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -34,18 +44,23 @@ fun DashboardScreen(
     transactions: List<TransactionEntity>,
     currencySymbol: String,
     ccLimit: Float,
-    dateFormat: String, // NUOVO PARAMETRO
+    dateFormat: String,
+    earliestMonth: YearMonth, // NUOVO PARAMETRO: Il mese della prima transazione
     onDelete: (Long) -> Unit,
     onEdit: (Long) -> Unit
 ) {
-    val currentMonth = YearMonth.now()
-    val formatter = DateTimeFormatter.ofPattern(dateFormat) // Usiamo il formato data
+    val today = YearMonth.now()
+    // Stato per il mese attualmente visualizzato (inizializzato al mese corrente)
+    var currentDisplayedMonth by remember { mutableStateOf(today) }
 
-    // Filtra transazioni per il mese corrente (basato sulla data di addebito effettiva)
+    // Funzione per formattare il mese in Italiano (es: "Novembre 2025")
+    val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
+
+    // Filtra transazioni per il MESE CORRENTE VISUALIZZATO (basato sulla data di addebito effettiva)
     val currentTrans = transactions
         .filter {
             try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate)) == currentMonth
+                YearMonth.from(LocalDate.parse(it.effectiveDate)) == currentDisplayedMonth
             } catch (e: Exception) {
                 false // Ignora transazioni con data non valida
             }
@@ -57,12 +72,16 @@ fun DashboardScreen(
     val totalExpense = currentTrans.filter { it.type == "expense" }.sumOf { it.amount }
     val netBalance = totalIncome - totalExpense
 
-    // Calcolo Carta di Credito (spese non ancora addebitate, ovvero quelle con data di addebito successiva al mese corrente)
+    // Calcolo Carta di Credito (spese non ancora addebitate, ovvero quelle con data di addebito successiva al MESE CORRENTE VISUALIZZATO)
+    // Mostriamo l'utilizzo CC solo per il mese corrente (today) per coerenza
+    val isViewingCurrentMonth = currentDisplayedMonth == today
+
     val creditCardUsed = transactions
         .filter { it.isCreditCard && it.type == "expense" }
         .filter {
             try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate)) > currentMonth
+                // Filtra solo le spese CC la cui data di addebito è maggiore di OGGI
+                YearMonth.from(LocalDate.parse(it.effectiveDate)) > today
             } catch (e: Exception) {
                 false
             }
@@ -75,7 +94,36 @@ fun DashboardScreen(
         .fillMaxSize()
         .padding(16.dp)) {
 
-        Text("Riepilogo del Mese", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        // --- CONTROLLI DI NAVIGAZIONE MESE ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Pulsante Mese Precedente
+            IconButton(
+                onClick = { currentDisplayedMonth = currentDisplayedMonth.minusMonths(1) },
+                enabled = currentDisplayedMonth > earliestMonth // Disabilita se è il mese più vecchio
+            ) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Mese Precedente")
+            }
+
+            // Mese Attuale Visualizzato
+            Text(
+                currentDisplayedMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ITALIAN) else it.toString() }, // Maiuscola la prima lettera
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Pulsante Mese Successivo
+            IconButton(
+                onClick = { currentDisplayedMonth = currentDisplayedMonth.plusMonths(1) },
+                enabled = currentDisplayedMonth < today // Disabilita se è il mese corrente
+            ) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Mese Successivo")
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Card Riepilogo Totale
@@ -86,7 +134,7 @@ fun DashboardScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Saldo Netto (${currentMonth.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ITALIAN)})", style = MaterialTheme.typography.titleMedium)
+                Text("Saldo Netto (${currentDisplayedMonth.year})", style = MaterialTheme.typography.titleMedium)
                 Text(
                     text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", netBalance)}",
                     style = MaterialTheme.typography.headlineLarge,
@@ -105,8 +153,8 @@ fun DashboardScreen(
             }
         }
 
-        // Card Plafond Carta di Credito (Solo se c'è plafond)
-        if (ccLimit > 0) {
+        // Card Plafond Carta di Credito (Mostrata solo se si è sul mese corrente)
+        if (ccLimit > 0 && isViewingCurrentMonth) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -141,8 +189,7 @@ fun DashboardScreen(
         Text("Movimenti del Mese (Addebito):", fontWeight = FontWeight.Bold)
         LazyColumn(modifier = Modifier.fillMaxHeight()) {
             items(currentTrans, key = { it.id }) { t ->
-                // NOTA: Qui TransactionItem deve usare 'dateFormat' per formattare le date!
-                TransactionItem(t, currencySymbol, dateFormat, onDelete, onEdit) // Passa dateFormat
+                TransactionItem(t, currencySymbol, dateFormat, onDelete, onEdit)
             }
         }
     }

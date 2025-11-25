@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.YearMonth
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -30,16 +32,49 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _ccDelay = MutableStateFlow(prefs.getInt("cc_delay", 1))
     val ccDelay = _ccDelay.asStateFlow()
 
-    // NUOVO: Formato Data (es. "dd/MM/yyyy" o "MM/dd/yyyy")
     private val _dateFormat = MutableStateFlow(prefs.getString("date_format", "dd/MM/yyyy") ?: "dd/MM/yyyy")
     val dateFormat = _dateFormat.asStateFlow()
 
+    // NUOVO: Mese della transazione più vecchia per la navigazione
+    private val _earliestMonth = MutableStateFlow(YearMonth.now())
+    val earliestMonth = _earliestMonth.asStateFlow()
+
+    init {
+        // Carica il mese più vecchio all'avvio
+        viewModelScope.launch {
+            loadEarliestMonth()
+        }
+    }
+
+    private suspend fun loadEarliestMonth() {
+        // Questo viene lanciato ogni volta che la lista delle transazioni cambia (dal DAO)
+        allTransactions.collect { transactions ->
+            val minDateString = dao.getMinEffectiveDate()
+            if (minDateString != null) {
+                try {
+                    val minDate = LocalDate.parse(minDateString)
+                    _earliestMonth.value = YearMonth.from(minDate)
+                } catch (e: Exception) {
+                    // Se la data è invalida, resta su YearMonth.now()
+                    _earliestMonth.value = YearMonth.now()
+                }
+            } else {
+                _earliestMonth.value = YearMonth.now()
+            }
+        }
+    }
 
     // --- AZIONI ---
 
     // Aggiungi/Aggiorna (OnConflictStrategy.REPLACE gestisce entrambi i casi)
     fun saveTransaction(transaction: TransactionEntity) {
-        viewModelScope.launch(Dispatchers.IO) { dao.insert(transaction) }
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.insert(transaction)
+            // Ricarica il mese più vecchio nel caso in cui la nuova transazione sia la più vecchia
+            // Anche se loadEarliestMonth è in un collect, lo chiamo qui per sicurezza,
+            // ma l'osservazione del flow dovrebbe gestirlo. Lo lascio per ora come side effect.
+            // loadEarliestMonth()
+        }
     }
 
     fun deleteTransaction(id: Long) {
@@ -63,6 +98,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit().putString("currency", symbol).apply()
     }
 
+    fun updateDateFormat(format: String) {
+        _dateFormat.value = format
+        prefs.edit().putString("date_format", format).apply()
+    }
+
     fun updateCcLimit(limit: Float) {
         _ccLimit.value = limit
         prefs.edit().putFloat("cc_limit", limit).apply()
@@ -73,13 +113,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit().putInt("cc_delay", delay).apply()
     }
 
-    // NUOVO: Aggiornamento Formato Data
-    fun updateDateFormat(format: String) {
-        _dateFormat.value = format
-        prefs.edit().putString("date_format", format).apply()
-    }
-
-
     // Metodi Backup
     suspend fun getAllForBackup() = dao.getAllList()
 
@@ -89,9 +122,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     // NUOVO: Metodo per ottenere solo le spese per l'esportazione CSV
     suspend fun getExpensesForExport(): List<TransactionEntity> {
-        // Filtra in memoria per semplicità (la query con il WHERE sarebbe più efficiente)
-        return withContext(Dispatchers.IO) {
-            dao.getAllList().filter { it.type == "expense" }
-        }
+        // Filtra in memoria per semplicità (la query SQL sarebbe complessa con JOIN e filtraggi)
+        return dao.getAllList().filter { it.type == "expense" }
     }
 }
