@@ -92,7 +92,7 @@ fun SettingsScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.CalendarToday, contentDescription = "Formato Data", tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(16.dp))
-                Text("Formato Visualizzazione Data", style = MaterialTheme.typography.bodyLarge)
+                //Text("Formato Visualizzazione Data", style = MaterialTheme.typography.bodyLarge)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(currentDateFormat, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
