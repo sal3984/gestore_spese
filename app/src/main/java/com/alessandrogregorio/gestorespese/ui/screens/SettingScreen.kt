@@ -3,6 +3,7 @@ package com.alessandrogregorio.gestorespese.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,11 +24,11 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     currentCurrency: String,
-    currentDateFormat: String, // NUOVO PARAMETRO: Formato data attuale
+    currentDateFormat: String,
     ccDelay: Int,
     ccLimit: Float,
     onCurrencyChange: (String) -> Unit,
-    onDateFormatChange: (String) -> Unit, // NUOVO PARAMETRO: Funzione di cambio formato data
+    onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
     onBackup: () -> Unit,
@@ -35,7 +36,7 @@ fun SettingsScreen(
     onExportCsv: () -> Unit
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
-    var showDateFormatDialog by remember { mutableStateOf(false) } // NUOVO STATO per il dialog del formato data
+    var showDateFormatDialog by remember { mutableStateOf(false) }
     var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
 
     // Sincronizza lo stato locale di limitStr con il valore ccLimit
@@ -49,107 +50,126 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("Impostazioni Generali", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider()
+        Text(
+            "Impostazioni",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Sezione Valuta
-        Text("Valuta", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        // --- SEZIONE GENERALI ---
+        Text("Generali", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showCurrencyDialog = true }
-                .padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.AttachMoney, contentDescription = "Valuta", tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text("Simbolo Valuta", style = MaterialTheme.typography.bodyLarge)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(currentCurrency, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            Column {
+                // Valuta
+                ListItem(
+                    headlineContent = { Text("Valuta") },
+                    supportingContent = { Text("Simbolo visualizzato: $currentCurrency") },
+                    leadingContent = {
+                        Icon(Icons.Default.AttachMoney, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { showCurrencyDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                // Formato Data
+                ListItem(
+                    headlineContent = { Text("Formato Data") },
+                    supportingContent = { Text(currentDateFormat) },
+                    leadingContent = {
+                        Icon(Icons.Default.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable { showDateFormatDialog = true }
+                )
             }
         }
-        HorizontalDivider()
 
-        // NUOVO: Sezione Formato Data
-        Text("Formato Data", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // --- SEZIONE CARTA DI CREDITO ---
+        Text("Carta di Credito", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showDateFormatDialog = true }
-                .padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CalendarToday, contentDescription = "Formato Data", tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(16.dp))
-                //Text("Formato Visualizzazione Data", style = MaterialTheme.typography.bodyLarge)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(currentDateFormat, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Plafond
+                OutlinedTextField(
+                    value = limitStr,
+                    onValueChange = {
+                        limitStr = it.replace(',', '.')
+                        val newLimit = limitStr.toFloatOrNull()
+                        if (newLimit != null) onLimitChange(newLimit)
+                    },
+                    label = { Text("Plafond Max ($currentCurrency)") },
+                    leadingIcon = { Icon(Icons.Default.CreditCard, null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Ritardo Addebito
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                     Text("Ritardo Addebito", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                     Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                         Text(
+                             if (ccDelay == 0) "Immediato" else "$ccDelay Mesi",
+                             modifier = Modifier.padding(4.dp),
+                             color = MaterialTheme.colorScheme.onSecondaryContainer
+                         )
+                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Slider(
+                    value = ccDelay.toFloat(),
+                    onValueChange = { onDelayChange(it.toInt()) },
+                    valueRange = 0f..3f, // Ridotto range per realismo
+                    steps = 2
+                )
+                Text(
+                    "Sposta l'addebito delle spese CC al mese successivo.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-        HorizontalDivider()
 
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Sezione Carta di Credito
-        Text("Carta di Credito", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
+        // --- SEZIONE DATI ---
+        Text("Gestione Dati", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Plafond
-        OutlinedTextField(
-            value = limitStr,
-            onValueChange = {
-                limitStr = it.replace(',', '.') // Permette la virgola come separatore decimale per comodità
-                val newLimit = limitStr.toFloatOrNull()
-                if (newLimit != null) onLimitChange(newLimit)
-            },
-            label = { Text("Plafond Max Carta (${currentCurrency})") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Ritardo Addebito
-        Text("Ritardo Addebito (Mesi): ${ccDelay}", fontWeight = FontWeight.Medium)
-        Slider(
-            value = ccDelay.toFloat(),
-            onValueChange = { onDelayChange(it.toInt()) },
-            valueRange = 0f..6f,
-            steps = 5
-        )
-        Text("0 = Addebito immediato. 1 = Mese successivo.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-
-
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Sezione Backup & Export
-        Text("Dati", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Gestione dei dati e dell'esportazione.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Esporta CSV
         Button(
             onClick = onExportCsv,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)), // Blu per l'export
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             Icon(Icons.Default.Download, null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Esporta Spese (CSV)")
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(horizontalAlignment = Alignment.Start) {
+                Text("Esporta CSV", style = MaterialTheme.typography.titleSmall)
+                Text("Salva un report delle spese", style = MaterialTheme.typography.bodySmall)
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -157,25 +177,28 @@ fun SettingsScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(
                 onClick = onBackup,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F9D58)),
-                modifier = Modifier.weight(1f).height(50.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)), // Green
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).height(56.dp)
             ) {
                 Icon(Icons.Default.CloudUpload, null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Backup JSON")
+                Text("Backup")
             }
 
             Button(
                 onClick = onRestore,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)),
-                modifier = Modifier.weight(1f).height(50.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)), // Orange
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).height(56.dp)
             ) {
                 Icon(Icons.Default.CloudDownload, null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Ripristina JSON")
+                Text("Ripristina")
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 
     // Dialog Selezione Valuta
@@ -207,7 +230,7 @@ fun SettingsScreen(
         )
     }
 
-    // NUOVO: Dialog Selezione Formato Data
+    // Dialog Selezione Formato Data
     if (showDateFormatDialog) {
         AlertDialog(
             onDismissRequest = { showDateFormatDialog = false },

@@ -1,18 +1,23 @@
 package com.alessandrogregorio.gestorespese.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape // Import per RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
@@ -97,30 +102,56 @@ fun AddTransactionScreen(
         Text(
             if(isEditing) "Modifica Movimento" else "Nuovo Movimento",
             style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // TIPO: Spesa/Entrata
+        // TIPO: Spesa/Entrata (Ora usando i pulsanti con i colori richiesti)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            FilterChip(
-                selected = type == "expense",
+            val expenseSelected = type == "expense"
+            val incomeSelected = type == "income"
+
+            // PULSANTE SPESA (ROSSO QUANDO SELEZIONATO)
+            Button(
                 onClick = { type = "expense" },
-                label = { Text("Spesa") }
-            )
-            FilterChip(
-                selected = type == "income",
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (expenseSelected) MaterialTheme.colorScheme.error else Color.LightGray.copy(alpha = 0.5f),
+                    contentColor = if (expenseSelected) Color.White else Color.Black
+                ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.weight(1f).padding(end = 8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("Spesa", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            // PULSANTE ENTRATA (VERDE QUANDO SELEZIONATO)
+            Button(
                 onClick = {
                     type = "income"
                     isCreditCard = false
+                    // Pre-seleziona Stipendio se Entrata
                     if (categoryId == CATEGORIES.first { it.label != "Stipendio 💰" }.id) {
                         categoryId = CATEGORIES.first { it.label == "Stipendio 💰" }.id
                     }
                 },
-                label = { Text("Entrata") }
-            )
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (incomeSelected) Color(0xFF388E3C) else Color.LightGray.copy(alpha = 0.5f),
+                    contentColor = if (incomeSelected) Color.White else Color.Black
+                ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("Entrata", fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -188,7 +219,7 @@ fun AddTransactionScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // CATEGORIA
-        Text("Categoria:", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+        Text("Categoria:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -206,9 +237,11 @@ fun AddTransactionScreen(
                     label = { Text(cat.label) },
                     leadingIcon = { Text(cat.icon) },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = if (categoryId == cat.id) MaterialTheme.colorScheme.primary else Color.LightGray,
+                        containerColor = if (categoryId == cat.id) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
                         labelColor = if (categoryId == cat.id) Color.White else Color.Black
-                    )
+                    ),
+                    // Uso BorderStroke per avere il bordo quando non selezionato
+                    border = if (categoryId == cat.id) null else BorderStroke(1.dp, Color.Gray.copy(alpha = 0.5f))
                 )
             }
         }

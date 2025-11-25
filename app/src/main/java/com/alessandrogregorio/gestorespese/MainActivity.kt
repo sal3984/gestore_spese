@@ -8,6 +8,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -154,7 +158,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             NavHost(navController, startDestination = "dashboard") {
-                composable("dashboard") {
+                composable(
+                    "dashboard",
+                    enterTransition = { fadeIn(animationSpec = tween(300)) },
+                    exitTransition = { fadeOut(animationSpec = tween(300)) }
+                ) {
                     DashboardScreen(
                         transactions = allTransactions,
                         currencySymbol = currentCurrency,
@@ -168,7 +176,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     )
                 }
 
-                composable("report") {
+                composable(
+                    "report",
+                    enterTransition = { fadeIn(animationSpec = tween(300)) },
+                    exitTransition = { fadeOut(animationSpec = tween(300)) }
+                ) {
                     ReportScreen(
                         transactions = allTransactions,
                         currencySymbol = currentCurrency,
@@ -176,7 +188,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     )
                 }
 
-                composable("settings") {
+                composable(
+                    "settings",
+                    enterTransition = { fadeIn(animationSpec = tween(300)) },
+                    exitTransition = { fadeOut(animationSpec = tween(300)) }
+                ) {
                     SettingsScreen(
                         currentCurrency = currentCurrency,
                         currentDateFormat = currentDateFormat,
@@ -194,7 +210,19 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
                 composable(
                     route = "add_transaction/{transactionId}",
-                    arguments = listOf(navArgument("transactionId") { type = NavType.LongType })
+                    arguments = listOf(navArgument("transactionId") { type = NavType.LongType }),
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(300)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(300)
+                        )
+                    }
                 ) { backStackEntry ->
                     val transactionId = backStackEntry.arguments?.getLong("transactionId") ?: 0L
                     var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
