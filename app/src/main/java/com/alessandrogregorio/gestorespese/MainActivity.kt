@@ -8,7 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,7 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Download // NUOVO IMPORT
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,7 +34,9 @@ import androidx.navigation.navArgument
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.AddTransactionScreen
 import com.alessandrogregorio.gestorespese.ui.screens.DashboardScreen
+import com.alessandrogregorio.gestorespese.ui.screens.ReportScreen
 import com.alessandrogregorio.gestorespese.ui.screens.SettingsScreen
+import com.alessandrogregorio.gestorespese.ui.theme.GestoreSpeseTheme
 import com.alessandrogregorio.gestorespese.viewmodel.ExpenseViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -44,229 +45,250 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.time.LocalDate
-import java.util.Locale // IMPORT NECESSARIO
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                MainAppEntry()
+            GestoreSpeseTheme {
+                MainApp()
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppEntry() {
-    val context = LocalContext.current
+fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
-    val viewModel: ExpenseViewModel = viewModel()
+    // Recupero gli stati dal ViewModel
+    val allTransactions by viewModel.allTransactions.collectAsState()
+    val currentCurrency by viewModel.currency.collectAsState()
+    val currentCcLimit by viewModel.ccLimit.collectAsState()
+    val currentCcDelay by viewModel.ccDelay.collectAsState()
+    val currentDateFormat by viewModel.dateFormat.collectAsState()
 
-    // STATI RICHIESTI DAL VIEWMODEL
-    val transactions by viewModel.allTransactions.collectAsState()
-    val currency by viewModel.currency.collectAsState()
-    val ccLimit by viewModel.ccLimit.collectAsState()
-    val ccDelay by viewModel.ccDelay.collectAsState()
+    // --- Activity Result Launchers per Backup/Restore/Export ---
 
-    // --- GESTIONE BACKUP (Launcher per salvare/aprire file) ---
-    val createDocumentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        uri?.let { performBackup(context, viewModel, it) }
-    }
-    val openDocumentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    // Launcher per il ripristino
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
         uri?.let { performRestore(context, viewModel, it) }
     }
 
-    // --- GESTIONE EXPORT CSV (Launcher per salvare file CSV) ---
-    val createCsvDocumentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        uri?.let { performExportCsv(context, viewModel, it) }
+    // Launcher per il backup
+    val backupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        uri?.let { performBackup(context, viewModel, it) }
+    }
+
+    // Launcher per l'esportazione CSV
+    val exportCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri: Uri? ->
+        uri?.let {
+            coroutineScope.launch {
+                performCsvExport(
+                    context = context,
+                    viewModel = viewModel,
+                    uri = it,
+                    currencySymbol = currentCurrency,
+                    dateFormat = currentDateFormat
+                )
+            }
+        }
     }
 
     Scaffold(
         bottomBar = {
-            // Barra di Navigazione Inferiore
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route?.substringBefore('/')
+                val currentRoute = navBackStackEntry?.destination?.route
 
+                // Dashboard
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.DateRange, "Mese") },
-                    label = { Text("Mese") },
+                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Dashboard") },
+                    label = { Text("Dashboard") },
                     selected = currentRoute == "dashboard",
-                    onClick = { navController.navigate("dashboard") { launchSingleTop = true } }
+                    onClick = { navController.navigate("dashboard") }
                 )
+                // Report (Statistiche)
                 NavigationBarItem(
-                    icon = { Box(modifier = Modifier.background(MaterialTheme.colorScheme.primary, CircleShape).padding(8.dp)) { Icon(Icons.Default.Add, "Add", tint = Color.White) } },
-                    label = { Text("") }, // Label vuota per effetto FAB
-                    selected = currentRoute == "add",
-                    onClick = { navController.navigate("add/-1") { launchSingleTop = true } } // Naviga a "Add" con ID = -1L (nuova transazione)
+                    icon = { Icon(Icons.Default.Download, contentDescription = "Report") },
+                    label = { Text("Report") },
+                    selected = currentRoute == "report",
+                    onClick = { navController.navigate("report") }
                 )
+                // Impostazioni
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, "Impostazioni") },
-                    label = { Text("Impost.") },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Impostazioni") },
+                    label = { Text("Impostazioni") },
                     selected = currentRoute == "settings",
-                    onClick = { navController.navigate("settings") { launchSingleTop = true } }
+                    onClick = { navController.navigate("settings") }
                 )
             }
+        },
+        floatingActionButton = {
+            if (navController.currentBackStackEntryAsState().value?.destination?.route?.startsWith("add_transaction") != true) {
+                FloatingActionButton(
+                    onClick = { navController.navigate("add_transaction/0") },
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Filled.Add, "Aggiungi Transazione")
+                }
+            }
         }
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            // Gestore della Navigazione
-            NavHost(navController = navController, startDestination = "dashboard") {
-
-                // SCHERMATA 1: DASHBOARD
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            NavHost(navController, startDestination = "dashboard") {
                 composable("dashboard") {
                     DashboardScreen(
-                        transactions = transactions,
-                        currencySymbol = currency,
-                        ccLimit = ccLimit,
-                        onDelete = { id -> viewModel.deleteTransaction(id) },
-                        onEdit = { id -> navController.navigate("add/$id") } // Naviga alla rotta di modifica
+                        transactions = allTransactions,
+                        currencySymbol = currentCurrency,
+                        ccLimit = currentCcLimit,
+                        dateFormat = currentDateFormat, // PASSATO IL FORMATO DATA
+                        onDelete = viewModel::deleteTransaction,
+                        onEdit = { transactionId ->
+                            navController.navigate("add_transaction/$transactionId")
+                        }
                     )
                 }
 
-                // SCHERMATA 2: AGGIUNGI/MODIFICA (supporta ID opzionale)
+                composable("report") {
+                    ReportScreen(
+                        transactions = allTransactions,
+                        currencySymbol = currentCurrency,
+                        dateFormat = currentDateFormat // PASSATO IL FORMATO DATA
+                    )
+                }
+
+                composable("settings") {
+                    SettingsScreen(
+                        currentCurrency = currentCurrency,
+                        currentDateFormat = currentDateFormat,
+                        ccDelay = currentCcDelay,
+                        ccLimit = currentCcLimit,
+                        onCurrencyChange = viewModel::updateCurrency,
+                        onDateFormatChange = viewModel::updateDateFormat,
+                        onDelayChange = viewModel::updateCcDelay,
+                        onLimitChange = viewModel::updateCcLimit,
+                        onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
+                        onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
+                        onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
+                    )
+                }
+
                 composable(
-                    route = "add/{transactionId}",
-                    arguments = listOf(navArgument("transactionId") {
-                        defaultValue = -1L
-                        type = NavType.LongType
-                    })
+                    route = "add_transaction/{transactionId}",
+                    arguments = listOf(navArgument("transactionId") { type = NavType.LongType })
                 ) { backStackEntry ->
-                    val transactionId = backStackEntry.arguments?.getLong("transactionId") ?: -1L
-                    val isEditing = transactionId != -1L
+                    val transactionId = backStackEntry.arguments?.getLong("transactionId") ?: 0L
+                    var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
+                    var isLoading by remember { mutableStateOf(transactionId != 0L) }
 
-                    var transactionToEdit by remember { mutableStateOf<TransactionEntity?>(null) }
-                    var isLoading by remember { mutableStateOf(isEditing) } // Imposta Loading all'inizio se è in modalità modifica
-
-                    // Se in modalità modifica, recupera la transazione
                     LaunchedEffect(transactionId) {
-                        if (isEditing) {
-                            isLoading = true
+                        if (transactionId != 0L) {
                             transactionToEdit = viewModel.getTransactionById(transactionId)
                             isLoading = false
                         } else {
-                            transactionToEdit = null
                             isLoading = false
                         }
                     }
 
-                    // Mostra la schermata solo quando non è in caricamento
-                    if (isLoading) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (isLoading && transactionId != 0L) {
+                        // Mostra un loading se necessario
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             CircularProgressIndicator()
                         }
                     } else {
                         AddTransactionScreen(
-                            ccDelay = ccDelay,
-                            currencySymbol = currency,
-                            onGetSuggestions = { q -> viewModel.getSuggestions(q) },
-                            onSave = { newTransaction ->
-                                viewModel.addTransaction(newTransaction)
-                                navController.popBackStack()
+                            ccDelay = currentCcDelay,
+                            currencySymbol = currentCurrency,
+                            onGetSuggestions = viewModel::getSuggestions,
+                            dateFormatString = currentDateFormat,
+                            onSave = { transaction ->
+                                viewModel.saveTransaction(transaction)
+                                navController.popBackStack() // Torna indietro dopo il salvataggio
                             },
-                            transactionToEdit = transactionToEdit // Passa la transazione per precompilare
+                            transactionToEdit = transactionToEdit
                         )
                     }
                 }
+            }
+        }
+    }
+}
 
-                // SCHERMATA 3: IMPOSTAZIONI
-                composable("settings") {
-                    SettingsScreen(
-                        currentCurrency = currency,
-                        ccDelay = ccDelay,
-                        ccLimit = ccLimit,
-                        onCurrencyChange = { viewModel.updateCurrency(it) },
-                        onDelayChange = { viewModel.updateCcDelay(it) },
-                        onLimitChange = { viewModel.updateCcLimit(it) },
-                        onBackup = { createDocumentLauncher.launch("backup_spese_${LocalDate.now()}.json") },
-                        onRestore = { openDocumentLauncher.launch(arrayOf("application/json")) },
-                        onExportCsv = { createCsvDocumentLauncher.launch("report_spese_${LocalDate.now()}.csv") } // NUOVO
-                    )
+// --- Funzioni di gestione file (Backup/Restore/Export) ---
+
+// Funzione di esportazione CSV (AGGIORNATA per usare il formato data)
+suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
+    val formatter = DateTimeFormatter.ofPattern(dateFormat)
+    val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+    coroutineScope.launch {
+        try {
+            val expenses = viewModel.getExpensesForExport()
+            val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol}),Categoria,Carta di Credito,Data Addebito\n"
+            val csvContent = StringBuilder(csvHeader)
+
+            expenses.forEach { t ->
+                // Formatta la data in base alla preferenza dell'utente
+                val dateStr = try {
+                    LocalDate.parse(t.date).format(formatter)
+                } catch (e: Exception) {
+                    t.date // Fallback se la conversione fallisce
+                }
+                val effectiveDateStr = try {
+                    LocalDate.parse(t.effectiveDate).format(formatter)
+                } catch (e: Exception) {
+                    t.effectiveDate // Fallback
+                }
+
+                csvContent.append("${t.id},\"$dateStr\",\"${t.description.replace('\"', '\'')}\",${String.format(Locale.US, "%.2f", t.amount)},${t.categoryId},${if (t.isCreditCard) "Sì" else "No"},\"$effectiveDateStr\"\n")
+            }
+
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                OutputStreamWriter(outputStream).use { writer ->
+                    writer.write(csvContent.toString())
                 }
             }
-        }
-    }
-}
 
-// --- FUNZIONI DI UTILITÀ PER BACKUP/RESTORE/EXPORT ---
-
-fun generateCsvContent(expenses: List<TransactionEntity>): String {
-    // Intestazione con i campi richiesti
-    val header = "Data Movimento,Data Addebito,Descrizione,Importo,Categoria,Tipo Pagamento\n"
-    val csv = StringBuilder(header)
-
-    // Dettaglio Movimenti
-    expenses.sortedByDescending { it.date }.forEach { t ->
-        val line = listOf(
-            t.date,
-            t.effectiveDate,
-            "\"${t.description.replace("\"", "\"\"")}\"", // Escapes quotes for descriptions with commas
-            // Usa Locale.US per il punto decimale, standard nei CSV
-            String.format(Locale.US, "%.2f", t.amount),
-            t.categoryId,
-            if(t.isCreditCard) "Carta di Credito" else "Contanti/Addebito Immediato"
-        ).joinToString(",")
-        csv.append(line).append("\n")
-    }
-
-    // Calcolo e Aggiunta Somme Mensili
-    if (expenses.isNotEmpty()) {
-        val monthlySums = expenses
-            .groupBy { it.effectiveDate.substring(0, 7) } // Raggruppa per Anno-Mese (data di addebito effettiva)
-            .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
-            .toSortedMap(compareByDescending { it }) // Ordina per mese decrescente
-
-        csv.append("\n\n")
-        csv.append("--- SOMMARIO MENSILE PER ADDEBITO EFFETTIVO ---\n")
-        csv.append("Mese (AAAA-MM),Totale Spese\n")
-
-        monthlySums.forEach { (month, total) ->
-            val totalStr = String.format(Locale.US, "%.2f", total)
-            csv.append("$month,${totalStr}\n")
-        }
-    }
-
-    return csv.toString()
-}
-
-fun performExportCsv(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
-    val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
-    scope.launch {
-        try {
-            // 1. Ottieni i dati delle sole spese
-            val expenses = viewModel.getExpensesForExport()
-
-            // 2. Genera il contenuto CSV
-            val csvContent = generateCsvContent(expenses)
-
-            // 3. Scrivi nel file
-            context.contentResolver.openOutputStream(uri)?.use { output ->
-                output.write(csvContent.toByteArray())
-            }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Esportazione CSV completata con successo!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Esportate ${expenses.size} spese in CSV!", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Errore durante l'esportazione CSV: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Errore durante l'esportazione: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
     }
 }
 
+// Funzione di Backup (JSON)
 fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
-    val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
-    scope.launch {
-        // Chiede i dati al ViewModel
-        val list = viewModel.getAllForBackup()
-        val json = Gson().toJson(list)
+    val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+    coroutineScope.launch {
         try {
-            context.contentResolver.openOutputStream(uri)?.use { output ->
-                output.write(json.toByteArray())
+            val allData = viewModel.getAllForBackup()
+            val json = Gson().toJson(allData)
+
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                OutputStreamWriter(outputStream).use { writer ->
+                    writer.write(json)
+                }
             }
+
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Backup salvato con successo!", Toast.LENGTH_SHORT).show()
             }
@@ -278,6 +300,7 @@ fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
     }
 }
 
+// Funzione di Ripristino (JSON)
 fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
     val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
     scope.launch {
@@ -296,7 +319,7 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
             viewModel.restoreData(list)
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Ripristinati ${list.size} movimenti!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Ripristinati ${list.size} movimenti! I dati appariranno a breve.", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {

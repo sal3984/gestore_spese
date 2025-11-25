@@ -30,11 +30,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _ccDelay = MutableStateFlow(prefs.getInt("cc_delay", 1))
     val ccDelay = _ccDelay.asStateFlow()
 
+    // NUOVO: Formato Data (es. "dd/MM/yyyy" o "MM/dd/yyyy")
+    private val _dateFormat = MutableStateFlow(prefs.getString("date_format", "dd/MM/yyyy") ?: "dd/MM/yyyy")
+    val dateFormat = _dateFormat.asStateFlow()
+
+
     // --- AZIONI ---
 
     // Aggiungi/Aggiorna (OnConflictStrategy.REPLACE gestisce entrambi i casi)
-    fun addTransaction(t: TransactionEntity) {
-        viewModelScope.launch(Dispatchers.IO) { dao.insert(t) }
+    fun saveTransaction(transaction: TransactionEntity) {
+        viewModelScope.launch(Dispatchers.IO) { dao.insert(transaction) }
     }
 
     fun deleteTransaction(id: Long) {
@@ -68,6 +73,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         prefs.edit().putInt("cc_delay", delay).apply()
     }
 
+    // NUOVO: Aggiornamento Formato Data
+    fun updateDateFormat(format: String) {
+        _dateFormat.value = format
+        prefs.edit().putString("date_format", format).apply()
+    }
+
+
     // Metodi Backup
     suspend fun getAllForBackup() = dao.getAllList()
 
@@ -77,7 +89,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     // NUOVO: Metodo per ottenere solo le spese per l'esportazione CSV
     suspend fun getExpensesForExport(): List<TransactionEntity> {
-        // Filtra in memoria per semplicità, ma i dati vengono comunque dal DAO
+        // Filtra in memoria per semplicità (la query con il WHERE sarebbe più efficiente)
         return withContext(Dispatchers.IO) {
             dao.getAllList().filter { it.type == "expense" }
         }

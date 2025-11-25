@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -86,66 +87,109 @@ fun ComparisonCard(diff: Double) {
         }
     }
 }
-
-// Item Singolo Movimento
-// Item Singolo Movimento
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionItem(t: TransactionEntity, currency: String, onDelete: (Long) -> Unit, onEdit: (Long) -> Unit) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    val category = CATEGORIES.find { it.id == t.categoryId } ?: CATEGORIES.last()
+fun TransactionItem(
+    transaction: TransactionEntity,
+    currencySymbol: String,
+    dateFormat: String, // NUOVO: Formato data
+    onDelete: (Long) -> Unit,
+    onEdit: (Long) -> Unit
+) {
+    val category = getCategory(transaction.categoryId)
+    val isIncome = transaction.type == "income"
+    val amountColor = if (isIncome) Color(0xFF0F9D58) else MaterialTheme.colorScheme.error
+    val effectiveDate = LocalDate.parse(transaction.effectiveDate)
 
-    // Usiamo Card per rendere l'intera riga cliccabile in modo più robusto
+    // Formatta la data usando il formato preferito dall'utente
+    val dateFormatter = try {
+        DateTimeFormatter.ofPattern(dateFormat)
+    } catch (e: Exception) {
+        DateTimeFormatter.ofPattern("dd/MM/yyyy") // Fallback
+    }
+    val formattedDate = effectiveDate.format(dateFormatter)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onEdit(t.id) } // Azione di modifica su click
+            .clickable { onEdit(transaction.id) },
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        ListItem(
-            headlineContent = { Text(t.description) },
-            supportingContent = {
-                Text("${category.icon} - Data Addebito: ${t.effectiveDate.format(DateTimeFormatter.ISO_DATE)}")
-            },
-            leadingContent = {
-                Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                    Text(category.icon, fontSize = 20.dp.value.sp)
-                }
-            },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Sezione Icona e Descrizione
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Icona Categoria
+                Text(
+                    text = category.icon,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(4.dp)
+                        .wrapContentSize(Alignment.Center)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    // Descrizione e Categoria
                     Text(
-                        text = (if(t.type == "expense") "-" else "+") + "$currency ${String.format("%.2f", t.amount)}",
-                        color = if(t.type == "expense") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(end = 8.dp)
+                        transaction.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    // Bottone per eliminare - la sua azione è isolata dal click della Card
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Elimina", tint = Color.Gray)
+                    Row {
+                        Text(
+                            category.label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // Data Addebito
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "(${formattedDate})", // Usa la data formattata
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                        // Tag CC
+                        if(transaction.isCreditCard && !isIncome) {
+                            Text(
+                                " [CC]",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Conferma Eliminazione") },
-            text = { Text("Sei sicuro di voler eliminare il movimento '${t.description}' di $currency ${String.format("%.2f", t.amount)}?") },
-            confirmButton = {
-                Button(onClick = {
-                    onDelete(t.id)
-                    showDeleteDialog = false
-                }) { Text("Elimina") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Annulla") }
             }
-        )
+
+            // Sezione Importo e Pulsante Elimina
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${if (isIncome) "+" else "-"} $currencySymbol ${String.format(Locale.ITALIAN, "%.2f", transaction.amount)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = amountColor,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                IconButton(onClick = { onDelete(transaction.id) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Elimina", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                }
+            }
+        }
     }
 }
 
+
 fun formatMoney(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.ITALY).format(amount)
+
+// Funzione helper per trovare la categoria, utile per TransactionItem
+fun getCategory(id: String) = CATEGORIES.firstOrNull { it.id == id } ?: CATEGORIES.first { it.id == "other" }

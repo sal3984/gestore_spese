@@ -23,112 +23,144 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     currentCurrency: String,
+    currentDateFormat: String, // NUOVO PARAMETRO: Formato data attuale
     ccDelay: Int,
     ccLimit: Float,
     onCurrencyChange: (String) -> Unit,
+    onDateFormatChange: (String) -> Unit, // NUOVO PARAMETRO: Funzione di cambio formato data
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
-    onExportCsv: () -> Unit // NUOVO PARAMETRO
+    onExportCsv: () -> Unit
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showDateFormatDialog by remember { mutableStateOf(false) } // NUOVO STATO per il dialog del formato data
     var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
 
-    // Sincronizza lo stato locale con ccLimit esterno
+    // Sincronizza lo stato locale di limitStr con il valore ccLimit
     LaunchedEffect(ccLimit) {
         limitStr = String.format(Locale.US, "%.0f", ccLimit)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
-        Text("Impostazioni", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text("Impostazioni Generali", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
         Spacer(modifier = Modifier.height(24.dp))
 
-        // SEZIONE GENERALI
-        Text("Generali", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-        // Selettore Valuta
-        ListItem(
-            headlineContent = { Text("Valuta") },
-            supportingContent = { Text("Simbolo attuale: $currentCurrency") },
-            leadingContent = { Icon(Icons.Default.ShoppingCart, null) },
-            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { showCurrencyDialog = true }
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // SEZIONE CARTA DI CREDITO
-        Text("Carta di Credito", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                // Plafond Mensile
-                Text("Plafond Mensile (Limite Spesa)", fontWeight = FontWeight.Bold)
-                OutlinedTextField(
-                    value = limitStr,
-                    onValueChange = {
-                        limitStr = it.replace(",", ".") // Sostituisci la virgola con il punto
-                        it.replace(",", ".").toFloatOrNull()?.let { num ->
-                            if(num >= 0) onLimitChange(num)
-                        }
-                    },
-                    prefix = { Text(currentCurrency) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Posticipo Addebito
-                Text("Posticipo Addebito: $ccDelay mesi", fontWeight = FontWeight.Bold)
-                Slider(
-                    value = ccDelay.toFloat(),
-                    onValueChange = { onDelayChange(it.toInt()) },
-                    valueRange = 0f..6f, // AUMENTATO A 6 MESI
-                    steps = 6
-                )
-                Text(
-                    text = when(ccDelay) {
-                        0 -> "Addebito nello stesso mese dell'acquisto"
-                        1 -> "Addebito il mese successivo"
-                        else -> "Addebito dopo $ccDelay mesi"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
+        // Sezione Valuta
+        Text("Valuta", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showCurrencyDialog = true }
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AttachMoney, contentDescription = "Valuta", tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("Simbolo Valuta", style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(currentCurrency, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
             }
         }
+        HorizontalDivider()
 
-        Spacer(modifier = Modifier.height(32.dp))
+        // NUOVO: Sezione Formato Data
+        Text("Formato Data", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showDateFormatDialog = true }
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CalendarToday, contentDescription = "Formato Data", tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(16.dp))
+                Text("Formato Visualizzazione Data", style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(currentDateFormat, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            }
+        }
+        HorizontalDivider()
 
-        // SEZIONE DATI
-        Text("Dati e Backup", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        // Nuovo Bottone Esporta CSV
+        // Sezione Carta di Credito
+        Text("Carta di Credito", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Plafond
+        OutlinedTextField(
+            value = limitStr,
+            onValueChange = {
+                limitStr = it.replace(',', '.') // Permette la virgola come separatore decimale per comodità
+                val newLimit = limitStr.toFloatOrNull()
+                if (newLimit != null) onLimitChange(newLimit)
+            },
+            label = { Text("Plafond Max Carta (${currentCurrency})") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Ritardo Addebito
+        Text("Ritardo Addebito (Mesi): ${ccDelay}", fontWeight = FontWeight.Medium)
+        Slider(
+            value = ccDelay.toFloat(),
+            onValueChange = { onDelayChange(it.toInt()) },
+            valueRange = 0f..6f,
+            steps = 5
+        )
+        Text("0 = Addebito immediato. 1 = Mese successivo.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Sezione Backup & Export
+        Text("Dati", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Gestione dei dati e dell'esportazione.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Esporta CSV
         Button(
-            onClick = onExportCsv, // COLLEGATO AL NUOVO HANDLER
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+            onClick = onExportCsv,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)), // Blu per l'export
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
             Icon(Icons.Default.Download, null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Esporta Spese in CSV")
+            Text("Esporta Spese (CSV)")
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Vecchi bottoni Backup/Ripristino
+        // Backup & Ripristino (JSON)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(
                 onClick = onBackup,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F9D58)),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).height(50.dp)
             ) {
-                Icon(Icons.Default.Share, null)
+                Icon(Icons.Default.CloudUpload, null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Backup JSON")
             }
@@ -136,9 +168,9 @@ fun SettingsScreen(
             Button(
                 onClick = onRestore,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).height(50.dp)
             ) {
-                Icon(Icons.Default.Refresh, null)
+                Icon(Icons.Default.CloudDownload, null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Ripristina JSON")
             }
@@ -150,7 +182,7 @@ fun SettingsScreen(
     if (showCurrencyDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyDialog = false },
-            title = { Text("Scegli Valuta") },
+            title = { Text("Scegli Simbolo Valuta") },
             text = {
                 Column {
                     listOf("€", "$", "£", "CHF", "¥", "zł").forEach { symbol ->
@@ -172,6 +204,36 @@ fun SettingsScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text("Annulla") } }
+        )
+    }
+
+    // NUOVO: Dialog Selezione Formato Data
+    if (showDateFormatDialog) {
+        AlertDialog(
+            onDismissRequest = { showDateFormatDialog = false },
+            title = { Text("Scegli Formato Data") },
+            text = {
+                Column {
+                    val dateFormats = listOf("dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy")
+                    dateFormats.forEach { format ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDateFormatChange(format)
+                                    showDateFormatDialog = false
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = (format == currentDateFormat), onClick = null)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(format, fontSize = 18.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text("Annulla") } }
         )
     }
 }

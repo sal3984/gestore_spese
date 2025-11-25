@@ -1,90 +1,123 @@
 package com.alessandrogregorio.gestorespese.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
+import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import java.time.LocalDate
+import java.util.Locale
 
 @Composable
 fun ReportScreen(
     transactions: List<TransactionEntity>,
-    ccDelay: Int,
-    onDelayChange: (Int) -> Unit,
-    onBackup: () -> Unit,
-    onRestore: () -> Unit
+    currencySymbol: String,
+    dateFormat: String, // NUOVO PARAMETRO (Aggiunto per consistenza)
 ) {
     // Calcolo Risparmio Anno Corrente
     val currentYear = LocalDate.now().year
     val savings = transactions
-        .filter { LocalDate.parse(it.effectiveDate).year == currentYear }
+        .filter {
+            try {
+                LocalDate.parse(it.effectiveDate).year == currentYear
+            } catch (e: Exception) {
+                false
+            }
+        }
         .sumOf { if(it.type == "income") it.amount else -it.amount }
+
+    // Calcolo Spese per Categoria (Mese Corrente)
+    val currentMonth = LocalDate.now().monthValue
+    val expenseByCategory = remember(transactions) {
+        transactions
+            .filter {
+                it.type == "expense" && try {
+                    LocalDate.parse(it.effectiveDate).monthValue == currentMonth
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            .groupBy { it.categoryId }
+            .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
+            .toList()
+            .sortedByDescending { it.second }
+    }
+
+    val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Report $currentYear", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Card Risparmio
+        // Card Risparmio Totale Anno
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text("Risparmio Totale Anno", style = MaterialTheme.typography.titleMedium)
-                Text(formatMoney(savings), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
-                Text("Entrate - Uscite (date effettive)", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top=8.dp))
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Saldo Netto Annuale ($currentYear)", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", savings)}",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = if (savings >= 0) Color.White else MaterialTheme.colorScheme.errorContainer,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        Text("Impostazioni", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Slider Ritardo Carta
-        Text("Ritardo Carta di Credito: $ccDelay mesi", fontWeight = FontWeight.Bold)
-        Slider(
-            value = ccDelay.toFloat(),
-            onValueChange = { onDelayChange(it.toInt()) },
-            valueRange = 0f..6f,
-            steps = 5
-        )
-        Text("0 = Addebito immediato. 1 = Mese successivo.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider()
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Sezione Backup
-        Text("Backup & Ripristino", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Salva o ripristina i dati (JSON)", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        Spacer(modifier = Modifier.height(16.dp))
+        Text("Spese per Categoria (Mese Corrente)", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text("Totale Spese: $currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalMonthlyExpense)}", style = MaterialTheme.typography.bodyMedium)
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Button(
-                onClick = onBackup,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F9D58)),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.Share, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Backup")
-            }
+        // Lista Spese per Categoria
+        LazyColumn(modifier = Modifier.fillMaxHeight()) {
+            items(expenseByCategory) { (categoryId, amount) ->
+                val category = CATEGORIES.firstOrNull { it.id == categoryId }
+                val percentage = if (totalMonthlyExpense > 0) (amount / totalMonthlyExpense) * 100 else 0.0
 
-            Button(
-                onClick = onRestore,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.Refresh, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Ripristina")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Nome Categoria
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = category?.icon ?: "❓",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(category?.label ?: "Altro", style = MaterialTheme.typography.titleMedium)
+                    }
+
+                    // Importo e Percentuale
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", amount)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = String.format(Locale.ITALIAN, "%.1f%%", percentage),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+                HorizontalDivider()
             }
         }
     }
