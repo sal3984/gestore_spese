@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,18 +53,11 @@ import java.util.Locale
 // --- COMPONENTI GRAFICI RIUTILIZZABILI ---
 
 @Composable
-fun MonthSelector(date: LocalDate, onDateChange: (LocalDate) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp)).padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = { onDateChange(date.minusMonths(1)) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null) }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("PERIODO", style = MaterialTheme.typography.labelSmall)
-            Text(date.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)).uppercase(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-        IconButton(onClick = { onDateChange(date.plusMonths(1)) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) }
+fun MonthSelector(selectedDate: LocalDate, onDateChange: (LocalDate) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = { onDateChange(selectedDate.minusMonths(1)) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) { Text("<") }
+        Text(selectedDate.format(DateTimeFormatter.ofPattern("MMMM yyyy")).replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.Bold)
+        Button(onClick = { onDateChange(selectedDate.plusMonths(1)) }, enabled = !selectedDate.isAfter(LocalDate.now().plusMonths(1).minusDays(1)), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) { Text(">") }
     }
 }
 
@@ -94,6 +88,7 @@ fun ComparisonCard(diff: Double) {
 }
 
 // Item Singolo Movimento
+// Item Singolo Movimento
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionItem(t: TransactionEntity, currency: String, onDelete: (Long) -> Unit, onEdit: (Long) -> Unit) {
@@ -114,7 +109,7 @@ fun TransactionItem(t: TransactionEntity, currency: String, onDelete: (Long) -> 
             },
             leadingContent = {
                 Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                    Text(category.id, fontSize = 20.dp.value.sp)
+                    Text(category.icon, fontSize = 20.dp.value.sp)
                 }
             },
             trailingContent = {
