@@ -41,6 +41,16 @@ android {
     }
 }
 
+spotless {
+    kotlin {
+        target("**/*.kt")
+        ktlint()
+        trimTrailingWhitespace()
+        indentWithSpaces()
+        endWithNewline()
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
