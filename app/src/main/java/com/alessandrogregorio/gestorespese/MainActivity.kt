@@ -39,6 +39,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.alessandrogregorio.gestorespese.data.CategoryEntity
@@ -115,14 +118,19 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     if (!isAuthenticated) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("In attesa di autenticazione...", style = MaterialTheme.typography.bodyLarge)
-            Button(onClick = {
-                 authenticateUser(context,
-                     onSuccess = { isAuthenticated = true },
-                     onError = { }
-                 )
-            }, modifier = Modifier.padding(top = 16.dp)) {
-                Text("Riprova Autenticazione")
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("App Bloccata", style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Autenticati per accedere ai tuoi dati", style = MaterialTheme.typography.bodyLarge)
+
+                Button(onClick = {
+                     authenticateUser(context,
+                         onSuccess = { isAuthenticated = true },
+                         onError = { }
+                     )
+                }, modifier = Modifier.padding(top = 24.dp)) {
+                    Text("Sblocca")
+                }
             }
         }
         return
@@ -387,10 +395,12 @@ fun authenticateUser(context: Context, onSuccess: () -> Unit, onError: () -> Uni
             }
         })
 
+    // AGGIORNATO PER SUPPORTO PIN/PATTERN
     val promptInfo = BiometricPrompt.PromptInfo.Builder()
         .setTitle("Accesso Gestore Spese")
-        .setSubtitle("Usa l'impronta o il volto per accedere")
-        .setNegativeButtonText("Annulla") // Obbligatorio per biometriche classiche
+        .setSubtitle("Usa biometria o PIN per accedere")
+        // setNegativeButtonText NON può essere usato se si abilita DEVICE_CREDENTIAL
+        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         .build()
 
     biometricPrompt.authenticate(promptInfo)
