@@ -58,12 +58,7 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text(
-            stringResource(R.string.settings),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(24.dp))
+        // RIMOSSO Titolo "Impostazioni" per evitare duplicato con la TopBar principale
 
         // --- SEZIONE GENERALI ---
         Text(stringResource(R.string.general), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)

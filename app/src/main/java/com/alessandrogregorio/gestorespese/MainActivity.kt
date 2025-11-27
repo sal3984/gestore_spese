@@ -194,7 +194,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
                 // Menu Laterale: Home, Categorie e Impostazioni
                 NavigationDrawerItem(
-                    label = { Text("Home") },
+                    label = { Text("Dashboard") },
                     selected = currentRoute == "dashboard",
                     onClick = {
                         navController.navigate("dashboard") {
@@ -350,8 +350,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             categories = allCategories,
                             onAddCategory = viewModel::addCategory,
                             onDeleteCategory = viewModel::removeCategory,
-                            // Nelle schermate del drawer, "onBack" riporta alla dashboard
-                            onBack = { navController.navigate("dashboard") }
+                            // onBack RIMOSSO perché gestito dalla navigazione principale
                         )
                     }
 
