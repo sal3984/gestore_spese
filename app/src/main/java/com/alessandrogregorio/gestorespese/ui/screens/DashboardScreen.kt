@@ -38,8 +38,9 @@ fun DashboardScreen(
     earliestMonth: YearMonth,
     currentDashboardMonth: YearMonth, // Parametro aggiunto
     onMonthChange: (YearMonth) -> Unit, // Callback aggiunta
-    onDelete: (Long) -> Unit,
-    onEdit: (Long) -> Unit
+    onDelete: (String) -> Unit,
+    onEdit: (String) -> Unit,
+    isAmountHidden: Boolean, // NUOVO PARAMETRO
 ) {
     val today = YearMonth.now()
     // var currentDisplayedMonth by remember { mutableStateOf(today) } // RIMOSSO STATO LOCALE
@@ -267,7 +268,14 @@ fun DashboardScreen(
                          DateHeader(dateString)
                     }
                     items(transactions, key = { it.id }) { t ->
-                        TransactionItem(t, currencySymbol, dateFormat, onDelete, onEdit)
+                        TransactionItem(
+                            t,
+                            currencySymbol,
+                            dateFormat,
+                            isAmountHidden, // NUOVO ARGOMENTO QUI
+                            onDelete,
+                            onEdit
+                        )
                     }
                 }
             }

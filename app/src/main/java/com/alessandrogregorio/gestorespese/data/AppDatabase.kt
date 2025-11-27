@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 // 3. Il Database
-@Database(entities = [TransactionEntity::class], version = 1, exportSchema = false)
+@Database(entities = [TransactionEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
 
@@ -20,7 +20,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "spese_db_v2"
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration() // Necessario per l'aggiornamento (cancella i vecchi dati!)
+                    .build().also { INSTANCE = it }
             }
         }
     }

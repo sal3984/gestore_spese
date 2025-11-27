@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -27,10 +28,12 @@ fun SettingsScreen(
     currentDateFormat: String,
     ccDelay: Int,
     ccLimit: Float,
+    isAmountHidden: Boolean, // 👈 NUOVO PARAMETRO
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
+    onAmountHiddenChange: (Boolean) -> Unit, // 👈 NUOVO CALLBACK
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit
@@ -153,6 +156,37 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // NUOVA SEZIONE: Sicurezza e Usabilità
+        Text(
+            "SICUREZZA E USABILITÀ",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
+        )
+
+        // Opzione 1: Oscurare i numeri
+        SettingItem(
+            icon = Icons.Default.VisibilityOff,
+            title = "Oscura Importi per Privacy",
+            subtitle = "Sostituisce gli importi con asterischi nella Dashboard.",
+            onClick = { onAmountHiddenChange(!isAmountHidden) }
+        ) {
+            Switch(checked = isAmountHidden, onCheckedChange = onAmountHiddenChange)
+        }
+
+        // Opzione 2: Placeholder per Sicurezza (PIN/Biometrica)
+        SettingItem(
+            icon = Icons.Default.Security,
+            title = "Blocco App (PIN/Biometrica)",
+            subtitle = "Abilita il blocco schermo all'avvio dell'app (DA IMPLEMENTARE).",
+            onClick = { /* TODO: Implementare Logica Blocco */ }
+        ) {
+            // Placeholder per Switch Sicurezza
+            Switch(checked = false, onCheckedChange = { /* TODO: Implementare */ }, enabled = false)
+        }
+
+
         // --- SEZIONE DATI ---
         Text("Gestione Dati", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
@@ -259,4 +293,58 @@ fun SettingsScreen(
             confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text("Annulla") } }
         )
     }
+}
+
+@Composable
+fun SettingItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    content: @Composable (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icona
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp)
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Titolo e Sottotitolo
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Contenuto a destra (es. Switch, Arrow, o nulla)
+        content?.invoke() ?: Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    // Aggiungi un Divider per separare le voci
+    Divider(modifier = Modifier.padding(horizontal = 16.dp))
 }

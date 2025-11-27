@@ -35,6 +35,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _dateFormat = MutableStateFlow(prefs.getString("date_format", "dd/MM/yyyy") ?: "dd/MM/yyyy")
     val dateFormat = _dateFormat.asStateFlow()
 
+    // NUOVO: Stato per oscurare gli importi
+    private val _isAmountHidden = MutableStateFlow(prefs.getBoolean("hide_amount", false))
+    val isAmountHidden = _isAmountHidden.asStateFlow()
+
     // NUOVO: Mese della transazione più vecchia per la navigazione
     private val _earliestMonth = MutableStateFlow(YearMonth.now())
     val earliestMonth = _earliestMonth.asStateFlow()
@@ -43,6 +47,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Mantiene il mese visualizzato sulla dashboard anche dopo navigazioni
     private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
     val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
+
+
 
     init {
         // Carica il mese più vecchio all'avvio
@@ -82,12 +88,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun deleteTransaction(id: Long) {
+    fun deleteTransaction(id: String) {
         viewModelScope.launch(Dispatchers.IO) { dao.delete(id) }
     }
 
     // NUOVO: Ottiene una transazione specifica
-    suspend fun getTransactionById(id: Long): TransactionEntity? {
+    suspend fun getTransactionById(id: String): TransactionEntity? {
         return withContext(Dispatchers.IO) { dao.getById(id) }
     }
 
@@ -116,6 +122,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun updateCcDelay(delay: Int) {
         _ccDelay.value = delay
         prefs.edit().putInt("cc_delay", delay).apply()
+    }
+
+    // --- NUOVO: Funzione di aggiornamento isAmountHidden ---
+    fun updateIsAmountHidden(isHidden: Boolean) {
+        _isAmountHidden.value = isHidden
+        prefs.edit().putBoolean("is_amount_hidden", isHidden).apply()
     }
 
     // Metodi Backup

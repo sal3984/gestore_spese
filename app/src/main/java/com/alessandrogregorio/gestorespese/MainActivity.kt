@@ -52,6 +52,7 @@ import java.io.OutputStreamWriter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +80,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentDateFormat by viewModel.dateFormat.collectAsState()
     val earliestMonth by viewModel.earliestMonth.collectAsState()
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState() // RECUPERO LO STATO DEL MESE DASHBOARD
-
+    val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     // --- Activity Result Launchers per Backup/Restore/Export ---
 
     val restoreLauncher = rememberLauncherForActivityResult(
@@ -140,6 +141,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
             }
         },
         floatingActionButton = {
+            // Usa "0" come placeholder Stringa per nuova transazione (in coerenza con la navigazione)
             if (navController.currentBackStackEntryAsState().value?.destination?.route?.startsWith("add_transaction") != true) {
                 FloatingActionButton(
                     onClick = { navController.navigate("add_transaction/0") },
@@ -167,10 +169,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         earliestMonth = earliestMonth,
                         currentDashboardMonth = currentDashboardMonth, // PASSATO LO STATO AL SCREEN
                         onMonthChange = viewModel::updateDashboardMonth, // CALLBACK PER AGGIORNARE LO STATO
-                        onDelete = viewModel::deleteTransaction,
-                        onEdit = { transactionId ->
+                        onDelete = viewModel::deleteTransaction, // DELETE DEVE ACCETTARE STRING
+                        onEdit = { transactionId -> // transactionId è ora String
                             navController.navigate("add_transaction/$transactionId")
-                        }
+                        },
+                        isAmountHidden = isAmountHidden
                     )
                 }
 
@@ -196,10 +199,12 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         currentDateFormat = currentDateFormat,
                         ccDelay = currentCcDelay,
                         ccLimit = currentCcLimit,
+                        isAmountHidden = isAmountHidden,
                         onCurrencyChange = viewModel::updateCurrency,
                         onDateFormatChange = viewModel::updateDateFormat,
                         onDelayChange = viewModel::updateCcDelay,
                         onLimitChange = viewModel::updateCcLimit,
+                        onAmountHiddenChange = viewModel::updateIsAmountHidden,
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
                         onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
@@ -208,7 +213,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
                 composable(
                     route = "add_transaction/{transactionId}",
-                    arguments = listOf(navArgument("transactionId") { type = NavType.LongType }),
+                    // AGGIORNATO: L'ID è ora NavType.StringType e il default è "0"
+                    arguments = listOf(navArgument("transactionId") { type = NavType.StringType; defaultValue = "0" }),
                     enterTransition = {
                         slideIntoContainer(
                             AnimatedContentTransitionScope.SlideDirection.Up,
@@ -222,12 +228,15 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         )
                     }
                 ) { backStackEntry ->
-                    val transactionId = backStackEntry.arguments?.getLong("transactionId") ?: 0L
+                    // ID è Stringa (UUID)
+                    val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
                     var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
-                    var isLoading by remember { mutableStateOf(transactionId != 0L) }
+                    // Condizione per caricamento: se ID è diverso dal placeholder "0"
+                    var isLoading by remember { mutableStateOf(transactionId != "0") }
 
                     LaunchedEffect(transactionId) {
-                        if (transactionId != 0L) {
+                        if (transactionId != "0") {
+                            // CHIAMATA AL VIEWMODEL: getTransactionById DEVE accettare String
                             transactionToEdit = viewModel.getTransactionById(transactionId)
                             isLoading = false
                         } else {
@@ -235,7 +244,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         }
                     }
 
-                    if (isLoading && transactionId != 0L) {
+                    if (isLoading && transactionId != "0") {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             CircularProgressIndicator()
                         }
@@ -243,17 +252,19 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         AddTransactionScreen(
                             ccDelay = currentCcDelay,
                             currencySymbol = currentCurrency,
-                            onGetSuggestions = viewModel::getSuggestions,
-                            dateFormatString = currentDateFormat,
+                            // Aggiunto argomento suggestions (vuoto per ora) e rimosso onGetSuggestions non necessario
+                            suggestions = emptyList(),
+                            dateFormat = currentDateFormat, // Nome argomento corretto
                             onSave = { transaction ->
                                 viewModel.saveTransaction(transaction)
                                 navController.popBackStack()
                             },
-                            onDelete = { id ->
+                            onDelete = { id -> // ID è Stringa
                                 viewModel.deleteTransaction(id)
-                                navController.popBackStack() // Torna indietro anche dopo delete da questa schermata
+                                navController.popBackStack()
                             },
-                            transactionToEdit = transactionToEdit
+                            transactionToEdit = transactionToEdit,
+                            onBack = { navController.popBackStack() } // Aggiunto onBack
                         )
                     }
                 }
@@ -269,22 +280,36 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
     coroutineScope.launch {
         try {
             val expenses = viewModel.getExpensesForExport()
-            val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol}),Categoria,Carta di Credito,Data Addebito\n"
+            // AGGIORNATO: Nuovo header con Valuta Originale
+            val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
             val csvContent = StringBuilder(csvHeader)
 
             expenses.forEach { t ->
                 val dateStr = try {
-                    LocalDate.parse(t.date).format(formatter)
+                    LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
                 } catch (e: Exception) {
                     t.date
                 }
                 val effectiveDateStr = try {
-                    LocalDate.parse(t.effectiveDate).format(formatter)
+                    // Assumendo che effectiveDate sia salvato come ISO_LOCAL_DATE (yyyy-MM-dd)
+                    LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
                 } catch (e: Exception) {
                     t.effectiveDate
                 }
 
-                csvContent.append("${t.id},\"$dateStr\",\"${t.description.replace('\"', '\'')}\",${String.format(Locale.US, "%.2f", t.amount)},${t.categoryId},${if (t.isCreditCard) "Sì" else "No"},\"$effectiveDateStr\"\n")
+                // AGGIORNATO: Aggiunti i campi di valuta originale
+                csvContent.append(
+                    "${t.id}," +
+                        "\"$dateStr\"," +
+                        "\"${t.description.replace('\"', '\'')}\"," +
+                        "${String.format(Locale.US, "%.2f", t.amount)}," +
+                        "${String.format(Locale.US, "%.2f", t.originalAmount)}," + // Nuovo campo
+                        "\"${t.originalCurrency}\"," + // Nuovo campo
+                        "${t.categoryId}," +
+                        "${t.type}," +
+                        "${if (t.isCreditCard) "Sì" else "No"}," +
+                        "\"$effectiveDateStr\"\n"
+                )
             }
 
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -309,6 +334,7 @@ fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
     coroutineScope.launch {
         try {
             val allData = viewModel.getAllForBackup()
+            // Gson gestisce i campi UUID e valuta, purché TransactionEntity sia aggiornata
             val json = Gson().toJson(allData)
 
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -339,6 +365,7 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
                 }
             }
             val type = object : TypeToken<List<TransactionEntity>>() {}.type
+            // Gson gestisce la conversione da JSON in TransactionEntity aggiornata
             val list: List<TransactionEntity> = Gson().fromJson(sb.toString(), type)
             viewModel.restoreData(list)
 

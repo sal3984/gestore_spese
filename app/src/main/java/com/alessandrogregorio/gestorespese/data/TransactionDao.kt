@@ -22,12 +22,13 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(transactions: List<TransactionEntity>)
 
+    // AGGIORNATO: L'ID per la cancellazione è String
     @Query("DELETE FROM transactions WHERE id = :id")
-    suspend fun delete(id: Long)
+    suspend fun delete(id: String)
 
-    // NUOVO: Ottieni una transazione per ID
+    // AGGIORNATO: L'ID per l'ottenimento è String
     @Query("SELECT * FROM transactions WHERE id = :id")
-    suspend fun getById(id: Long): TransactionEntity?
+    suspend fun getById(id: String): TransactionEntity?
 
     // NUOVO: Cerca descrizioni uniche per l'autocomplete
     @Query("SELECT DISTINCT description FROM transactions WHERE description LIKE :query || '%' LIMIT 5")

@@ -27,8 +27,9 @@ fun TransactionItem(
     transaction: TransactionEntity,
     currencySymbol: String,
     dateFormat: String,
-    onDelete: (Long) -> Unit,
-    onEdit: (Long) -> Unit
+    isAmountHidden: Boolean, // NUOVO PARAMETRO
+    onDelete: (String) -> Unit, // Aggiornato a String per UUID
+    onEdit: (String) -> Unit // Aggiornato a String per UUID
 ) {
     val category = getCategory(transaction.categoryId)
     val isIncome = transaction.type == "income"
@@ -130,8 +131,14 @@ fun TransactionItem(
 
             // Sezione Importo e Delete
             Column(horizontalAlignment = Alignment.End) {
+                val amountText = if (isAmountHidden) {
+                    "*** ${currencySymbol}**"
+                } else {
+                    "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.ITALIAN, "%.2f", transaction.amount)}"
+                }
+
                 Text(
-                    text = "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.ITALIAN, "%.2f", transaction.amount)}",
+                    text = amountText, // Utilizza la variabile aggiornata
                     style = MaterialTheme.typography.titleMedium,
                     color = amountColor,
                     fontWeight = FontWeight.Bold
