@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.forEach
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -290,8 +289,10 @@ fun AddTransactionScreen(
                             .clickable {
                                 type = itemType
                                 // Cambia categoria di default se cambia il tipo
+                                // AGGIORNAMENTO: Quando cambia il tipo, resetta selectedCategory
+                                // alla prima categoria valida del nuovo tipo
                                 val newCategory =
-                                    availableCategories.firstOrNull { it.type == itemType }
+                                    availableCategories.filter { it.type == itemType }.firstOrNull()
                                 if (newCategory != null) {
                                     selectedCategory = newCategory.id
                                 }

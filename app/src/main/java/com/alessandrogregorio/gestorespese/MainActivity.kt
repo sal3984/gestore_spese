@@ -221,6 +221,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 ) {
                     DashboardScreen(
                         transactions = allTransactions,
+                        categories = allCategories, // PASSATA
                         currencySymbol = currentCurrency,
                         ccLimit = currentCcLimit,
                         dateFormat = currentDateFormat,
@@ -242,6 +243,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 ) {
                     ReportScreen(
                         transactions = allTransactions,
+                        categories = allCategories, // PASSATA
                         currencySymbol = currentCurrency,
                         dateFormat = currentDateFormat,
                         isAmountHidden = isAmountHidden

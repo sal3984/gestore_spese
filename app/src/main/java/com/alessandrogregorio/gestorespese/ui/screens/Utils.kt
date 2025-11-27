@@ -17,9 +17,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.alessandrogregorio.gestorespese.R
+import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
-import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
-import com.alessandrogregorio.gestorespese.ui.screens.category.Category
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -28,13 +27,14 @@ import java.util.Locale
 @Composable
 fun TransactionItem(
     transaction: TransactionEntity,
+    categories: List<CategoryEntity>, // AGGIUNTO
     currencySymbol: String,
     dateFormat: String,
-    isAmountHidden: Boolean, // NUOVO PARAMETRO
-    onDelete: (String) -> Unit, // Aggiornato a String per UUID
-    onEdit: (String) -> Unit // Aggiornato a String per UUID
+    isAmountHidden: Boolean,
+    onDelete: (String) -> Unit,
+    onEdit: (String) -> Unit
 ) {
-    val category = getCategory(transaction.categoryId)
+    val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
     val isIncome = transaction.type == "income"
     val amountColor = if (isIncome) Color(0xFF43A047) else MaterialTheme.colorScheme.onSurface
@@ -148,7 +148,7 @@ fun TransactionItem(
                 }
 
                 Text(
-                    text = amountText, // Utilizza la variabile aggiornata
+                    text = amountText,
                     style = MaterialTheme.typography.titleMedium,
                     color = amountColor,
                     fontWeight = FontWeight.Bold
@@ -156,7 +156,7 @@ fun TransactionItem(
 
                 IconButton(
                     onClick = { showDeleteDialog = true },
-                    modifier = Modifier.size(24.dp).offset(x = 8.dp, y = 4.dp) // Piccolo aggiustamento posizionale
+                    modifier = Modifier.size(24.dp).offset(x = 8.dp, y = 4.dp)
                 ) {
                     Icon(
                         Icons.Default.Delete,
@@ -171,7 +171,7 @@ fun TransactionItem(
 }
 
 @Composable
-fun getLocalizedCategoryLabel(category: Category): String {
+fun getLocalizedCategoryLabel(category: CategoryEntity): String {
     return when(category.id) {
         "food" -> stringResource(R.string.cat_food)
         "transport" -> stringResource(R.string.cat_transport)
@@ -194,4 +194,8 @@ fun getLocalizedCategoryLabel(category: Category): String {
 
 fun formatMoney(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.getDefault()).format(amount)
 
-fun getCategory(id: String) = CATEGORIES.firstOrNull { it.id == id } ?: CATEGORIES.first { it.id == "other" }
+fun getCategory(id: String, categories: List<CategoryEntity>): CategoryEntity {
+    return categories.firstOrNull { it.id == id }
+        ?: categories.firstOrNull { it.id == "other" }
+        ?: CategoryEntity("other", "Altro", "❓", "expense", false)
+}

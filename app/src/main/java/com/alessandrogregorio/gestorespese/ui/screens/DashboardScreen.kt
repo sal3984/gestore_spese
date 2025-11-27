@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.alessandrogregorio.gestorespese.R
+import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import java.time.LocalDate
 import java.time.YearMonth
@@ -34,15 +35,16 @@ import java.util.Locale
 @Composable
 fun DashboardScreen(
     transactions: List<TransactionEntity>,
+    categories: List<CategoryEntity>, // AGGIUNTO
     currencySymbol: String,
     ccLimit: Float,
     dateFormat: String,
     earliestMonth: YearMonth,
-    currentDashboardMonth: YearMonth, // Parametro aggiunto
-    onMonthChange: (YearMonth) -> Unit, // Callback aggiunta
+    currentDashboardMonth: YearMonth,
+    onMonthChange: (YearMonth) -> Unit,
     onDelete: (String) -> Unit,
     onEdit: (String) -> Unit,
-    isAmountHidden: Boolean, // NUOVO PARAMETRO
+    isAmountHidden: Boolean,
 ) {
     val today = YearMonth.now()
     // var currentDisplayedMonth by remember { mutableStateOf(today) } // RIMOSSO STATO LOCALE
@@ -271,12 +273,13 @@ fun DashboardScreen(
                     }
                     items(transactions, key = { it.id }) { t ->
                         TransactionItem(
-                            t,
-                            currencySymbol,
-                            dateFormat,
-                            isAmountHidden, // NUOVO ARGOMENTO QUI
-                            onDelete,
-                            onEdit
+                            transaction = t,
+                            categories = categories, // PASSATO
+                            currencySymbol = currencySymbol,
+                            dateFormat = dateFormat,
+                            isAmountHidden = isAmountHidden, // NUOVO ARGOMENTO QUI
+                            onDelete = onDelete,
+                            onEdit = onEdit
                         )
                     }
                 }

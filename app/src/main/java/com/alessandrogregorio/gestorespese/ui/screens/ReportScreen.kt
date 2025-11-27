@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import com.alessandrogregorio.gestorespese.R
+import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
-import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -35,6 +35,7 @@ import java.util.Locale
 @Composable
 fun ReportScreen(
     transactions: List<TransactionEntity>,
+    categories: List<CategoryEntity>, // AGGIUNTO
     currencySymbol: String,
     dateFormat: String,
     isAmountHidden: Boolean, // NUOVO PARAMETRO
@@ -183,7 +184,10 @@ fun ReportScreen(
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 items(expenseByCategory) { (categoryId, amount) ->
-                    val category = CATEGORIES.firstOrNull { it.id == categoryId }
+                    // Usa la lista categories passata per cercare la categoria
+                    val category = categories.firstOrNull { it.id == categoryId }
+                        ?: categories.firstOrNull { it.id == "other" }
+
                     val percentage = if (totalMonthlyExpense > 0) (amount / totalMonthlyExpense).toFloat() else 0f
 
                     Row(
@@ -210,7 +214,13 @@ fun ReportScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    category?.label ?: stringResource(R.string.cat_other),
+                                    // Se è custom usa label diretta, altrimenti cerchiamo di localizzare (se vogliamo).
+                                    // Qui usiamo getLocalizedCategoryLabel se vogliamo uniformità, oppure la label diretta se l'app lo permette.
+                                    // Per ora uso getLocalizedCategoryLabel per coerenza con TransactionItem se la funzione è accessibile,
+                                    // ma getLocalizedCategoryLabel è in Utils.kt e prende CategoryEntity.
+                                    // Siccome CategoryEntity è importato, possiamo usare Utils.kt function se pubblica.
+                                    // Controllo se getLocalizedCategoryLabel è accessibile. Si, è in Utils.kt.
+                                    category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
