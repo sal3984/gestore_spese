@@ -10,10 +10,10 @@ import kotlinx.coroutines.flow.Flow
 // 2. Il DAO (Le query)
 @Dao
 interface TransactionDao {
-    @Query("SELECT * FROM transactions ORDER BY effectiveDate DESC")
+    @Query("SELECT * FROM transactions ORDER BY effectiveDate ASC")
     fun getAllFlow(): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions")
+    @Query("SELECT * FROM transactions ORDER BY date DESC")
     suspend fun getAllList(): List<TransactionEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.forEach
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +19,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,6 +63,8 @@ fun AddTransactionScreen(
     var type by remember { mutableStateOf(transactionToEdit?.type ?: "expense") }
     var amountText by remember { mutableStateOf(transactionToEdit?.amount?.toString() ?: "") }
     var description by remember { mutableStateOf(transactionToEdit?.description ?: "") }
+    var isDescriptionExpanded by remember { mutableStateOf(false) }
+
 
     // Filtra le categorie in base al tipo selezionato
     val currentTypeCategories = remember(availableCategories, type) {
@@ -87,6 +93,8 @@ fun AddTransactionScreen(
     var isInstallment by remember { mutableStateOf(false) }
     var installmentsCount by remember { mutableStateOf(3) } // Default 3 rate
 
+    var ignoreDateWarning by remember { mutableStateOf(false) }
+
     // Stati UI
     var dateStr by remember {
         mutableStateOf(
@@ -106,6 +114,7 @@ fun AddTransactionScreen(
     val errorInvalidInput = stringResource(R.string.error_invalid_input)
     val errorInvalidDateFormat = stringResource(R.string.error_invalid_date_format)
     val errorPastLimitDate = stringResource(R.string.error_past_limit_date)
+
 
     // Funzione di Salvataggio
     fun trySave() {
@@ -143,7 +152,7 @@ fun AddTransactionScreen(
             return
         }
 
-        if (transactionMonth.isBefore(YearMonth.now()) && transactionToEdit == null) {
+        if (transactionMonth.isBefore(YearMonth.now()) && transactionToEdit == null && !ignoreDateWarning) {
             showPreviousMonthAlert = true
             return
         }
@@ -281,7 +290,8 @@ fun AddTransactionScreen(
                             .clickable {
                                 type = itemType
                                 // Cambia categoria di default se cambia il tipo
-                                val newCategory = availableCategories.firstOrNull { it.type == itemType }
+                                val newCategory =
+                                    availableCategories.firstOrNull { it.type == itemType }
                                 if (newCategory != null) {
                                     selectedCategory = newCategory.id
                                 }
@@ -364,20 +374,66 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Campo Descrizione con Autocomplete
-            OutlinedTextField(
-                value = description,
-                onValueChange = {
-                    description = it
-                    scope.launch {
-                        // Per semplicità, non ho incluso la logica di ricerca suggerimenti qui,
-                        // ma l'hai nel ViewModel e puoi implementarla con un DropdownMenu.
+            // Logica di filtraggio: mostra suggerimenti che contengono il testo digitato
+            val filteredSuggestions = remember(description, suggestions) {
+                if (description.isBlank()) {
+                    emptyList()
+                } else {
+                    suggestions.filter {
+                        it.contains(description, ignoreCase = true) &&
+                            !it.equals(description, ignoreCase = true) // Non mostrare se è già uguale
                     }
-                },
-                label = { Text(stringResource(R.string.description)) },
-                placeholder = { Text(stringResource(R.string.description_placeholder)) },
+                }
+            }
+            // Campo Descrizione con Autocomplete
+            ExposedDropdownMenuBox(
+                expanded = isDescriptionExpanded,
+                onExpandedChange = { isDescriptionExpanded = !isDescriptionExpanded },
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = {
+                        description = it
+                        // Apri il menu se c'è testo e ci sono suggerimenti validi
+                        isDescriptionExpanded = true
+                    },
+                    label = { Text(stringResource(R.string.description)) }, // Assicurati di avere questa stringa o usa "Descrizione"
+                    placeholder = { stringResource(R.string.description_placeholder)},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(), // FONDAMENTALE per Material3
+                    trailingIcon = {
+                        // Opzionale: icona per cancellare o freccia menu
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDescriptionExpanded)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        capitalization = KeyboardCapitalization.Sentences
+                    )
+                )
+
+                // Mostra il menu solo se ci sono suggerimenti
+                if (filteredSuggestions.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = isDescriptionExpanded,
+                        onDismissRequest = { isDescriptionExpanded = false }
+                    ) {
+                        filteredSuggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { Text(text = suggestion) },
+                                onClick = {
+                                    description = suggestion
+                                    isDescriptionExpanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
+                }
+            }
+
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -471,8 +527,15 @@ fun AddTransactionScreen(
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerLow,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant,
+                        RoundedCornerShape(8.dp)
+                    )
                     .padding(8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -547,7 +610,9 @@ fun AddTransactionScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        println("qui ci sono");
                         showPreviousMonthAlert = false
+                        ignoreDateWarning = true
                         trySave() // Richiama salvataggio dopo conferma
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)

@@ -1,0 +1,109 @@
+<resources>
+    <string name="app_name">Gestore Spese</string>
+    <!-- Dashboard -->
+    <string name="previous_month">Mese Precedente</string>
+    <string name="next_month">Mese Successivo</string>
+    <string name="monthly_balance">Saldo Mensile</string>
+    <string name="income">Entrate</string>
+    <string name="expenses">Uscite</string>
+    <string name="credit_card_limit_label">Plafond Carta di Credito</string>
+    <string name="spent_label">Speso:</string>
+    <string name="limit_label">Limite:</string>
+    <string name="today">Oggi</string>
+    <string name="yesterday">Ieri</string>
+    <string name="credit_card">Carta di Credito</string>
+
+    <!-- Add Transaction -->
+    <string name="add_transaction">Aggiungi Movimento</string>
+    <string name="edit_transaction">Modifica Movimento</string>
+    <string name="back">Indietro</string>
+    <string name="delete">Elimina</string>
+    <string name="save_transaction">SALVA MOVIMENTO</string>
+    <string name="update_transaction">AGGIORNA MOVIMENTO</string>
+    <string name="expense_type">SPESA</string>
+    <string name="income_type">ENTRATA</string>
+    <string name="amount_converted_label">Importo (%1$s - Converso)</string>
+    <string name="amount_original_label">Importo Orig.</string>
+    <string name="currency_original_label">Valuta Orig.</string>
+    <string name="main_currency_hint">Inserisci l\'importo nella valuta principale (%1$s) nel campo superiore.</string>
+    <string name="set_original_currency">Imposta Valuta Originale (Estera)</string>
+    <string name="description">Descrizione</string>
+    <string name="description_placeholder">Cena fuori, Stipendio Gennaio...</string>
+    <string name="category_label">Categoria:</string>
+    <string name="no_categories_error">Nessuna categoria disponibile. Riavvia l\'app.</string>
+    <string name="credit_card_payment">Pagamento con Carta di Credito</string>
+    <string name="transaction_date">Data Transazione</string>
+    <string name="select_date_desc">Seleziona Data</string>
+    <string name="original_currency_dialog_title">Valuta Transazione Originale</string>
+    <string name="cancel">Annulla</string>
+    <string name="warning_past_date_title">Attenzione: Data Passata</string>
+    <string name="warning_past_date_message">Stai inserendo una nuova transazione nel mese precedente. Questa operazione modificherà i saldi storici. Sei sicuro di voler procedere?</string>
+    <string name="proceed_and_save">PROCEDI E SALVA</string>
+    <string name="delete_transaction_title">Elimina Movimento</string>
+    <string name="delete_transaction_message">Sei sicuro di voler eliminare questa transazione? L\'azione non può essere annullata.</string>
+    <string name="delete_uppercase">ELIMINA</string>
+    <string name="error_invalid_input">Inserisci un importo e una descrizione validi.</string>
+    <string name="error_invalid_date_format">Formato data non valido.</string>
+    <string name="error_past_limit_date">Impossibile operare su transazioni prima di %1$s.</string>
+
+    <!-- Settings -->
+    <string name="settings">Impostazioni</string>
+    <string name="general">Generali</string>
+    <string name="currency">Valuta</string>
+    <string name="displayed_symbol">Simbolo visualizzato: %1$s</string>
+    <string name="date_format">Formato Data</string>
+    <string name="credit_card_settings">Carta di Credito</string>
+    <string name="max_limit">Plafond Max (%1$s)</string>
+    <string name="debit_delay">Ritardo Addebito</string>
+    <string name="immediate">Immediato</string>
+    <string name="months_delay">%1$d Mesi</string>
+    <string name="cc_delay_desc">Sposta l\'addebito delle spese CC al mese successivo.</string>
+    <string name="security_usability">SICUREZZA E USABILITÀ</string>
+    <string name="hide_amounts">Oscura Importi per Privacy</string>
+    <string name="hide_amounts_desc">Sostituisce gli importi con asterischi nella Dashboard.</string>
+    <string name="app_lock">Blocco App (PIN/Biometrica)</string>
+    <string name="app_lock_desc">Abilita il blocco schermo all\'avvio dell\'app.</string>
+    <string name="data_management">Gestione Dati</string>
+    <string name="export_csv">Esporta CSV</string>
+    <string name="export_csv_desc">Salva un report delle spese</string>
+    <string name="backup">Backup</string>
+    <string name="restore">Ripristina</string>
+    <string name="choose_currency_symbol">Scegli Simbolo Valuta</string>
+    <string name="choose_date_format">Scegli Formato Data</string>
+
+    <!-- Report -->
+    <string name="report_year">Report %1$d</string>
+    <string name="total_savings">Risparmio Totale</string>
+    <string name="balance_last_6_months">Bilancio Ultimi 6 Mesi</string>
+    <string name="category_detail_current_month">Dettaglio Categorie (Mese Corrente)</string>
+
+    <!-- Categories Screen -->
+    <string name="categories_title">Categorie</string>
+    <string name="new_category">Nuova</string>
+    <string name="add_icon_desc">Aggiungi</string>
+    <string name="expenses_tab">SPESE</string>
+    <string name="income_tab">ENTRATE</string>
+    <string name="no_custom_categories">Nessuna categoria personalizzata</string>
+    <string name="new_expense_dialog">Nuova Spesa</string>
+    <string name="new_income_dialog">Nuova Entrata</string>
+    <string name="category_name_label">Nome Categoria</string>
+    <string name="choose_icon_label">Scegli un\'icona:</string>
+    <string name="preview_label">Anteprima: </string>
+    <string name="save_button">SALVA</string>
+    <string name="category_name_placeholder">Nome...</string>
+
+    <!-- Default Categories -->
+    <string name="cat_food">Cibo</string>
+    <string name="cat_transport">Trasporti</string>
+    <string name="cat_housing">Casa</string>
+    <string name="cat_entertainment">Svago</string>
+    <string name="cat_bills">Bollette</string>
+    <string name="cat_health">Salute</string>
+    <string name="cat_shopping">Shopping</string>
+    <string name="cat_other">Altro</string>
+    <string name="cat_salary">Stipendio</string>
+    <string name="cat_bonifico">Bonifico</string>
+    <string name="cat_gift">Regalo</string>
+    <string name="cat_refund">Rimborso</string>
+    <string name="cat_investment">Investimenti</string>
+</resources>
