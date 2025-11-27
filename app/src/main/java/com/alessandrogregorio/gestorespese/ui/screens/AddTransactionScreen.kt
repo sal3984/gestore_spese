@@ -609,7 +609,6 @@ fun AddTransactionScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        println("qui ci sono");
                         showPreviousMonthAlert = false
                         ignoreDateWarning = true
                         trySave() // Richiama salvataggio dopo conferma

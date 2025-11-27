@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -87,6 +89,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     // Recupero gli stati dal ViewModel
     val allTransactions by viewModel.allTransactions.collectAsState()
@@ -166,201 +169,283 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-                // Dashboard
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = "Dashboard") },
-                    label = { Text("Dashboard") },
+    // Definizione delle rotte principali
+    val bottomNavRoutes = listOf("dashboard", "report")
+    val drawerRoutes = listOf("categories", "settings")
+    val isBottomBarVisible = currentRoute in bottomNavRoutes
+    // Mostra TopBar con menu in tutte le schermate principali (Dashboard, Report, Categorie, Settings)
+    val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                HorizontalDivider()
+                Spacer(Modifier.height(16.dp))
+
+                // Menu Laterale: Home, Categorie e Impostazioni
+                NavigationDrawerItem(
+                    label = { Text("Home") },
                     selected = currentRoute == "dashboard",
-                    onClick = { navController.navigate("dashboard") }
-                )
-                // Report (Statistiche)
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Download, contentDescription = "Report") },
-                    label = { Text("Report") },
-                    selected = currentRoute == "report",
-                    onClick = { navController.navigate("report") }
+                    onClick = {
+                        navController.navigate("dashboard") {
+                            popUpTo("dashboard") { inclusive = true }
+                        }
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // NUOVO: Navigazione Categorie
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Category, contentDescription = stringResource(R.string.categories_title)) },
+                NavigationDrawerItem(
                     label = { Text(stringResource(R.string.categories_title)) },
                     selected = currentRoute == "categories",
-                    onClick = { navController.navigate("categories") }
+                    onClick = {
+                        navController.navigate("categories")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Category, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                // Impostazioni
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings)) },
+                NavigationDrawerItem(
                     label = { Text(stringResource(R.string.settings)) },
                     selected = currentRoute == "settings",
-                    onClick = { navController.navigate("settings") }
+                    onClick = {
+                        navController.navigate("settings")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
-        },
-        floatingActionButton = {
-            // Usa "0" come placeholder Stringa per nuova transazione (in coerenza con la navigazione)
-            // Modifica: Controllo per nascondere il FAB nella schermata Categorie
-            val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-            if (currentRoute?.startsWith("add_transaction") != true && currentRoute != "categories") {
-                FloatingActionButton(
-                    onClick = { navController.navigate("add_transaction/0") },
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                ) {
-                    Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
-                }
-            }
         }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            NavHost(navController, startDestination = "dashboard") {
-                composable(
-                    "dashboard",
-                    enterTransition = { fadeIn(animationSpec = tween(300)) },
-                    exitTransition = { fadeOut(animationSpec = tween(300)) }
-                ) {
-                    DashboardScreen(
-                        transactions = allTransactions,
-                        categories = allCategories, // PASSATA
-                        currencySymbol = currentCurrency,
-                        ccLimit = currentCcLimit,
-                        dateFormat = currentDateFormat,
-                        earliestMonth = earliestMonth,
-                        currentDashboardMonth = currentDashboardMonth, // PASSATO LO STATO AL SCREEN
-                        onMonthChange = viewModel::updateDashboardMonth, // CALLBACK PER AGGIORNARE LO STATO
-                        onDelete = viewModel::deleteTransaction, // DELETE DEVE ACCETTARE STRING
-                        onEdit = { transactionId -> // transactionId è ora String
-                            navController.navigate("add_transaction/$transactionId")
+    ) {
+        Scaffold(
+            topBar = {
+                if (isTopBarVisible) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            val title = when (currentRoute) {
+                                "dashboard" -> "Dashboard"
+                                "report" -> "Report"
+                                "categories" -> stringResource(R.string.categories_title)
+                                "settings" -> stringResource(R.string.settings)
+                                else -> stringResource(R.string.app_name)
+                            }
+                            Text(title)
                         },
-                        isAmountHidden = isAmountHidden
-                    )
-                }
-
-                composable(
-                    "report",
-                    enterTransition = { fadeIn(animationSpec = tween(300)) },
-                    exitTransition = { fadeOut(animationSpec = tween(300)) }
-                ) {
-                    ReportScreen(
-                        transactions = allTransactions,
-                        categories = allCategories, // PASSATA
-                        currencySymbol = currentCurrency,
-                        dateFormat = currentDateFormat,
-                        isAmountHidden = isAmountHidden
-                    )
-                }
-
-                composable(
-                    "categories",
-                    enterTransition = { fadeIn(animationSpec = tween(300)) },
-                    exitTransition = { fadeOut(animationSpec = tween(300)) }
-                ) {
-                    CategoryScreen(
-                        categories = allCategories,
-                        onAddCategory = viewModel::addCategory,
-                        onDeleteCategory = viewModel::removeCategory,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-
-                composable(
-                    "settings",
-                    enterTransition = { fadeIn(animationSpec = tween(300)) },
-                    exitTransition = { fadeOut(animationSpec = tween(300)) }
-                ) {
-                    SettingsScreen(
-                        currentCurrency = currentCurrency,
-                        currentDateFormat = currentDateFormat,
-                        ccDelay = currentCcDelay,
-                        ccLimit = currentCcLimit,
-                        isAmountHidden = isAmountHidden,
-                        isBiometricEnabled = isBiometricEnabled,
-                        onCurrencyChange = viewModel::updateCurrency,
-                        onDateFormatChange = viewModel::updateDateFormat,
-                        onDelayChange = viewModel::updateCcDelay,
-                        onLimitChange = viewModel::updateCcLimit,
-                        onAmountHiddenChange = viewModel::updateIsAmountHidden,
-                        onBiometricEnabledChange = { isEnabled ->
-                            // Se si tenta di abilitare, chiedi conferma biometrica
-                            if (isEnabled) {
-                                authenticateUser(context,
-                                    onSuccess = { viewModel.updateBiometricEnabled(true) },
-                                    onError = { Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show() }
+                        navigationIcon = {
+                            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
+                                Icon(
+                                    imageVector = Icons.Default.Menu,
+                                    contentDescription = "Menu"
                                 )
-                            } else {
-                                viewModel.updateBiometricEnabled(false)
                             }
                         },
-                        onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
-                        onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
-                        onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     )
                 }
-
-                composable(
-                    route = "add_transaction/{transactionId}",
-                    // AGGIORNATO: L'ID è ora NavType.StringType e il default è "0"
-                    arguments = listOf(navArgument("transactionId") { type = NavType.StringType; defaultValue = "0" }),
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(300)
+            },
+            bottomBar = {
+                // Barra Inferiore: Dashboard e Report (Solo quando visibile)
+                if (isBottomBarVisible) {
+                    NavigationBar {
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.DateRange, contentDescription = "Dashboard") },
+                            label = { Text("Dashboard") },
+                            selected = currentRoute == "dashboard",
+                            onClick = {
+                                navController.navigate("dashboard") {
+                                    popUpTo("dashboard") { inclusive = true }
+                                }
+                            }
                         )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(300)
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Download, contentDescription = "Report") },
+                            label = { Text("Report") },
+                            selected = currentRoute == "report",
+                            onClick = {
+                                navController.navigate("report") {
+                                    popUpTo("dashboard") { saveState = true }
+                                    restoreState = true
+                                    launchSingleTop = true
+                                }
+                            }
                         )
                     }
-                ) { backStackEntry ->
-                    // ID è Stringa (UUID)
-                    val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
-                    var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
-                    // Condizione per caricamento: se ID è diverso dal placeholder "0"
-                    var isLoading by remember { mutableStateOf(transactionId != "0") }
-
-                    LaunchedEffect(transactionId) {
-                        if (transactionId != "0") {
-                            // CHIAMATA AL VIEWMODEL: getTransactionById DEVE accettare String
-                            transactionToEdit = viewModel.getTransactionById(transactionId)
-                            isLoading = false
-                        } else {
-                            isLoading = false
-                        }
+                }
+            },
+            floatingActionButton = {
+                if (currentRoute == "dashboard") {
+                    FloatingActionButton(
+                        onClick = { navController.navigate("add_transaction/0") },
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ) {
+                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
                     }
-
-                    if (isLoading && transactionId != "0") {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        AddTransactionScreen(
-                            ccDelay = currentCcDelay,
+                }
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()) {
+                NavHost(navController, startDestination = "dashboard") {
+                    composable(
+                        "dashboard",
+                        enterTransition = { fadeIn(animationSpec = tween(300)) },
+                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                    ) {
+                        DashboardScreen(
+                            transactions = allTransactions,
+                            categories = allCategories, // PASSATA
                             currencySymbol = currentCurrency,
-                            // Aggiunto argomento suggestions (vuoto per ora) e rimosso onGetSuggestions non necessario
-                            suggestions = emptyList(),
-                            dateFormat = currentDateFormat, // Nome argomento corretto
-                            onSave = { transaction ->
-                                viewModel.saveTransaction(transaction)
-                                // RIMOSSO popBackStack() qui perché AddTransactionScreen chiama onBack() alla fine di trySave
+                            ccLimit = currentCcLimit,
+                            dateFormat = currentDateFormat,
+                            earliestMonth = earliestMonth,
+                            currentDashboardMonth = currentDashboardMonth, // PASSATO LO STATO AL SCREEN
+                            onMonthChange = viewModel::updateDashboardMonth, // CALLBACK PER AGGIORNARE LO STATO
+                            onDelete = viewModel::deleteTransaction, // DELETE DEVE ACCETTARE STRING
+                            onEdit = { transactionId -> // transactionId è ora String
+                                navController.navigate("add_transaction/$transactionId")
                             },
-                            onDelete = { id -> // ID è Stringa
-                                viewModel.deleteTransaction(id)
-                                navController.popBackStack() // Qui va bene perché AddTransactionScreen non chiama onBack dopo onDelete
-                            },
-                            transactionToEdit = transactionToEdit,
-                            onBack = { navController.popBackStack() },
-                            availableCategories = allCategories
+                            isAmountHidden = isAmountHidden
                         )
+                    }
+
+                    composable(
+                        "report",
+                        enterTransition = { fadeIn(animationSpec = tween(300)) },
+                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                    ) {
+                        ReportScreen(
+                            transactions = allTransactions,
+                            categories = allCategories, // PASSATA
+                            currencySymbol = currentCurrency,
+                            dateFormat = currentDateFormat,
+                            isAmountHidden = isAmountHidden
+                        )
+                    }
+
+                    composable(
+                        "categories",
+                        enterTransition = { fadeIn(animationSpec = tween(300)) },
+                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                    ) {
+                        CategoryScreen(
+                            categories = allCategories,
+                            onAddCategory = viewModel::addCategory,
+                            onDeleteCategory = viewModel::removeCategory,
+                            // Nelle schermate del drawer, "onBack" riporta alla dashboard
+                            onBack = { navController.navigate("dashboard") }
+                        )
+                    }
+
+                    composable(
+                        "settings",
+                        enterTransition = { fadeIn(animationSpec = tween(300)) },
+                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                    ) {
+                        SettingsScreen(
+                            currentCurrency = currentCurrency,
+                            currentDateFormat = currentDateFormat,
+                            ccDelay = currentCcDelay,
+                            ccLimit = currentCcLimit,
+                            isAmountHidden = isAmountHidden,
+                            isBiometricEnabled = isBiometricEnabled,
+                            onCurrencyChange = viewModel::updateCurrency,
+                            onDateFormatChange = viewModel::updateDateFormat,
+                            onDelayChange = viewModel::updateCcDelay,
+                            onLimitChange = viewModel::updateCcLimit,
+                            onAmountHiddenChange = viewModel::updateIsAmountHidden,
+                            onBiometricEnabledChange = { isEnabled ->
+                                // Se si tenta di abilitare, chiedi conferma biometrica
+                                if (isEnabled) {
+                                    authenticateUser(context,
+                                        onSuccess = { viewModel.updateBiometricEnabled(true) },
+                                        onError = { Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show() }
+                                    )
+                                } else {
+                                    viewModel.updateBiometricEnabled(false)
+                                }
+                            },
+                            onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
+                            onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
+                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
+                        )
+                    }
+
+                    composable(
+                        route = "add_transaction/{transactionId}",
+                        // AGGIORNATO: L'ID è ora NavType.StringType e il default è "0"
+                        arguments = listOf(navArgument("transactionId") { type = NavType.StringType; defaultValue = "0" }),
+                        enterTransition = {
+                            slideIntoContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Up,
+                                animationSpec = tween(300)
+                            )
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Down,
+                                animationSpec = tween(300)
+                            )
+                        }
+                    ) { backStackEntry ->
+                        // ID è Stringa (UUID)
+                        val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
+                        var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
+                        // Condizione per caricamento: se ID è diverso dal placeholder "0"
+                        var isLoading by remember { mutableStateOf(transactionId != "0") }
+
+                        LaunchedEffect(transactionId) {
+                            if (transactionId != "0") {
+                                // CHIAMATA AL VIEWMODEL: getTransactionById DEVE accettare String
+                                transactionToEdit = viewModel.getTransactionById(transactionId)
+                                isLoading = false
+                            } else {
+                                isLoading = false
+                            }
+                        }
+
+                        if (isLoading && transactionId != "0") {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            AddTransactionScreen(
+                                ccDelay = currentCcDelay,
+                                currencySymbol = currentCurrency,
+                                // Aggiunto argomento suggestions (vuoto per ora) e rimosso onGetSuggestions non necessario
+                                suggestions = emptyList(),
+                                dateFormat = currentDateFormat, // Nome argomento corretto
+                                onSave = { transaction ->
+                                    viewModel.saveTransaction(transaction)
+                                    // RIMOSSO popBackStack() qui perché AddTransactionScreen chiama onBack() alla fine di trySave
+                                },
+                                onDelete = { id -> // ID è Stringa
+                                    viewModel.deleteTransaction(id)
+                                    navController.popBackStack() // Qui va bene perché AddTransactionScreen non chiama onBack dopo onDelete
+                                },
+                                transactionToEdit = transactionToEdit,
+                                onBack = { navController.popBackStack() },
+                                availableCategories = allCategories
+                            )
+                        }
                     }
                 }
             }
