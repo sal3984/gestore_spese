@@ -1,5 +1,6 @@
 package com.alessandrogregorio.gestorespese.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,14 +23,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alessandrogregorio.gestorespese.R
+import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
-import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
-import com.alessandrogregorio.gestorespese.ui.screens.category.Category
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -48,6 +50,7 @@ fun AddTransactionScreen(
     dateFormat: String,
     ccDelay: Int,
     suggestions: List<String>,
+    availableCategories: List<CategoryEntity>, // NUOVO: Lista dinamica delle categorie
     onSave: (TransactionEntity) -> Unit,
     onDelete: (String) -> Unit, // ID String (UUID)
     onBack: () -> Unit
@@ -56,13 +59,33 @@ fun AddTransactionScreen(
     var type by remember { mutableStateOf(transactionToEdit?.type ?: "expense") }
     var amountText by remember { mutableStateOf(transactionToEdit?.amount?.toString() ?: "") }
     var description by remember { mutableStateOf(transactionToEdit?.description ?: "") }
-    var selectedCategory by remember { mutableStateOf(transactionToEdit?.categoryId ?: if (type == "expense") "food" else "salary") }
+
+    // Filtra le categorie in base al tipo selezionato
+    val currentTypeCategories = remember(availableCategories, type) {
+        availableCategories.filter { it.type == type }
+    }
+
+    // Seleziona categoria: usa quella esistente se c'è, altrimenti la prima disponibile del tipo corrente, o una di fallback
+    var selectedCategory by remember(type, currentTypeCategories) {
+        mutableStateOf(
+            transactionToEdit?.categoryId.takeIf { id -> availableCategories.any { it.id == id } } // Mantieni se esiste
+            ?: transactionToEdit?.categoryId.takeIf { transactionToEdit != null } // Mantieni anche se non esiste più (caso limite)
+            ?: currentTypeCategories.firstOrNull()?.id // Altrimenti prendi la prima del tipo
+            ?: if (type == "expense") "food" else "salary" // Fallback estremo
+        )
+    }
+
     var isCreditCard by remember { mutableStateOf(transactionToEdit?.isCreditCard ?: false) }
 
     // Stati per Valuta
     var originalAmountText by remember { mutableStateOf(transactionToEdit?.originalAmount?.toString() ?: "") }
     var originalCurrency by remember { mutableStateOf(transactionToEdit?.originalCurrency ?: currencySymbol) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
+
+    // Stati Pagamento Rateale
+    // Logica mutualmente esclusiva: se isInstallment è true, ccDelay standard è ignorato in favore del calcolo rateale
+    var isInstallment by remember { mutableStateOf(false) }
+    var installmentsCount by remember { mutableStateOf(3) } // Default 3 rate
 
     // Stati UI
     var dateStr by remember {
@@ -79,7 +102,10 @@ fun AddTransactionScreen(
 
     var showPreviousMonthAlert by remember { mutableStateOf(false) }
 
-    val currentCategory: Category? = CATEGORIES.firstOrNull { it.id == selectedCategory }
+    // Messaggi localizzati
+    val errorInvalidInput = stringResource(R.string.error_invalid_input)
+    val errorInvalidDateFormat = stringResource(R.string.error_invalid_date_format)
+    val errorPastLimitDate = stringResource(R.string.error_past_limit_date)
 
     // Funzione di Salvataggio
     fun trySave() {
@@ -88,7 +114,7 @@ fun AddTransactionScreen(
 
         if (amount <= 0 || description.isBlank()) {
             scope.launch {
-                snackbarHostState.showSnackbar("Inserisci un importo e una descrizione validi.", "OK")
+                snackbarHostState.showSnackbar(errorInvalidInput, "OK")
             }
             return
         }
@@ -96,7 +122,7 @@ fun AddTransactionScreen(
         val transactionDate: LocalDate = try {
             LocalDate.parse(dateStr, displayFormatter)
         } catch (e: DateTimeParseException) {
-            scope.launch { snackbarHostState.showSnackbar("Formato data non valido.", "OK") }
+            scope.launch { snackbarHostState.showSnackbar(errorInvalidDateFormat, "OK") }
             return
         }
 
@@ -110,10 +136,9 @@ fun AddTransactionScreen(
 
         if (transactionMonth.isBefore(limitMonth)) {
             scope.launch {
-                snackbarHostState.showSnackbar(
-                    "Impossibile operare su transazioni prima di ${limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN))}.",
-                    "OK"
-                )
+                val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                val message = String.format(errorPastLimitDate, formattedMonth)
+                snackbarHostState.showSnackbar(message, "OK")
             }
             return
         }
@@ -123,21 +148,61 @@ fun AddTransactionScreen(
             return
         }
 
-        // Se è un'operazione che non richiede l'avviso o l'utente ha confermato
-        onSave(
-            TransactionEntity(
-                id = transactionId, // UTILIZZA L'ID CORRETTO GENERATO SOPRA
-                date = transactionDate.format(displayFormatter),
-                description = description.trim(),
-                amount = amount,
-                categoryId = selectedCategory,
-                type = type,
-                isCreditCard = isCreditCard,
-                originalAmount = originalAmount,
-                originalCurrency = originalCurrency,
-                effectiveDate = calculateEffectiveDate(transactionDate, isCreditCard, ccDelay)
+        // LOGICA RATEALE
+        // Se è rateale e NON è una modifica (solo nuove transazioni rateali per ora per semplicità)
+        if (isCreditCard && isInstallment && transactionToEdit == null) {
+            val installmentAmount = amount / installmentsCount
+            val groupId = UUID.randomUUID().toString()
+
+            // Loop per creare N transazioni
+            for (i in 0 until installmentsCount) {
+                // Calcola la data della rata: aggiungi 'i' mesi alla data originale
+                val installmentDate = transactionDate.plusMonths(i.toLong())
+
+                // Calcola l'effective date per questa specifica rata
+                // NOTA: Le rate seguono la logica standard del ritardo CC se necessario, ma di base sono mensili
+                val effectiveDate = calculateEffectiveDate(installmentDate, true, ccDelay)
+
+                val newId = if(i==0) transactionId else UUID.randomUUID().toString() // La prima usa l'ID generato sopra
+
+                onSave(
+                    TransactionEntity(
+                        id = newId,
+                        date = installmentDate.format(displayFormatter),
+                        description = "$description (Rata ${i+1}/$installmentsCount)", // Descrizione con info rata
+                        amount = installmentAmount,
+                        categoryId = selectedCategory,
+                        type = type,
+                        isCreditCard = true,
+                        originalAmount = originalAmount / installmentsCount,
+                        originalCurrency = originalCurrency,
+                        effectiveDate = effectiveDate,
+                        installmentNumber = i + 1,
+                        totalInstallments = installmentsCount,
+                        groupId = groupId
+                    )
+                )
+            }
+        } else {
+            // Logica Standard (Singola transazione)
+            onSave(
+                TransactionEntity(
+                    id = transactionId,
+                    date = transactionDate.format(displayFormatter),
+                    description = description.trim(),
+                    amount = amount,
+                    categoryId = selectedCategory,
+                    type = type,
+                    isCreditCard = isCreditCard,
+                    originalAmount = originalAmount,
+                    originalCurrency = originalCurrency,
+                    effectiveDate = calculateEffectiveDate(transactionDate, isCreditCard, ccDelay),
+                    installmentNumber = transactionToEdit?.installmentNumber, // Mantieni se esiste (modifica rata)
+                    totalInstallments = transactionToEdit?.totalInstallments,
+                    groupId = transactionToEdit?.groupId
+                )
             )
-        )
+        }
         onBack()
     }
 
@@ -146,16 +211,16 @@ fun AddTransactionScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (transactionToEdit == null) "Aggiungi Movimento" else "Modifica Movimento") },
+                title = { Text(if (transactionToEdit == null) stringResource(R.string.add_transaction) else stringResource(R.string.edit_transaction)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Indietro")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     if (transactionToEdit != null) {
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Elimina", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -164,19 +229,22 @@ fun AddTransactionScreen(
         bottomBar = {
             BottomAppBar(
                 modifier = Modifier.height(72.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Button(
                     onClick = { trySave() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onPrimary, contentColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(Icons.Default.Check, contentDescription = "Salva", modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (transactionToEdit == null) "SALVA MOVIMENTO" else "AGGIORNA MOVIMENTO", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(if (transactionToEdit == null) stringResource(R.string.save_transaction) else stringResource(R.string.update_transaction), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
         }
@@ -203,7 +271,7 @@ fun AddTransactionScreen(
                     val isSelected = type == itemType
                     val color = if (itemType == "expense") Color(0xFFEF5350) else Color(0xFF43A047)
                     Text(
-                        text = if (itemType == "expense") "SPESA" else "ENTRATA",
+                        text = if (itemType == "expense") stringResource(R.string.expense_type) else stringResource(R.string.income_type),
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
@@ -213,8 +281,9 @@ fun AddTransactionScreen(
                             .clickable {
                                 type = itemType
                                 // Cambia categoria di default se cambia il tipo
-                                if (currentCategory?.type != itemType) {
-                                    selectedCategory = CATEGORIES.first { it.type == itemType }.id
+                                val newCategory = availableCategories.firstOrNull { it.type == itemType }
+                                if (newCategory != null) {
+                                    selectedCategory = newCategory.id
                                 }
                             }
                             .background(if (isSelected) color else Color.Transparent)
@@ -229,50 +298,71 @@ fun AddTransactionScreen(
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it.replace(',', '.') },
-                label = { Text("Importo (${currencySymbol} - Converso)") },
+                label = { Text(stringResource(R.string.amount_converted_label, currencySymbol)) },
                 placeholder = { Text("100.00") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
 
             // NUOVO: Opzione Valuta Originale
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Importo Originale
-                OutlinedTextField(
-                    value = originalAmountText,
-                    onValueChange = { originalAmountText = it.replace(',', '.') },
-                    label = { Text("Importo Orig.") },
-                    placeholder = { Text("50.00") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f)
-                )
+            AnimatedVisibility(visible = originalCurrency != currencySymbol) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Importo Originale
+                        OutlinedTextField(
+                            value = originalAmountText,
+                            onValueChange = { originalAmountText = it.replace(',', '.') },
+                            label = { Text(stringResource(R.string.amount_original_label)) },
+                            placeholder = { Text("50.00") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.weight(1f)
+                        )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                // Pulsante Valuta Originale
-                OutlinedTextField(
-                    value = originalCurrency,
-                    onValueChange = { originalCurrency = it.uppercase(Locale.ROOT) },
-                    label = { Text("Valuta Orig.") },
-                    readOnly = true,
-                    trailingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    modifier = Modifier
-                        .weight(0.7f)
-                        .clickable { showCurrencyDialog = true }
-                )
+                        // Pulsante Valuta Originale
+                        OutlinedTextField(
+                            value = originalCurrency,
+                            onValueChange = { originalCurrency = it.uppercase(Locale.ROOT) },
+                            label = { Text(stringResource(R.string.currency_original_label)) },
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            modifier = Modifier
+                                .weight(0.7f)
+                                .clickable { showCurrencyDialog = true }
+                        )
+                    }
+
+                    Text(
+                        text = stringResource(R.string.main_currency_hint, currencySymbol),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                    )
+                }
             }
 
-            Text(
-                text = "Inserisci l'importo nella valuta principale ($currencySymbol) nel campo superiore.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
-            )
+            if (originalCurrency == currencySymbol) {
+                TextButton(
+                    onClick = { showCurrencyDialog = true },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(stringResource(R.string.set_original_currency))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Campo Descrizione con Autocomplete
             OutlinedTextField(
@@ -284,8 +374,24 @@ fun AddTransactionScreen(
                         // ma l'hai nel ViewModel e puoi implementarla con un DropdownMenu.
                     }
                 },
-                label = { Text("Descrizione") },
-                placeholder = { Text("Cena fuori, Stipendio Gennaio...") },
+                label = { Text(stringResource(R.string.description)) },
+                placeholder = { Text(stringResource(R.string.description_placeholder)) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Data Transazione
+            OutlinedTextField(
+                value = dateStr,
+                onValueChange = { dateStr = it },
+                label = { Text(stringResource(R.string.transaction_date)) },
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -293,7 +399,7 @@ fun AddTransactionScreen(
 
             // Selezione Categoria
             Text(
-                "Categoria:",
+                stringResource(R.string.category_label),
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.labelLarge
             )
@@ -303,39 +409,43 @@ fun AddTransactionScreen(
                     .horizontalScroll(rememberScrollState())
                     .padding(vertical = 8.dp)
             ) {
-                CATEGORIES.filter { it.type == type }.forEach { category ->
-                    val isSelected = selectedCategory == category.id
-                    val color = if (type == "expense") Color(0xFFEF5350) else Color(0xFF43A047)
+                if (currentTypeCategories.isEmpty()) {
+                    Text(stringResource(R.string.no_categories_error), modifier = Modifier.padding(8.dp))
+                } else {
+                    currentTypeCategories.forEach { category ->
+                        val isSelected = selectedCategory == category.id
+                        val color = if (type == "expense") Color(0xFFEF5350) else Color(0xFF43A047)
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .clickable { selectedCategory = category.id }
-                    ) {
-                        Box(
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainerHighest)
-                                .border(
-                                    width = if (isSelected) 2.dp else 0.dp,
-                                    color = if (isSelected) color else Color.Transparent,
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
+                                .padding(horizontal = 8.dp)
+                                .clickable { selectedCategory = category.id }
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .border(
+                                        width = if (isSelected) 2.dp else 0.dp,
+                                        color = if (isSelected) color else Color.Transparent,
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = category.icon,
+                                    fontSize = 24.sp
+                                )
+                            }
                             Text(
-                                text = category.icon,
-                                fontSize = 24.sp
+                                text = category.label.split(" ").first(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-                        Text(
-                            text = category.label.split(" ").first(),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
                     }
                 }
             }
@@ -352,22 +462,52 @@ fun AddTransactionScreen(
             ) {
                 Checkbox(checked = isCreditCard, onCheckedChange = { isCreditCard = it })
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Pagamento con Carta di Credito", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge)
             }
 
-            // Data Transazione
-            OutlinedTextField(
-                value = dateStr,
-                onValueChange = { dateStr = it },
-                label = { Text("Data Transazione") },
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = { showDatePicker = true }) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Seleziona Data")
+            // Opzione Rateale (Visibile solo se CC è attivo e non stiamo modificando una transazione esistente)
+            // AGGIORNATO: Il titolo ora è "Pagamento Rateale (Alternativo al saldo mensile)" per chiarezza
+            AnimatedVisibility(visible = isCreditCard && transactionToEdit == null) {
+                Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .padding(8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = isInstallment, onCheckedChange = { isInstallment = it })
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Pagamento Rateale", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Paga in più rate mensili invece che in un'unica soluzione posticipata.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
+
+                    if(isInstallment) {
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Numero Rate: $installmentsCount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        }
+                        Slider(
+                            value = installmentsCount.toFloat(),
+                            onValueChange = { installmentsCount = it.toInt() },
+                            valueRange = 2f..12f, // Da 2 a 12 rate
+                            steps = 10
+                        )
+                    }
+                }
+            }
+
+
         }
     }
 
@@ -375,7 +515,7 @@ fun AddTransactionScreen(
     if (showCurrencyDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyDialog = false },
-            title = { Text("Valuta Transazione Originale") },
+            title = { Text(stringResource(R.string.original_currency_dialog_title)) },
             text = {
                 Column {
                     val commonCurrencies = listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF")
@@ -394,7 +534,7 @@ fun AddTransactionScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text("Annulla") } }
+            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 
@@ -402,42 +542,22 @@ fun AddTransactionScreen(
     if (showPreviousMonthAlert) {
         AlertDialog(
             onDismissRequest = { showPreviousMonthAlert = false },
-            title = { Text("Attenzione: Data Passata") },
-            text = { Text("Stai inserendo una nuova transazione nel mese precedente. Questa operazione modificherà i saldi storici. Sei sicuro di voler procedere?") },
+            title = { Text(stringResource(R.string.warning_past_date_title)) },
+            text = { Text(stringResource(R.string.warning_past_date_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showPreviousMonthAlert = false
-                        // Salva la transazione dopo la conferma
-                        val amount = try { amountText.replace(',', '.').toDouble() } catch (e: Exception) { 0.0 }
-                        val originalAmount = try { originalAmountText.replace(',', '.').toDouble() } catch (e: Exception) { amount }
-                        val transactionDate = LocalDate.parse(dateStr, displayFormatter)
-                        val transactionId = transactionToEdit?.id ?: UUID.randomUUID().toString()
-
-                        onSave(
-                            TransactionEntity(
-                                id = transactionId,
-                                date = dateStr,
-                                description = description.trim(),
-                                amount = amount,
-                                categoryId = selectedCategory,
-                                type = type,
-                                isCreditCard = isCreditCard,
-                                originalAmount = originalAmount,
-                                originalCurrency = originalCurrency,
-                                effectiveDate = calculateEffectiveDate(transactionDate, isCreditCard, ccDelay)
-                            )
-                        )
-                        onBack()
+                        trySave() // Richiama salvataggio dopo conferma
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("PROCEDI E SALVA")
+                    Text(stringResource(R.string.proceed_and_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPreviousMonthAlert = false }) {
-                    Text("ANNULLA")
+                    Text(stringResource(R.string.cancel).uppercase())
                 }
             }
         )
@@ -471,8 +591,8 @@ fun AddTransactionScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Elimina Movimento") },
-            text = { Text("Sei sicuro di voler eliminare questa transazione? L'azione non può essere annullata.") },
+            title = { Text(stringResource(R.string.delete_transaction_title)) },
+            text = { Text(stringResource(R.string.delete_transaction_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -482,12 +602,12 @@ fun AddTransactionScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("ELIMINA")
+                    Text(stringResource(R.string.delete_uppercase))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("ANNULLA")
+                    Text(stringResource(R.string.cancel).uppercase())
                 }
             }
         )

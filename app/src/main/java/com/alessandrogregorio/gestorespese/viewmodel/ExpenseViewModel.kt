@@ -5,7 +5,9 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.alessandrogregorio.gestorespese.data.AppDatabase
+import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
+import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,12 +17,36 @@ import java.time.YearMonth
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dao = AppDatabase.getDatabase(application).transactionDao()
+    private val db = AppDatabase.getDatabase(application)
+    private val dao = db.transactionDao()
+    private val categoryDao = db.categoryDao()
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> = dao.getAllFlow()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // DATI CATEGORIE: Unione di quelle nel DB e quelle di Default (in memory)
+    // Questo assicura che le categorie di default siano sempre visibili anche se il DB è vuoto o l'inizializzazione fallisce
+    val allCategories: StateFlow<List<CategoryEntity>> = categoryDao.getAllCategoriesFlow()
+        .map { dbCategories ->
+            // Crea un set degli ID già presenti nel DB per evitare duplicati
+            val dbIds = dbCategories.map { it.id }.toSet()
+
+            // Identifica le categorie di default che mancano nel DB
+            val missingDefaults = CATEGORIES.filter { it.id !in dbIds }.map {
+                CategoryEntity(
+                    id = it.id,
+                    label = it.label,
+                    icon = it.icon,
+                    type = it.type,
+                    isCustom = false
+                )
+            }
+            // Restituisce la lista combinata (DB + Default mancanti)
+            dbCategories + missingDefaults
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs.getString("currency", "€") ?: "€")
@@ -39,6 +65,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _isAmountHidden = MutableStateFlow(prefs.getBoolean("hide_amount", false))
     val isAmountHidden = _isAmountHidden.asStateFlow()
 
+    // NUOVO: Stato per il blocco biometrico
+    private val _isBiometricEnabled = MutableStateFlow(prefs.getBoolean("is_biometric_enabled", false))
+    val isBiometricEnabled = _isBiometricEnabled.asStateFlow()
+
     // NUOVO: Mese della transazione più vecchia per la navigazione
     private val _earliestMonth = MutableStateFlow(YearMonth.now())
     val earliestMonth = _earliestMonth.asStateFlow()
@@ -49,11 +79,51 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
 
 
-
     init {
         // Carica il mese più vecchio all'avvio
         viewModelScope.launch {
             loadEarliestMonth()
+            // Inizializza le categorie di default nel DB (persistenza)
+            ensureCategoriesInitialized()
+        }
+    }
+
+    // Assicura che le categorie siano salvate anche nel DB per coerenza futura
+    fun ensureCategoriesInitialized() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val existingCategories = categoryDao.getAllCategories()
+                val existingIds = existingCategories.map { it.id }.toSet()
+
+                val categoriesToAdd = CATEGORIES.filter { it.id !in existingIds }.map {
+                    CategoryEntity(
+                        id = it.id,
+                        label = it.label,
+                        icon = it.icon,
+                        type = it.type,
+                        isCustom = false
+                    )
+                }
+
+                if (categoriesToAdd.isNotEmpty()) {
+                    categoryDao.insertAllCategories(categoriesToAdd)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // GESTIONE CATEGORIE
+    fun addCategory(category: CategoryEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            categoryDao.insertCategory(category)
+        }
+    }
+
+    fun removeCategory(id: String) {
+         viewModelScope.launch(Dispatchers.IO) {
+            categoryDao.deleteCategoryById(id)
         }
     }
 
@@ -127,7 +197,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // --- NUOVO: Funzione di aggiornamento isAmountHidden ---
     fun updateIsAmountHidden(isHidden: Boolean) {
         _isAmountHidden.value = isHidden
-        prefs.edit().putBoolean("is_amount_hidden", isHidden).apply()
+        prefs.edit().putBoolean("hide_amount", isHidden).apply()
+    }
+
+    // --- NUOVO: Funzione di aggiornamento isBiometricEnabled ---
+    fun updateBiometricEnabled(isEnabled: Boolean) {
+        _isBiometricEnabled.value = isEnabled
+        prefs.edit().putBoolean("is_biometric_enabled", isEnabled).apply()
     }
 
     // Metodi Backup

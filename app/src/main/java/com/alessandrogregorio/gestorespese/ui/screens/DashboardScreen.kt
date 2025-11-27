@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.alessandrogregorio.gestorespese.R
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import java.time.LocalDate
 import java.time.YearMonth
@@ -44,7 +46,7 @@ fun DashboardScreen(
 ) {
     val today = YearMonth.now()
     // var currentDisplayedMonth by remember { mutableStateOf(today) } // RIMOSSO STATO LOCALE
-    val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
+    val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
 
     val currentTrans = transactions
         .filter {
@@ -108,11 +110,11 @@ fun DashboardScreen(
                     onClick = { onMonthChange(currentDashboardMonth.minusMonths(1)) }, // Uso callback
                     enabled = currentDashboardMonth > earliestMonth
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Mese Precedente", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.previous_month), tint = Color.White)
                 }
 
                 Text(
-                    currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ITALIAN) else it.toString() },
+                    currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -122,7 +124,7 @@ fun DashboardScreen(
                     onClick = { onMonthChange(currentDashboardMonth.plusMonths(1)) }, // Uso callback
                     enabled = currentDashboardMonth < today
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Mese Successivo", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.next_month), tint = Color.White)
                 }
             }
 
@@ -134,12 +136,12 @@ fun DashboardScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Saldo Mensile",
+                    stringResource(R.string.monthly_balance),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.8f)
                 )
                 Text(
-                    text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", netBalance)}",
+                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", netBalance)}",
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -179,9 +181,9 @@ fun DashboardScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Entrate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.income), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalIncome)}",
+                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalIncome)}",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.secondary
@@ -201,9 +203,9 @@ fun DashboardScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Uscite", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.expenses), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", totalExpense)}",
+                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalExpense)}",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.error
@@ -227,7 +229,7 @@ fun DashboardScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                              Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
                              Spacer(modifier = Modifier.width(8.dp))
-                             Text("Plafond Carta di Credito", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                             Text(stringResource(R.string.credit_card_limit_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         LinearProgressIndicator(
@@ -242,12 +244,12 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                              Text(
-                                "Speso: $currencySymbol ${String.format(Locale.ITALIAN, "%.0f", creditCardUsed)}",
+                                text = if (isAmountHidden) "${stringResource(R.string.spent_label)} $currencySymbol *****" else "${stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", creditCardUsed)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                              Text(
-                                "Limite: $currencySymbol ${String.format(Locale.ITALIAN, "%.0f", ccLimit)}",
+                                "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", ccLimit)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -290,9 +292,9 @@ fun DateHeader(dateString: String) {
     val yesterday = today.minusDays(1)
 
     val label = when(date) {
-        today -> "Oggi"
-        yesterday -> "Ieri"
-        else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", Locale.ITALIAN))
+        today -> stringResource(R.string.today)
+        yesterday -> stringResource(R.string.yesterday)
+        else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", Locale.getDefault()))
     }
 
     Surface(

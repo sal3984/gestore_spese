@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
@@ -27,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -34,15 +37,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.AddTransactionScreen
 import com.alessandrogregorio.gestorespese.ui.screens.DashboardScreen
 import com.alessandrogregorio.gestorespese.ui.screens.ReportScreen
 import com.alessandrogregorio.gestorespese.ui.screens.SettingsScreen
+import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
+import com.alessandrogregorio.gestorespese.ui.screens.category.CategoryScreen
 import com.alessandrogregorio.gestorespese.ui.theme.GestoreSpeseTheme
 import com.alessandrogregorio.gestorespese.viewmodel.ExpenseViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,8 +64,10 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.Executor
 
-class MainActivity : ComponentActivity() {
+// Modifica: MainActivity ora estende FragmentActivity per supportare BiometricPrompt
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -74,6 +87,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     // Recupero gli stati dal ViewModel
     val allTransactions by viewModel.allTransactions.collectAsState()
+    val allCategories by viewModel.allCategories.collectAsState() // CATEGORIE DAL DB
     val currentCurrency by viewModel.currency.collectAsState()
     val currentCcLimit by viewModel.ccLimit.collectAsState()
     val currentCcDelay by viewModel.ccDelay.collectAsState()
@@ -81,6 +95,39 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val earliestMonth by viewModel.earliestMonth.collectAsState()
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState() // RECUPERO LO STATO DEL MESE DASHBOARD
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
+
+    // Stato per gestire l'autenticazione
+    var isAuthenticated by remember { mutableStateOf(!isBiometricEnabled) }
+    var showBiometricPrompt by remember { mutableStateOf(isBiometricEnabled) }
+
+    // Effetto per avviare l'autenticazione biometrica se abilitata
+    LaunchedEffect(isBiometricEnabled) {
+        if (isBiometricEnabled && !isAuthenticated) {
+             authenticateUser(context,
+                 onSuccess = { isAuthenticated = true },
+                 onError = { /* Gestisci errore o chiudi app */ }
+             )
+        } else {
+            isAuthenticated = true
+        }
+    }
+
+    if (!isAuthenticated) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("In attesa di autenticazione...", style = MaterialTheme.typography.bodyLarge)
+            Button(onClick = {
+                 authenticateUser(context,
+                     onSuccess = { isAuthenticated = true },
+                     onError = { }
+                 )
+            }, modifier = Modifier.padding(top = 16.dp)) {
+                Text("Riprova Autenticazione")
+            }
+        }
+        return
+    }
+
     // --- Activity Result Launchers per Backup/Restore/Export ---
 
     val restoreLauncher = rememberLauncherForActivityResult(
@@ -131,10 +178,19 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     selected = currentRoute == "report",
                     onClick = { navController.navigate("report") }
                 )
+
+                // NUOVO: Navigazione Categorie
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Category, contentDescription = stringResource(R.string.categories_title)) },
+                    label = { Text(stringResource(R.string.categories_title)) },
+                    selected = currentRoute == "categories",
+                    onClick = { navController.navigate("categories") }
+                )
+
                 // Impostazioni
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Impostazioni") },
-                    label = { Text("Impostazioni") },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings)) },
+                    label = { Text(stringResource(R.string.settings)) },
                     selected = currentRoute == "settings",
                     onClick = { navController.navigate("settings") }
                 )
@@ -142,14 +198,16 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
         },
         floatingActionButton = {
             // Usa "0" come placeholder Stringa per nuova transazione (in coerenza con la navigazione)
-            if (navController.currentBackStackEntryAsState().value?.destination?.route?.startsWith("add_transaction") != true) {
+            // Modifica: Controllo per nascondere il FAB nella schermata Categorie
+            val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+            if (currentRoute?.startsWith("add_transaction") != true && currentRoute != "categories") {
                 FloatingActionButton(
                     onClick = { navController.navigate("add_transaction/0") },
                     shape = CircleShape,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Filled.Add, "Aggiungi Transazione")
+                    Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
                 }
             }
         }
@@ -185,7 +243,21 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     ReportScreen(
                         transactions = allTransactions,
                         currencySymbol = currentCurrency,
-                        dateFormat = currentDateFormat
+                        dateFormat = currentDateFormat,
+                        isAmountHidden = isAmountHidden
+                    )
+                }
+
+                composable(
+                    "categories",
+                    enterTransition = { fadeIn(animationSpec = tween(300)) },
+                    exitTransition = { fadeOut(animationSpec = tween(300)) }
+                ) {
+                    CategoryScreen(
+                        categories = allCategories,
+                        onAddCategory = viewModel::addCategory,
+                        onDeleteCategory = viewModel::removeCategory,
+                        onBack = { navController.popBackStack() }
                     )
                 }
 
@@ -200,11 +272,23 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         ccDelay = currentCcDelay,
                         ccLimit = currentCcLimit,
                         isAmountHidden = isAmountHidden,
+                        isBiometricEnabled = isBiometricEnabled,
                         onCurrencyChange = viewModel::updateCurrency,
                         onDateFormatChange = viewModel::updateDateFormat,
                         onDelayChange = viewModel::updateCcDelay,
                         onLimitChange = viewModel::updateCcLimit,
                         onAmountHiddenChange = viewModel::updateIsAmountHidden,
+                        onBiometricEnabledChange = { isEnabled ->
+                            // Se si tenta di abilitare, chiedi conferma biometrica
+                            if (isEnabled) {
+                                authenticateUser(context,
+                                    onSuccess = { viewModel.updateBiometricEnabled(true) },
+                                    onError = { Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show() }
+                                )
+                            } else {
+                                viewModel.updateBiometricEnabled(false)
+                            }
+                        },
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
                         onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
@@ -264,7 +348,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 navController.popBackStack()
                             },
                             transactionToEdit = transactionToEdit,
-                            onBack = { navController.popBackStack() } // Aggiunto onBack
+                            onBack = { navController.popBackStack() },
+                            availableCategories = allCategories
                         )
                     }
                 }
@@ -273,10 +358,46 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     }
 }
 
+// Funzione helper per l'autenticazione biometrica
+fun authenticateUser(context: Context, onSuccess: () -> Unit, onError: () -> Unit) {
+    val fragmentActivity = context as? FragmentActivity ?: return
+    val executor: Executor = ContextCompat.getMainExecutor(context)
+
+    val biometricPrompt = BiometricPrompt(fragmentActivity, executor,
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                onSuccess()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                // Gestione errori (es. annullamento o nessun hardware)
+                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                     Toast.makeText(context, "Errore autenticazione: $errString", Toast.LENGTH_SHORT).show()
+                }
+                onError()
+            }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                 Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show()
+            }
+        })
+
+    val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        .setTitle("Accesso Gestore Spese")
+        .setSubtitle("Usa l'impronta o il volto per accedere")
+        .setNegativeButtonText("Annulla") // Obbligatorio per biometriche classiche
+        .build()
+
+    biometricPrompt.authenticate(promptInfo)
+}
+
 // --- Funzioni di gestione file (Backup/Restore/Export) ---
 suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
     val formatter = DateTimeFormatter.ofPattern(dateFormat)
-    val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+    val coroutineScope = CoroutineScope(Dispatchers.IO)
     coroutineScope.launch {
         try {
             val expenses = viewModel.getExpensesForExport()
@@ -330,7 +451,7 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
 }
 
 fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
-    val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+    val coroutineScope = CoroutineScope(Dispatchers.IO)
     coroutineScope.launch {
         try {
             val allData = viewModel.getAllForBackup()
@@ -355,7 +476,7 @@ fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
 }
 
 fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
-    val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+    val scope = CoroutineScope(Dispatchers.IO)
     scope.launch {
         try {
             val sb = StringBuilder()

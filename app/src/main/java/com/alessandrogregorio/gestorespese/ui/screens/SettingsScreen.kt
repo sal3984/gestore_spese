@@ -10,15 +10,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alessandrogregorio.gestorespese.R
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,11 +32,13 @@ fun SettingsScreen(
     ccDelay: Int,
     ccLimit: Float,
     isAmountHidden: Boolean, // 👈 NUOVO PARAMETRO
+    isBiometricEnabled: Boolean, // 👈 NUOVO PARAMETRO
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
     onAmountHiddenChange: (Boolean) -> Unit, // 👈 NUOVO CALLBACK
+    onBiometricEnabledChange: (Boolean) -> Unit, // 👈 NUOVO CALLBACK
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit
@@ -54,14 +59,14 @@ fun SettingsScreen(
             .padding(16.dp)
     ) {
         Text(
-            "Impostazioni",
+            stringResource(R.string.settings),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- SEZIONE GENERALI ---
-        Text("Generali", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.general), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
@@ -71,8 +76,8 @@ fun SettingsScreen(
             Column {
                 // Valuta
                 ListItem(
-                    headlineContent = { Text("Valuta") },
-                    supportingContent = { Text("Simbolo visualizzato: $currentCurrency") },
+                    headlineContent = { Text(stringResource(R.string.currency)) },
+                    supportingContent = { Text(stringResource(R.string.displayed_symbol, currentCurrency)) },
                     leadingContent = {
                         Icon(Icons.Default.AttachMoney, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     },
@@ -85,7 +90,7 @@ fun SettingsScreen(
 
                 // Formato Data
                 ListItem(
-                    headlineContent = { Text("Formato Data") },
+                    headlineContent = { Text(stringResource(R.string.date_format)) },
                     supportingContent = { Text(currentDateFormat) },
                     leadingContent = {
                         Icon(Icons.Default.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -101,7 +106,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- SEZIONE CARTA DI CREDITO ---
-        Text("Carta di Credito", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.credit_card_settings), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
@@ -117,7 +122,7 @@ fun SettingsScreen(
                         val newLimit = limitStr.toFloatOrNull()
                         if (newLimit != null) onLimitChange(newLimit)
                     },
-                    label = { Text("Plafond Max ($currentCurrency)") },
+                    label = { Text(stringResource(R.string.max_limit, currentCurrency)) },
                     leadingIcon = { Icon(Icons.Default.CreditCard, null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -128,10 +133,10 @@ fun SettingsScreen(
 
                 // Ritardo Addebito
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                     Text("Ritardo Addebito", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                     Text(stringResource(R.string.debit_delay), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                      Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
                          Text(
-                             if (ccDelay == 0) "Immediato" else "$ccDelay Mesi",
+                             if (ccDelay == 0) stringResource(R.string.immediate) else stringResource(R.string.months_delay, ccDelay),
                              modifier = Modifier.padding(4.dp),
                              color = MaterialTheme.colorScheme.onSecondaryContainer
                          )
@@ -147,7 +152,7 @@ fun SettingsScreen(
                     steps = 2
                 )
                 Text(
-                    "Sposta l'addebito delle spese CC al mese successivo.",
+                    stringResource(R.string.cc_delay_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -158,7 +163,7 @@ fun SettingsScreen(
 
         // NUOVA SEZIONE: Sicurezza e Usabilità
         Text(
-            "SICUREZZA E USABILITÀ",
+            stringResource(R.string.security_usability),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -168,8 +173,8 @@ fun SettingsScreen(
         // Opzione 1: Oscurare i numeri
         SettingItem(
             icon = Icons.Default.VisibilityOff,
-            title = "Oscura Importi per Privacy",
-            subtitle = "Sostituisce gli importi con asterischi nella Dashboard.",
+            title = stringResource(R.string.hide_amounts),
+            subtitle = stringResource(R.string.hide_amounts_desc),
             onClick = { onAmountHiddenChange(!isAmountHidden) }
         ) {
             Switch(checked = isAmountHidden, onCheckedChange = onAmountHiddenChange)
@@ -178,17 +183,17 @@ fun SettingsScreen(
         // Opzione 2: Placeholder per Sicurezza (PIN/Biometrica)
         SettingItem(
             icon = Icons.Default.Security,
-            title = "Blocco App (PIN/Biometrica)",
-            subtitle = "Abilita il blocco schermo all'avvio dell'app (DA IMPLEMENTARE).",
-            onClick = { /* TODO: Implementare Logica Blocco */ }
+            title = stringResource(R.string.app_lock),
+            subtitle = stringResource(R.string.app_lock_desc),
+            onClick = { onBiometricEnabledChange(!isBiometricEnabled) }
         ) {
             // Placeholder per Switch Sicurezza
-            Switch(checked = false, onCheckedChange = { /* TODO: Implementare */ }, enabled = false)
+            Switch(checked = isBiometricEnabled, onCheckedChange = onBiometricEnabledChange)
         }
 
 
         // --- SEZIONE DATI ---
-        Text("Gestione Dati", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.data_management), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(8.dp))
 
         // Esporta CSV
@@ -201,8 +206,8 @@ fun SettingsScreen(
             Icon(Icons.Default.Download, null)
             Spacer(modifier = Modifier.width(12.dp))
             Column(horizontalAlignment = Alignment.Start) {
-                Text("Esporta CSV", style = MaterialTheme.typography.titleSmall)
-                Text("Salva un report delle spese", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.export_csv), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.export_csv_desc), style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -217,7 +222,7 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Default.CloudUpload, null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Backup")
+                Text(stringResource(R.string.backup))
             }
 
             Button(
@@ -228,7 +233,7 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Default.CloudDownload, null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Ripristina")
+                Text(stringResource(R.string.restore))
             }
         }
 
@@ -239,7 +244,7 @@ fun SettingsScreen(
     if (showCurrencyDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyDialog = false },
-            title = { Text("Scegli Simbolo Valuta") },
+            title = { Text(stringResource(R.string.choose_currency_symbol)) },
             text = {
                 Column {
                     listOf("€", "$", "£", "CHF", "¥", "zł").forEach { symbol ->
@@ -260,7 +265,7 @@ fun SettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text("Annulla") } }
+            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 
@@ -268,7 +273,7 @@ fun SettingsScreen(
     if (showDateFormatDialog) {
         AlertDialog(
             onDismissRequest = { showDateFormatDialog = false },
-            title = { Text("Scegli Formato Data") },
+            title = { Text(stringResource(R.string.choose_date_format)) },
             text = {
                 Column {
                     val dateFormats = listOf("dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy")
@@ -290,7 +295,7 @@ fun SettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text("Annulla") } }
+            confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }
@@ -346,5 +351,5 @@ fun SettingItem(
         )
     }
     // Aggiungi un Divider per separare le voci
-    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 }

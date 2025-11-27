@@ -13,10 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.alessandrogregorio.gestorespese.R
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
+import com.alessandrogregorio.gestorespese.ui.screens.category.Category
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -32,6 +35,7 @@ fun TransactionItem(
     onEdit: (String) -> Unit // Aggiornato a String per UUID
 ) {
     val category = getCategory(transaction.categoryId)
+    val categoryLabel = getLocalizedCategoryLabel(category)
     val isIncome = transaction.type == "income"
     val amountColor = if (isIncome) Color(0xFF43A047) else MaterialTheme.colorScheme.onSurface
 
@@ -40,8 +44,8 @@ fun TransactionItem(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Elimina Movimento") },
-            text = { Text("Sei sicuro di voler eliminare questa transazione?") },
+            title = { Text(stringResource(R.string.delete_transaction_title)) },
+            text = { Text(stringResource(R.string.delete_transaction_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -50,12 +54,12 @@ fun TransactionItem(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("ELIMINA")
+                    Text(stringResource(R.string.delete_uppercase))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("ANNULLA")
+                    Text(stringResource(R.string.cancel).uppercase())
                 }
             }
         )
@@ -111,15 +115,21 @@ fun TransactionItem(
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          Text(
-                            category.label,
+                            categoryLabel,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     if(transaction.isCreditCard && !isIncome) {
+                        val ccLabel = if (transaction.installmentNumber != null && transaction.totalInstallments != null) {
+                            "${stringResource(R.string.credit_card)} (${transaction.installmentNumber}/${transaction.totalInstallments})"
+                        } else {
+                            stringResource(R.string.credit_card)
+                        }
+
                         Text(
-                            "Carta di Credito",
+                            ccLabel,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Medium,
@@ -134,7 +144,7 @@ fun TransactionItem(
                 val amountText = if (isAmountHidden) {
                     "*** ${currencySymbol}**"
                 } else {
-                    "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.ITALIAN, "%.2f", transaction.amount)}"
+                    "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.getDefault(), "%.2f", transaction.amount)}"
                 }
 
                 Text(
@@ -150,7 +160,7 @@ fun TransactionItem(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Elimina",
+                        contentDescription = stringResource(R.string.delete),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -160,8 +170,28 @@ fun TransactionItem(
     }
 }
 
+@Composable
+fun getLocalizedCategoryLabel(category: Category): String {
+    return when(category.id) {
+        "food" -> stringResource(R.string.cat_food)
+        "transport" -> stringResource(R.string.cat_transport)
+        "housing" -> stringResource(R.string.cat_housing)
+        "entertainment" -> stringResource(R.string.cat_entertainment)
+        "bills" -> stringResource(R.string.cat_bills)
+        "health" -> stringResource(R.string.cat_health)
+        "shopping" -> stringResource(R.string.cat_shopping)
+        "other" -> stringResource(R.string.cat_other)
+        "salary" -> stringResource(R.string.cat_salary)
+        "bonifico" -> stringResource(R.string.cat_bonifico)
+        "gift" -> stringResource(R.string.cat_gift)
+        "refund" -> stringResource(R.string.cat_refund)
+        "investment" -> stringResource(R.string.cat_investment)
+        else -> category.label
+    }
+}
+
 // --- Helpers ---
 
-fun formatMoney(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.ITALY).format(amount)
+fun formatMoney(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.getDefault()).format(amount)
 
 fun getCategory(id: String) = CATEGORIES.firstOrNull { it.id == id } ?: CATEGORIES.first { it.id == "other" }

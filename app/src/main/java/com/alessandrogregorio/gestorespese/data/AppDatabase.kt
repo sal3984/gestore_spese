@@ -6,9 +6,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 // 3. Il Database
-@Database(entities = [TransactionEntity::class], version = 2, exportSchema = false)
+@Database(entities = [TransactionEntity::class, CategoryEntity::class], version = 5, exportSchema = false) // Versione aggiornata per migrazione schema
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
+    abstract fun categoryDao(): CategoryDao
 
     companion object {
         @Volatile
@@ -19,9 +20,9 @@ abstract class AppDatabase : RoomDatabase() {
                 Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "spese_db_v2"
+                    "spese_db_v5" // Aggiornato a v5 per reset e applicazione nuovi campi rateali
                 )
-                    .fallbackToDestructiveMigration() // Necessario per l'aggiornamento (cancella i vecchi dati!)
+                    .fallbackToDestructiveMigration() // Cancella i dati vecchi al cambio versione (Ok per prototipazione)
                     .build().also { INSTANCE = it }
             }
         }

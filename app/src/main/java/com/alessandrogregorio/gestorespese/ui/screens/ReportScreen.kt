@@ -18,11 +18,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
+import com.alessandrogregorio.gestorespese.R
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
 import java.time.LocalDate
@@ -35,6 +37,7 @@ fun ReportScreen(
     transactions: List<TransactionEntity>,
     currencySymbol: String,
     dateFormat: String,
+    isAmountHidden: Boolean, // NUOVO PARAMETRO
 ) {
     // Calcolo Risparmio Anno Corrente
     val currentYear = LocalDate.now().year
@@ -105,7 +108,7 @@ fun ReportScreen(
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                "Report $currentYear",
+                stringResource(R.string.report_year, currentYear),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -115,12 +118,12 @@ fun ReportScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text(
-                        "Risparmio Totale",
+                        stringResource(R.string.total_savings),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.8f)
                     )
                     Text(
-                        text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", savings)}",
+                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", savings)}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
@@ -155,19 +158,19 @@ fun ReportScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Bilancio Ultimi 6 Mesi",
+                        stringResource(R.string.balance_last_6_months),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    MonthlyBarChart(monthlyBalances, currencySymbol)
+                    MonthlyBarChart(monthlyBalances, currencySymbol, isAmountHidden)
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                "Dettaglio Categorie (Mese Corrente)",
+                stringResource(R.string.category_detail_current_month),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
@@ -207,12 +210,12 @@ fun ReportScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    category?.label ?: "Altro",
+                                    category?.label ?: stringResource(R.string.cat_other),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", amount)}",
+                                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", amount)}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -232,7 +235,7 @@ fun ReportScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = String.format(Locale.ITALIAN, "%.0f%%", percentage * 100),
+                                    text = String.format(Locale.getDefault(), "%.0f%%", percentage * 100),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -246,7 +249,7 @@ fun ReportScreen(
 }
 
 @Composable
-fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String) {
+fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String, isAmountHidden: Boolean) {
     if (data.isEmpty()) return
 
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
@@ -327,7 +330,7 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String)
 
                     // Etichetta Mese
                     Text(
-                        text = month.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase().take(3),
+                        text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase().take(3),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (selectedMonth == month) FontWeight.ExtraBold else FontWeight.Bold,
                         fontSize = 10.sp,
@@ -360,12 +363,12 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String)
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                          Text(
-                             text = month.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).replaceFirstChar { it.uppercase() },
+                             text = month.month.getDisplayName(TextStyle.FULL, Locale.getDefault()).replaceFirstChar { it.uppercase() },
                              style = MaterialTheme.typography.labelMedium,
                              color = MaterialTheme.colorScheme.inverseOnSurface
                          )
                          Text(
-                             text = "$currencySymbol ${String.format(Locale.ITALIAN, "%.2f", balance)}",
+                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", balance)}",
                              style = MaterialTheme.typography.bodyLarge,
                              fontWeight = FontWeight.Bold,
                              color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)

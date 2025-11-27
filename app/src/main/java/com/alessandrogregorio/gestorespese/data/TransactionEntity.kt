@@ -17,7 +17,9 @@ data class TransactionEntity(
     val isCreditCard: Boolean,
     val effectiveDate: String, // Data reale di addebito
     val originalAmount: Double, // Importo nella valuta originale (es. 50 USD)
-    val originalCurrency: String // Valuta usata per la transazione (es. USD)
+    val originalCurrency: String, // Valuta usata per la transazione (es. USD)
+    // Campi per pagamento rateale
+    val installmentNumber: Int? = null, // Es. 1 (di 3)
+    val totalInstallments: Int? = null, // Es. 3
+    val groupId: String? = null // UUID condiviso tra tutte le rate della stessa spesa
 )
-
-
