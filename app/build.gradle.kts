@@ -8,14 +8,12 @@ plugins {
 
 android {
     namespace = "com.alessandrogregorio.gestorespese"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.alessandrogregorio.gestorespese"
-        minSdk = 34
-        targetSdk = 36
+        minSdk = 26
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -76,4 +74,10 @@ dependencies {
     // Aggiungere queste dipendenze nella sezione 'dependencies' del build.gradle.kts del modulo app
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0") // Oppure la versione che usi
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0") // QUESTA E' CRITICA
+
+    // Biometric
+    implementation("androidx.biometric:biometric:1.1.0")
+
+    // AppCompat - Necessaria per FragmentActivity e temi
+    implementation("androidx.appcompat:appcompat:1.6.1")
 }
