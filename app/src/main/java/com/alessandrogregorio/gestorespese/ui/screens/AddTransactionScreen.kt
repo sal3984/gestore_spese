@@ -305,7 +305,84 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo Importo nella Valuta Principale
+            // --- ORDINE CAMBIATO: Data -> Descrizione -> Importo ---
+
+            // 1. Data Transazione
+            OutlinedTextField(
+                value = dateStr,
+                onValueChange = { dateStr = it },
+                label = { Text(stringResource(R.string.transaction_date)) },
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 2. Campo Descrizione con Autocomplete
+            val filteredSuggestions = remember(description, suggestions) {
+                if (description.isBlank()) {
+                    emptyList()
+                } else {
+                    suggestions.filter {
+                        it.contains(description, ignoreCase = true) &&
+                            !it.equals(description, ignoreCase = true)
+                    }
+                }
+            }
+
+            ExposedDropdownMenuBox(
+                expanded = isDescriptionExpanded,
+                onExpandedChange = { isDescriptionExpanded = !isDescriptionExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = {
+                        description = it
+                        isDescriptionExpanded = true
+                    },
+                    label = { Text(stringResource(R.string.description)) },
+                    placeholder = { stringResource(R.string.description_placeholder)},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDescriptionExpanded)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        capitalization = KeyboardCapitalization.Sentences
+                    )
+                )
+
+                if (filteredSuggestions.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = isDescriptionExpanded,
+                        onDismissRequest = { isDescriptionExpanded = false }
+                    ) {
+                        filteredSuggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { Text(text = suggestion) },
+                                onClick = {
+                                    description = suggestion
+                                    isDescriptionExpanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 3. Campo Importo nella Valuta Principale
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it.replace(',', '.') },
@@ -372,85 +449,6 @@ fun AddTransactionScreen(
                     Text(stringResource(R.string.set_original_currency))
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Logica di filtraggio: mostra suggerimenti che contengono il testo digitato
-            val filteredSuggestions = remember(description, suggestions) {
-                if (description.isBlank()) {
-                    emptyList()
-                } else {
-                    suggestions.filter {
-                        it.contains(description, ignoreCase = true) &&
-                            !it.equals(description, ignoreCase = true) // Non mostrare se è già uguale
-                    }
-                }
-            }
-            // Campo Descrizione con Autocomplete
-            ExposedDropdownMenuBox(
-                expanded = isDescriptionExpanded,
-                onExpandedChange = { isDescriptionExpanded = !isDescriptionExpanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = {
-                        description = it
-                        // Apri il menu se c'è testo e ci sono suggerimenti validi
-                        isDescriptionExpanded = true
-                    },
-                    label = { Text(stringResource(R.string.description)) }, // Assicurati di avere questa stringa o usa "Descrizione"
-                    placeholder = { stringResource(R.string.description_placeholder)},
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(), // FONDAMENTALE per Material3
-                    trailingIcon = {
-                        // Opzionale: icona per cancellare o freccia menu
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDescriptionExpanded)
-                    },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        capitalization = KeyboardCapitalization.Sentences
-                    )
-                )
-
-                // Mostra il menu solo se ci sono suggerimenti
-                if (filteredSuggestions.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = isDescriptionExpanded,
-                        onDismissRequest = { isDescriptionExpanded = false }
-                    ) {
-                        filteredSuggestions.forEach { suggestion ->
-                            DropdownMenuItem(
-                                text = { Text(text = suggestion) },
-                                onClick = {
-                                    description = suggestion
-                                    isDescriptionExpanded = false
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
-                        }
-                    }
-                }
-            }
-
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Data Transazione
-            OutlinedTextField(
-                value = dateStr,
-                onValueChange = { dateStr = it },
-                label = { Text(stringResource(R.string.transaction_date)) },
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = { showDatePicker = true }) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
 

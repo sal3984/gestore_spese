@@ -343,11 +343,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             dateFormat = currentDateFormat, // Nome argomento corretto
                             onSave = { transaction ->
                                 viewModel.saveTransaction(transaction)
-                                navController.popBackStack()
+                                // RIMOSSO popBackStack() qui perché AddTransactionScreen chiama onBack() alla fine di trySave
                             },
                             onDelete = { id -> // ID è Stringa
                                 viewModel.deleteTransaction(id)
-                                navController.popBackStack()
+                                navController.popBackStack() // Qui va bene perché AddTransactionScreen non chiama onBack dopo onDelete
                             },
                             transactionToEdit = transactionToEdit,
                             onBack = { navController.popBackStack() },
