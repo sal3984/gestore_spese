@@ -1,8 +1,10 @@
 package com.alessandrogregorio.gestorespese.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -10,10 +12,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -31,23 +33,19 @@ fun SettingsScreen(
     currentDateFormat: String,
     ccDelay: Int,
     ccLimit: Float,
-    isAmountHidden: Boolean, // 👈 NUOVO PARAMETRO
-    isBiometricEnabled: Boolean, // 👈 NUOVO PARAMETRO
+    isAmountHidden: Boolean,
+    isBiometricEnabled: Boolean,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
-    onAmountHiddenChange: (Boolean) -> Unit, // 👈 NUOVO CALLBACK
-    onBiometricEnabledChange: (Boolean) -> Unit, // 👈 NUOVO CALLBACK
-    onBackup: () -> Unit,
-    onRestore: () -> Unit,
-    onExportCsv: () -> Unit
+    onAmountHiddenChange: (Boolean) -> Unit,
+    onBiometricEnabledChange: (Boolean) -> Unit,
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
 
-    // Sincronizza lo stato locale di limitStr con il valore ccLimit
     LaunchedEffect(ccLimit) {
         limitStr = String.format(Locale.US, "%.0f", ccLimit)
     }
@@ -56,57 +54,44 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        // RIMOSSO Titolo "Impostazioni" per evitare duplicato con la TopBar principale
 
         // --- SEZIONE GENERALI ---
-        Text(stringResource(R.string.general), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(8.dp))
+        SettingsSectionHeader(stringResource(R.string.general))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(16.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column {
-                // Valuta
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.currency)) },
-                    supportingContent = { Text(stringResource(R.string.displayed_symbol, currentCurrency)) },
-                    leadingContent = {
-                        Icon(Icons.Default.AttachMoney, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    },
-                    trailingContent = {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                    },
-                    modifier = Modifier.clickable { showCurrencyDialog = true }
+                SettingsListItem(
+                    icon = Icons.Default.AttachMoney,
+                    title = stringResource(R.string.currency),
+                    value = stringResource(R.string.displayed_symbol, currentCurrency),
+                    onClick = { showCurrencyDialog = true }
                 )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
-                // Formato Data
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.date_format)) },
-                    supportingContent = { Text(currentDateFormat) },
-                    leadingContent = {
-                        Icon(Icons.Default.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    },
-                    trailingContent = {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                    },
-                    modifier = Modifier.clickable { showDateFormatDialog = true }
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingsListItem(
+                    icon = Icons.Default.CalendarToday,
+                    title = stringResource(R.string.date_format),
+                    value = currentDateFormat,
+                    onClick = { showDateFormatDialog = true }
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- SEZIONE CARTA DI CREDITO ---
-        Text(stringResource(R.string.credit_card_settings), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(8.dp))
+        // --- SEZIONE PAGAMENTI (Carta di Credito) ---
+        SettingsSectionHeader(stringResource(R.string.credit_card_settings))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(16.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Plafond
@@ -118,10 +103,14 @@ fun SettingsScreen(
                         if (newLimit != null) onLimitChange(newLimit)
                     },
                     label = { Text(stringResource(R.string.max_limit, currentCurrency)) },
-                    leadingIcon = { Icon(Icons.Default.CreditCard, null) },
+                    leadingIcon = { Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -129,11 +118,16 @@ fun SettingsScreen(
                 // Ritardo Addebito
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                      Text(stringResource(R.string.debit_delay), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                     Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                     Surface(
+                         color = MaterialTheme.colorScheme.primaryContainer,
+                         shape = RoundedCornerShape(8.dp)
+                     ) {
                          Text(
                              if (ccDelay == 0) stringResource(R.string.immediate) else stringResource(R.string.months_delay, ccDelay),
-                             modifier = Modifier.padding(4.dp),
-                             color = MaterialTheme.colorScheme.onSecondaryContainer
+                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                             style = MaterialTheme.typography.labelMedium,
+                             color = MaterialTheme.colorScheme.onPrimaryContainer,
+                             fontWeight = FontWeight.Bold
                          )
                      }
                 }
@@ -143,8 +137,12 @@ fun SettingsScreen(
                 Slider(
                     value = ccDelay.toFloat(),
                     onValueChange = { onDelayChange(it.toInt()) },
-                    valueRange = 0f..3f, // Ridotto range per realismo
-                    steps = 2
+                    valueRange = 0f..3f,
+                    steps = 2,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
                 )
                 Text(
                     stringResource(R.string.cc_delay_desc),
@@ -156,79 +154,30 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // NUOVA SEZIONE: Sicurezza e Usabilità
-        Text(
-            stringResource(R.string.security_usability),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
-        )
+        // --- SEZIONE SICUREZZA & PRIVACY ---
+        SettingsSectionHeader(stringResource(R.string.security_usability))
 
-        // Opzione 1: Oscurare i numeri
-        SettingItem(
-            icon = Icons.Default.VisibilityOff,
-            title = stringResource(R.string.hide_amounts),
-            subtitle = stringResource(R.string.hide_amounts_desc),
-            onClick = { onAmountHiddenChange(!isAmountHidden) }
-        ) {
-            Switch(checked = isAmountHidden, onCheckedChange = onAmountHiddenChange)
-        }
-
-        // Opzione 2: Placeholder per Sicurezza (PIN/Biometrica)
-        SettingItem(
-            icon = Icons.Default.Security,
-            title = stringResource(R.string.app_lock),
-            subtitle = stringResource(R.string.app_lock_desc),
-            onClick = { onBiometricEnabledChange(!isBiometricEnabled) }
-        ) {
-            // Placeholder per Switch Sicurezza
-            Switch(checked = isBiometricEnabled, onCheckedChange = onBiometricEnabledChange)
-        }
-
-
-        // --- SEZIONE DATI ---
-        Text(stringResource(R.string.data_management), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Esporta CSV
-        Button(
-            onClick = onExportCsv,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Icon(Icons.Default.Download, null)
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(horizontalAlignment = Alignment.Start) {
-                Text(stringResource(R.string.export_csv), style = MaterialTheme.typography.titleSmall)
-                Text(stringResource(R.string.export_csv_desc), style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Backup & Ripristino (JSON)
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Button(
-                onClick = onBackup,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)), // Green
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).height(56.dp)
-            ) {
-                Icon(Icons.Default.CloudUpload, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.backup))
-            }
-
-            Button(
-                onClick = onRestore,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)), // Orange
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.weight(1f).height(56.dp)
-            ) {
-                Icon(Icons.Default.CloudDownload, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.restore))
+            Column {
+                SettingsSwitchItem(
+                    icon = Icons.Default.VisibilityOff,
+                    title = stringResource(R.string.hide_amounts),
+                    subtitle = stringResource(R.string.hide_amounts_desc),
+                    checked = isAmountHidden,
+                    onCheckedChange = onAmountHiddenChange
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingsSwitchItem(
+                    icon = Icons.Default.Security,
+                    title = stringResource(R.string.app_lock),
+                    subtitle = stringResource(R.string.app_lock_desc),
+                    checked = isBiometricEnabled,
+                    onCheckedChange = onBiometricEnabledChange
+                )
             }
         }
 
@@ -295,56 +244,69 @@ fun SettingsScreen(
     }
 }
 
+// --- Componenti Helper per Settings ---
+
 @Composable
-fun SettingItem(
+fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+fun SettingsListItem(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
+        supportingContent = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp)
+            )
+        },
+        trailingContent = {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+}
+
+@Composable
+fun SettingsSwitchItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit,
-    content: @Composable (() -> Unit)? = null
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Icona
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(28.dp)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Titolo e Sottotitolo
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+    ListItem(
+        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
+        supportingContent = { Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp)
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
             )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Contenuto a destra (es. Switch, Arrow, o nulla)
-        content?.invoke() ?: Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    // Aggiungi un Divider per separare le voci
-    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        },
+        modifier = Modifier.clickable { onCheckedChange(!checked) }
+    )
 }

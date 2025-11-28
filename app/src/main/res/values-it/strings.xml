@@ -71,6 +71,11 @@
     <string name="choose_currency_symbol">Scegli Simbolo Valuta</string>
     <string name="choose_date_format">Scegli Formato Data</string>
 
+    <!-- GESTIONE DATI -->
+
+    <string name="data_management_subtitle">Gestisci i tuoi dati, backup e esportazioni</string>
+    <string name="export_data_title">Salva un report delle spese</string>
+
     <!-- Report -->
     <string name="report_year">Report %1$d</string>
     <string name="total_savings">Risparmio Totale</string>
@@ -106,4 +111,5 @@
     <string name="cat_gift">Regalo</string>
     <string name="cat_refund">Rimborso</string>
     <string name="cat_investment">Investimenti</string>
+    <string name="error_category_already_exists">Categoria già presente</string>
 </resources>

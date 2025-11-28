@@ -71,6 +71,9 @@
     <string name="choose_currency_symbol">Choose Currency Symbol</string>
     <string name="choose_date_format">Choose Date Format</string>
 
+    <string name="data_management_subtitle">Gestisci i tuoi dati, backup e esportazioni</string>
+    <string name="export_data_title">Salva un report delle spese</string>
+
     <!-- Report -->
     <string name="report_year">Report %1$d</string>
     <string name="total_savings">Total Savings</string>

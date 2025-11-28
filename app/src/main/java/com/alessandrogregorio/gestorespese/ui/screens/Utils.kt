@@ -20,6 +20,8 @@ import com.alessandrogregorio.gestorespese.R
 import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import java.text.NumberFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 // --- COMPONENTI UI CONDIVISI ---
@@ -27,7 +29,7 @@ import java.util.Locale
 @Composable
 fun TransactionItem(
     transaction: TransactionEntity,
-    categories: List<CategoryEntity>, // AGGIUNTO
+    categories: List<CategoryEntity>,
     currencySymbol: String,
     dateFormat: String,
     isAmountHidden: Boolean,
@@ -38,6 +40,21 @@ fun TransactionItem(
     val categoryLabel = getLocalizedCategoryLabel(category)
     val isIncome = transaction.type == "income"
     val amountColor = if (isIncome) Color(0xFF43A047) else MaterialTheme.colorScheme.onSurface
+
+    // Formatta la data della transazione
+    val formattedDate = remember(transaction.date, dateFormat) {
+        try {
+            val date = LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat)) // Assumendo che transaction.date sia salvata in dateFormat
+            // Se transaction.date non è in formato ISO ma nel formato custom, il parse sopra funziona se dateFormat è corretto.
+            // Tuttavia, AddTransactionScreen salva la data usando displayFormatter (che è dateFormat).
+            // Quindi qui dobbiamo fare il parsing inverso se vogliamo riformattarla, oppure mostrarla direttamente.
+            // Se vogliamo mostrare solo giorno e mese o altro, possiamo farlo qui.
+            // Per ora mostriamo la data come salvata (che è già formattata secondo le preferenze)
+            transaction.date
+        } catch (e: Exception) {
+            transaction.date
+        }
+    }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -113,9 +130,25 @@ fun TransactionItem(
                         maxLines = 1
                     )
 
+                    // Riga con Categoria e Data
                     Row(verticalAlignment = Alignment.CenterVertically) {
                          Text(
                             categoryLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // Separatore (bullet point)
+                        Text(
+                            " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+
+                        // Data visualizzata accanto alla categoria
+                        Text(
+                            formattedDate,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

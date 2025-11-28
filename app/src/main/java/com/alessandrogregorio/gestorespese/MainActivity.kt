@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
@@ -50,6 +51,7 @@ import com.alessandrogregorio.gestorespese.data.CategoryEntity
 import com.alessandrogregorio.gestorespese.data.TransactionEntity
 import com.alessandrogregorio.gestorespese.ui.screens.AddTransactionScreen
 import com.alessandrogregorio.gestorespese.ui.screens.DashboardScreen
+import com.alessandrogregorio.gestorespese.ui.screens.DataManagementScreen
 import com.alessandrogregorio.gestorespese.ui.screens.ReportScreen
 import com.alessandrogregorio.gestorespese.ui.screens.SettingsScreen
 import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
@@ -174,9 +176,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     // Definizione delle rotte principali
     val bottomNavRoutes = listOf("dashboard", "report")
-    val drawerRoutes = listOf("categories", "settings")
+    // drawerRoutes ora include anche data_management
+    val drawerRoutes = listOf("categories", "settings", "data_management")
     val isBottomBarVisible = currentRoute in bottomNavRoutes
-    // Mostra TopBar con menu in tutte le schermate principali (Dashboard, Report, Categorie, Settings)
+    // Mostra TopBar con menu in tutte le schermate principali
     val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
 
     ModalNavigationDrawer(
@@ -194,7 +197,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
                 // Menu Laterale: Home, Categorie e Impostazioni
                 NavigationDrawerItem(
-                    label = { Text("Dashboard") },
+                    label = { Text("Dashboard") }, // Rinominato da Home a Dashboard per coerenza
                     selected = currentRoute == "dashboard",
                     onClick = {
                         navController.navigate("dashboard") {
@@ -214,6 +217,17 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         coroutineScope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Category, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.data_management)) },
+                    selected = currentRoute == "data_management",
+                    onClick = {
+                        navController.navigate("data_management")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Backup, contentDescription = null) },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
@@ -240,6 +254,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 "report" -> "Report"
                                 "categories" -> stringResource(R.string.categories_title)
                                 "settings" -> stringResource(R.string.settings)
+                                "data_management" -> stringResource(R.string.data_management)
                                 else -> stringResource(R.string.app_name)
                             }
                             Text(title)
@@ -350,7 +365,19 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             categories = allCategories,
                             onAddCategory = viewModel::addCategory,
                             onDeleteCategory = viewModel::removeCategory,
-                            // onBack RIMOSSO perché gestito dalla navigazione principale
+                            // onBack RIMOSSO
+                        )
+                    }
+
+                    composable(
+                        "data_management",
+                        enterTransition = { fadeIn(animationSpec = tween(300)) },
+                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                    ) {
+                        DataManagementScreen(
+                            onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
+                            onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
+                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
                         )
                     }
 
@@ -381,10 +408,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 } else {
                                     viewModel.updateBiometricEnabled(false)
                                 }
-                            },
-                            onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
-                            onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
-                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
+                            }
                         )
                     }
 

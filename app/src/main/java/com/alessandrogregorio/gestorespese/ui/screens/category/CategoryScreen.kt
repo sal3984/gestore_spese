@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -36,8 +37,15 @@ fun CategoryScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf("expense") }
     val selectedTabIndex = if (selectedTab == "expense") 0 else 1
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Messaggi localizzati
+    val errorCategoryExists = stringResource(R.string.error_category_already_exists)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         // RIMOSSO topBar per evitare duplicati con la MainActivity
         floatingActionButton = {
@@ -130,17 +138,31 @@ fun CategoryScreen(
     if (showAddDialog) {
         AddCategoryDialog(
             type = selectedTab,
+            existingCategories = categories, // Passa la lista esistente
             onDismiss = { showAddDialog = false },
             onConfirm = { label, icon ->
-                val newCategory = CategoryEntity(
-                    id = UUID.randomUUID().toString(),
-                    label = label,
-                    icon = icon,
-                    type = selectedTab,
-                    isCustom = true
-                )
-                onAddCategory(newCategory)
-                showAddDialog = false
+                // Utilizziamo UUID per l'ID per evitare conflitti e permettere nomi duplicati se necessario,
+                // ma il controllo duplicati sotto usa la label per l'esperienza utente.
+                // Se preferisci usare la label come ID: val newId = label.trim().lowercase()
+
+                // Controllo duplicati per nome (case insensitive)
+                val exists = categories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == selectedTab }
+
+                if (exists) {
+                    // Mostra errore (può essere migliorato con uno stato locale nel dialog o snackbar)
+                    // Qui usiamo un Toast/Snackbar rapido o gestiamo lo stato di errore nel dialog
+                    // Per semplicità nel dialog, passiamo l'errore come callback o stato
+                } else {
+                    val newCategory = CategoryEntity(
+                        id = UUID.randomUUID().toString(), // ID univoco
+                        label = label.trim(),
+                        icon = icon,
+                        type = selectedTab,
+                        isCustom = true
+                    )
+                    onAddCategory(newCategory)
+                    showAddDialog = false
+                }
             }
         )
     }
@@ -199,11 +221,13 @@ fun CategoryCard(
 @Composable
 fun AddCategoryDialog(
     type: String,
+    existingCategories: List<CategoryEntity>,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
     var label by remember { mutableStateOf("") }
     var selectedIcon by remember { mutableStateOf("❓") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Lista icone preselezionabili (emoji)
     val availableIcons = listOf(
@@ -224,11 +248,20 @@ fun AddCategoryDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = label,
-                    onValueChange = { label = it },
+                    onValueChange = {
+                        label = it
+                        errorMessage = null // Resetta errore quando si digita
+                    },
                     label = { Text(stringResource(R.string.category_name_label)) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorMessage != null,
+                    supportingText = {
+                        if (errorMessage != null) {
+                            Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -316,8 +349,21 @@ fun AddCategoryDialog(
             }
         },
         confirmButton = {
+            val errorText = stringResource(R.string.error_category_already_exists)
             Button(
-                onClick = { if (label.isNotBlank()) onConfirm(label, selectedIcon) },
+                onClick = {
+                    if (label.isNotBlank()) {
+                        // Controllo duplicato
+                        val exists = existingCategories.any {
+                            it.label.equals(label.trim(), ignoreCase = true) && it.type == type
+                        }
+                        if (exists) {
+                            errorMessage = errorText
+                        } else {
+                            onConfirm(label, selectedIcon)
+                        }
+                    }
+                },
                 enabled = label.isNotBlank()
             ) {
                 Text(stringResource(R.string.save_button))
