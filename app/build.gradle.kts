@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.alessandrogregorio.gestorespese"
+    namespace = "com.expense.management"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.alessandrogregorio.gestorespese"
+        applicationId = "com.expense.management"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
