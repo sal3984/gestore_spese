@@ -1,4 +1,4 @@
-package com.alessandrogregorio.gestorespese
+package com.expense.management
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.alessandrogregorio.gestorespese", appContext.packageName)
+        assertEquals("com.expense.management", appContext.packageName)
     }
 }
