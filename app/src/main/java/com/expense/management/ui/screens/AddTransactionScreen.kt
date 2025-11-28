@@ -32,9 +32,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
+import com.expense.management.R
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -74,9 +74,9 @@ fun AddTransactionScreen(
     var selectedCategory by remember(type, currentTypeCategories) {
         mutableStateOf(
             transactionToEdit?.categoryId.takeIf { id -> availableCategories.any { it.id == id } } // Mantieni se esiste
-            ?: transactionToEdit?.categoryId.takeIf { transactionToEdit != null } // Mantieni anche se non esiste più (caso limite)
-            ?: currentTypeCategories.firstOrNull()?.id // Altrimenti prendi la prima del tipo
-            ?: if (type == "expense") "food" else "salary" // Fallback estremo
+                ?: transactionToEdit?.categoryId.takeIf { transactionToEdit != null } // Mantieni anche se non esiste più (caso limite)
+                ?: currentTypeCategories.firstOrNull()?.id // Altrimenti prendi la prima del tipo
+                ?: if (type == "expense") "food" else "salary" // Fallback estremo
         )
     }
 
@@ -235,24 +235,46 @@ fun AddTransactionScreen(
             )
         },
         bottomBar = {
-            BottomAppBar(
-                modifier = Modifier.height(72.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
+            // Sostituisci BottomAppBar con Surface per avere il pieno controllo del layout
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 8.dp, // Dà l'effetto di "rialzo" tipico della barra inferiore
+                color = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                Button(
-                    onClick = { trySave() },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 48.dp)
+                    // Opzionale: se usi edge-to-edge, aggiungi .navigationBarsPadding() qui
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = "Salva", modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (transactionToEdit == null) stringResource(R.string.save_transaction) else stringResource(R.string.update_transaction), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Button(
+                        onClick = { trySave() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp), // Altezza esplicita per evitare che sia troppo basso
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp) // Opzionale: arrotonda un po' il pulsante
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (transactionToEdit == null)
+                                stringResource(R.string.save_transaction)
+                            else
+                                stringResource(R.string.update_transaction),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
@@ -551,7 +573,7 @@ fun AddTransactionScreen(
                     }
 
                     if(isInstallment) {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) // Usato HorizontalDivider invece di Divider
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
