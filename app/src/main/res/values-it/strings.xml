@@ -114,4 +114,5 @@
     <string name="error_category_already_exists">Categoria già presente</string>
 
     <string name="unlock">Sblocca</string>
+    <string name="exit">Esci</string>
 </resources>

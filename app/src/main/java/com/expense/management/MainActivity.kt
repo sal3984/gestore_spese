@@ -282,7 +282,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Esci") },
+                    label = { Text(stringResource(R.string.exit)) },
                     selected = false,
                     onClick = {
                         coroutineScope.launch { drawerState.close() }

@@ -114,6 +114,7 @@
     <string name="error_category_already_exists">Category already present</string>
 
     <string name="unlock">Unlock</string>
+    <string name="exit">Exit</string>
 
 
     <!-- You likely need these as well, based on your code -->
