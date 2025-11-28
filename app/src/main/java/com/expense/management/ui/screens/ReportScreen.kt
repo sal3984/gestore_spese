@@ -6,7 +6,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -89,9 +91,14 @@ fun ReportScreen(
         }
     }
 
+    // AGGIUNTO: Stato per lo scroll della pagina intera
+    val scrollState = rememberScrollState()
+
+
     Column(modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
+        .verticalScroll(scrollState) // MODIFICA 1: Rende l'intera pagina scrollabile
     ) {
         // --- HEADER: Report Annuale ---
         Column(
@@ -178,12 +185,11 @@ fun ReportScreen(
             )
 
             // Lista Spese per Categoria
-            LazyColumn(
+            Column(
                 modifier = Modifier.fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                items(expenseByCategory) { (categoryId, amount) ->
+                expenseByCategory.forEach { (categoryId, amount) ->
                     // Usa la lista categories passata per cercare la categoria
                     val category = categories.firstOrNull { it.id == categoryId }
                         ?: categories.firstOrNull { it.id == "other" }
@@ -305,7 +311,9 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                                         .width(16.dp)
                                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                         .background(
-                                            if (selectedMonth == month) Color(0xFF2E7D32) else Color(0xFF43A047) // Verde scuro se selezionato
+                                            if (selectedMonth == month) Color(0xFF2E7D32) else Color(
+                                                0xFF43A047
+                                            ) // Verde scuro se selezionato
                                         )
                                 )
                             }
@@ -327,7 +335,12 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
                                         .width(16.dp)
-                                        .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                                        .clip(
+                                            RoundedCornerShape(
+                                                bottomStart = 4.dp,
+                                                bottomEnd = 4.dp
+                                            )
+                                        )
                                         .background(
                                             if (selectedMonth == month) Color(0xFFB71C1C) else MaterialTheme.colorScheme.error // Rosso scuro se selezionato
                                         )
