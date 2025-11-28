@@ -207,9 +207,21 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Metodi Backup
-    suspend fun getAllForBackup() = dao.getAllList()
+    suspend fun getAllForBackup(): BackupData {
+        return BackupData(
+            transactions = dao.getAllList(),
+            categories = categoryDao.getAllCategories()
+        )
+    }
 
-    fun restoreData(list: List<TransactionEntity>) {
+    fun restoreData(backupData: BackupData) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.insertAll(backupData.transactions)
+            categoryDao.insertAllCategories(backupData.categories)
+        }
+    }
+
+    fun restoreLegacyData(list: List<TransactionEntity>) {
         viewModelScope.launch(Dispatchers.IO) { dao.insertAll(list) }
     }
 
@@ -219,3 +231,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         return dao.getAllList().filter { it.type == "expense" }
     }
 }
+
+data class BackupData(
+    val transactions: List<TransactionEntity>,
+    val categories: List<CategoryEntity>
+)

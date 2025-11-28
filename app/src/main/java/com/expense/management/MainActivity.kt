@@ -54,8 +54,10 @@ import com.expense.management.ui.screens.ReportScreen
 import com.expense.management.ui.screens.SettingsScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.theme.GestoreSpeseTheme
+import com.expense.management.viewmodel.BackupData
 import com.expense.management.viewmodel.ExpenseViewModel
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -503,7 +505,7 @@ fun authenticateUser(context: Context, onSuccess: () -> Unit, onError: () -> Uni
         .setTitle("Accesso Gestore Spese")
         .setSubtitle("Usa biometria o PIN per accedere")
         // setNegativeButtonText NON può essere usato se si abilita DEVICE_CREDENTIAL
-        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         .build()
 
     biometricPrompt.authenticate(promptInfo)
@@ -600,15 +602,34 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
                     reader.forEachLine { sb.append(it) }
                 }
             }
+            val jsonString = sb.toString()
+
+            // Try new format (BackupData)
+            try {
+                 val backupData = Gson().fromJson(jsonString, BackupData::class.java)
+                 if (backupData.transactions != null) { // Check if it's really BackupData
+                     viewModel.restoreData(backupData)
+                     withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Ripristino completato: ${backupData.transactions.size} movimenti e ${backupData.categories.size} categorie.", Toast.LENGTH_SHORT).show()
+                     }
+                     return@launch
+                 }
+            } catch (e: JsonSyntaxException) {
+                // Ignore and try legacy format
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // Try legacy format (List<TransactionEntity>)
             val type = object : com.google.gson.reflect.TypeToken<List<TransactionEntity>>() {}.type
-            // Gson gestisce la conversione da JSON in TransactionEntity aggiornata
-            val list: List<TransactionEntity> = Gson().fromJson(sb.toString(), type)
-            viewModel.restoreData(list)
+            val list: List<TransactionEntity> = Gson().fromJson(jsonString, type)
+            viewModel.restoreLegacyData(list)
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Ripristinati ${list.size} movimenti! I dati appariranno a breve.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Ripristinati ${list.size} movimenti (formato vecchio)! I dati appariranno a breve.", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
+            e.printStackTrace()
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Errore Ripristino: File non valido o corrotto", Toast.LENGTH_LONG).show()
             }
