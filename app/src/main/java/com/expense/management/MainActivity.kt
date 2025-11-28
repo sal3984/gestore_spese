@@ -1,21 +1,28 @@
 package com.expense.management
 
+import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
@@ -24,13 +31,41 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -39,13 +74,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.expense.management.data.TransactionEntity
 import com.expense.management.ui.screens.AddTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
@@ -102,19 +130,20 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
 
+
     // Stato per gestire l'autenticazione
-    var isAuthenticated by remember { mutableStateOf(!isBiometricEnabled) }
+    var isAuthenticated by remember { viewModel.isAppUnlocked }
     var showBiometricPrompt by remember { mutableStateOf(isBiometricEnabled) }
 
     // Effetto per avviare l'autenticazione biometrica se abilitata
     LaunchedEffect(isBiometricEnabled) {
         if (isBiometricEnabled && !isAuthenticated) {
              authenticateUser(context,
-                 onSuccess = { isAuthenticated = true },
+                 onSuccess = { viewModel.isAppUnlocked.value = true },
                  onError = { /* Gestisci errore o chiudi app */ }
              )
         } else {
-            isAuthenticated = true
+            viewModel.isAppUnlocked.value = true
         }
     }
 
@@ -127,11 +156,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
                 Button(onClick = {
                      authenticateUser(context,
-                         onSuccess = { isAuthenticated = true },
+                         onSuccess = { viewModel.isAppUnlocked.value = true},
                          onError = { }
                      )
                 }, modifier = Modifier.padding(top = 24.dp)) {
-                    Text("Sblocca")
+                    Text(stringResource(R.string.unlock))
                 }
             }
         }
@@ -185,7 +214,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = stringResource(_root_ide_package_.com.expense.management.R.string.app_name),
+                    text = stringResource(R.string.app_name),
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -207,7 +236,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(stringResource(_root_ide_package_.com.expense.management.R.string.categories_title)) },
+                    label = { Text(stringResource(R.string.categories_title)) },
                     selected = currentRoute == "categories",
                     onClick = {
                         navController.navigate("categories")
@@ -218,7 +247,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(stringResource(_root_ide_package_.com.expense.management.R.string.data_management)) },
+                    label = { Text(stringResource(R.string.data_management)) },
                     selected = currentRoute == "data_management",
                     onClick = {
                         navController.navigate("data_management")
@@ -229,13 +258,24 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(stringResource(_root_ide_package_.com.expense.management.R.string.settings)) },
+                    label = { Text(stringResource(R.string.settings)) },
                     selected = currentRoute == "settings",
                     onClick = {
                         navController.navigate("settings")
                         coroutineScope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Esci") },
+                    selected = false,
+                    onClick = {
+                        coroutineScope.launch { drawerState.close() }
+                        (context as? Activity)?.finish()
+                    },
+                    icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Esci") },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
@@ -249,10 +289,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             val title = when (currentRoute) {
                                 "dashboard" -> "Dashboard"
                                 "report" -> "Report"
-                                "categories" -> stringResource(_root_ide_package_.com.expense.management.R.string.categories_title)
-                                "settings" -> stringResource(_root_ide_package_.com.expense.management.R.string.settings)
-                                "data_management" -> stringResource(_root_ide_package_.com.expense.management.R.string.data_management)
-                                else -> stringResource(_root_ide_package_.com.expense.management.R.string.app_name)
+                                "categories" -> stringResource(R.string.categories_title)
+                                "settings" -> stringResource(R.string.settings)
+                                "data_management" -> stringResource(R.string.data_management)
+                                else -> stringResource(R.string.app_name)
                             }
                             Text(title)
                         },
@@ -308,7 +348,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = Color.White
                     ) {
-                        Icon(Icons.Filled.Add, stringResource(_root_ide_package_.com.expense.management.R.string.add_transaction))
+                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
                     }
                 }
             }
@@ -505,7 +545,7 @@ fun authenticateUser(context: Context, onSuccess: () -> Unit, onError: () -> Uni
         .setTitle("Accesso Gestore Spese")
         .setSubtitle("Usa biometria o PIN per accedere")
         // setNegativeButtonText NON può essere usato se si abilita DEVICE_CREDENTIAL
-        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         .build()
 
     biometricPrompt.authenticate(promptInfo)

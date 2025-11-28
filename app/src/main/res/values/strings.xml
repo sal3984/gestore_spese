@@ -106,12 +106,14 @@
     <string name="cat_gift">Gift</string>
     <string name="cat_refund">Refund</string>
     <string name="cat_investment">Investments</string>
-    <string name="data_management_subtitle">Gestisci i tuoi dati, backup e esportazioni</string>
+    <string name="data_management_subtitle">Manage your data, backups and exports</string>
     <!-- ... existing strings ... -->
 
     <!-- Add this line to fix your specific error -->
     <string name="export_data_title">Export Data</string>
-    <string name="error_category_already_exists">Categoria già presente</string>
+    <string name="error_category_already_exists">Category already present</string>
+
+    <string name="unlock">Unlock</string>
 
 
     <!-- You likely need these as well, based on your code -->

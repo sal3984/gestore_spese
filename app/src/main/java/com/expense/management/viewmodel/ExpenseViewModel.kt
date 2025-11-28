@@ -2,6 +2,7 @@ package com.expense.management.viewmodel
 
 import android.app.Application
 import android.content.Context
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.AppDatabase
@@ -9,7 +10,12 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.ui.screens.category.CATEGORIES
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -21,6 +27,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val dao = db.transactionDao()
     private val categoryDao = db.categoryDao()
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+
+    // Aggiungi questa variabile nel ViewModel
+    var isAppUnlocked = mutableStateOf(false)
 
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> = dao.getAllFlow()
