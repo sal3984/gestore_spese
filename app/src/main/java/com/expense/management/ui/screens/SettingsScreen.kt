@@ -2,7 +2,15 @@ package com.expense.management.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,9 +18,31 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,14 +61,10 @@ fun SettingsScreen(
     currentDateFormat: String,
     ccDelay: Int,
     ccLimit: Float,
-    isAmountHidden: Boolean,
-    isBiometricEnabled: Boolean,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
-    onLimitChange: (Float) -> Unit,
-    onAmountHiddenChange: (Boolean) -> Unit,
-    onBiometricEnabledChange: (Boolean) -> Unit,
+    onLimitChange: (Float) -> Unit
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
@@ -149,37 +175,6 @@ fun SettingsScreen(
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- SEZIONE SICUREZZA & PRIVACY ---
-        SettingsSectionHeader(stringResource(R.string.security_usability))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column {
-                SettingsSwitchItem(
-                    icon = Icons.Default.VisibilityOff,
-                    title = stringResource(R.string.hide_amounts),
-                    subtitle = stringResource(R.string.hide_amounts_desc),
-                    checked = isAmountHidden,
-                    onCheckedChange = onAmountHiddenChange
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                SettingsSwitchItem(
-                    icon = Icons.Default.Security,
-                    title = stringResource(R.string.app_lock),
-                    subtitle = stringResource(R.string.app_lock_desc),
-                    checked = isBiometricEnabled,
-                    onCheckedChange = onBiometricEnabledChange
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 
     // Dialog Selezione Valuta
@@ -277,34 +272,5 @@ fun SettingsListItem(
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         },
         modifier = Modifier.clickable(onClick = onClick)
-    )
-}
-
-@Composable
-fun SettingsSwitchItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    ListItem(
-        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
-        supportingContent = { Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp)
-            )
-        },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
-        },
-        modifier = Modifier.clickable { onCheckedChange(!checked) }
     )
 }

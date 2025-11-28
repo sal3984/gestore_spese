@@ -58,7 +58,7 @@
     <string name="immediate">Immediate</string>
     <string name="months_delay">%1$d Months</string>
     <string name="cc_delay_desc">Delays CC expenses debit to the following month.</string>
-    <string name="security_usability">SECURITY AND USABILITY</string>
+    <string name="security_usability">Security and Privacy</string>
     <string name="hide_amounts">Hide Amounts for Privacy</string>
     <string name="hide_amounts_desc">Replaces amounts with asterisks in the Dashboard.</string>
     <string name="app_lock">App Lock (PIN/Biometric)</string>

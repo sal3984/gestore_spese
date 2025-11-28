@@ -58,7 +58,7 @@
     <string name="immediate">Immediato</string>
     <string name="months_delay">%1$d Mesi</string>
     <string name="cc_delay_desc">Sposta l\'addebito delle spese CC al mese successivo.</string>
-    <string name="security_usability">SICUREZZA E USABILITÀ</string>
+    <string name="security_usability">Sicurezza e privacy</string>
     <string name="hide_amounts">Oscura Importi per Privacy</string>
     <string name="hide_amounts_desc">Sostituisce gli importi con asterischi nella Dashboard.</string>
     <string name="app_lock">Blocco App (PIN/Biometrica)</string>

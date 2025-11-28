@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -79,6 +80,7 @@ import com.expense.management.ui.screens.AddTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
 import com.expense.management.ui.screens.ReportScreen
+import com.expense.management.ui.screens.SecurityScreen
 import com.expense.management.ui.screens.SettingsScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.theme.GestoreSpeseTheme
@@ -202,8 +204,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     // Definizione delle rotte principali
     val bottomNavRoutes = listOf("dashboard", "report")
-    // drawerRoutes ora include anche data_management
-    val drawerRoutes = listOf("categories", "settings", "data_management")
+    // drawerRoutes ora include anche security
+    val drawerRoutes = listOf("categories", "settings", "data_management", "security")
     val isBottomBarVisible = currentRoute in bottomNavRoutes
     // Mostra TopBar con menu in tutte le schermate principali
     val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
@@ -258,6 +260,17 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.security_usability)) },
+                    selected = currentRoute == "security",
+                    onClick = {
+                        navController.navigate("security")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Security, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
                     label = { Text(stringResource(R.string.settings)) },
                     selected = currentRoute == "settings",
                     onClick = {
@@ -292,6 +305,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 "categories" -> stringResource(R.string.categories_title)
                                 "settings" -> stringResource(R.string.settings)
                                 "data_management" -> stringResource(R.string.data_management)
+                                "security" -> stringResource(R.string.security_usability)
                                 else -> stringResource(R.string.app_name)
                             }
                             Text(title)
@@ -419,21 +433,13 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     }
 
                     composable(
-                        "settings",
+                        "security",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
                         exitTransition = { fadeOut(animationSpec = tween(300)) }
                     ) {
-                        SettingsScreen(
-                            currentCurrency = currentCurrency,
-                            currentDateFormat = currentDateFormat,
-                            ccDelay = currentCcDelay,
-                            ccLimit = currentCcLimit,
+                        SecurityScreen(
                             isAmountHidden = isAmountHidden,
                             isBiometricEnabled = isBiometricEnabled,
-                            onCurrencyChange = viewModel::updateCurrency,
-                            onDateFormatChange = viewModel::updateDateFormat,
-                            onDelayChange = viewModel::updateCcDelay,
-                            onLimitChange = viewModel::updateCcLimit,
                             onAmountHiddenChange = viewModel::updateIsAmountHidden,
                             onBiometricEnabledChange = { isEnabled ->
                                 // Se si tenta di abilitare, chiedi conferma biometrica
@@ -446,6 +452,23 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                     viewModel.updateBiometricEnabled(false)
                                 }
                             }
+                        )
+                    }
+
+                    composable(
+                        "settings",
+                        enterTransition = { fadeIn(animationSpec = tween(300)) },
+                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                    ) {
+                        SettingsScreen(
+                            currentCurrency = currentCurrency,
+                            currentDateFormat = currentDateFormat,
+                            ccDelay = currentCcDelay,
+                            ccLimit = currentCcLimit,
+                            onCurrencyChange = viewModel::updateCurrency,
+                            onDateFormatChange = viewModel::updateDateFormat,
+                            onDelayChange = viewModel::updateCcDelay,
+                            onLimitChange = viewModel::updateCcLimit
                         )
                     }
 
