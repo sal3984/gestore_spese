@@ -1,4 +1,4 @@
-package com.alessandrogregorio.gestorespese.ui.screens
+package com.expense.management.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -23,9 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.alessandrogregorio.gestorespese.R
-import com.alessandrogregorio.gestorespese.data.CategoryEntity
-import com.alessandrogregorio.gestorespese.data.TransactionEntity
+import com.expense.management.R
+import com.expense.management.data.CategoryEntity
+import com.expense.management.data.TransactionEntity
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter

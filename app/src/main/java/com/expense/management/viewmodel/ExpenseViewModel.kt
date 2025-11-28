@@ -1,13 +1,13 @@
-package com.alessandrogregorio.gestorespese.viewmodel
+package com.expense.management.viewmodel
 
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.alessandrogregorio.gestorespese.data.AppDatabase
-import com.alessandrogregorio.gestorespese.data.CategoryEntity
-import com.alessandrogregorio.gestorespese.data.TransactionEntity
-import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
+import com.expense.management.data.AppDatabase
+import com.expense.management.data.CategoryEntity
+import com.expense.management.data.TransactionEntity
+import com.expense.management.ui.screens.category.CATEGORIES
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch

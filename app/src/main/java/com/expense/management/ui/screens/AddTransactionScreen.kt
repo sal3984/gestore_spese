@@ -1,4 +1,4 @@
-package com.alessandrogregorio.gestorespese.ui.screens
+package com.expense.management.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -32,9 +32,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.alessandrogregorio.gestorespese.R
-import com.alessandrogregorio.gestorespese.data.CategoryEntity
-import com.alessandrogregorio.gestorespese.data.TransactionEntity
+import com.expense.management.R
+import com.expense.management.data.CategoryEntity
+import com.expense.management.data.TransactionEntity
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate

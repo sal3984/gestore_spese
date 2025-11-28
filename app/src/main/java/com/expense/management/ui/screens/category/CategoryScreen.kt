@@ -1,4 +1,4 @@
-package com.alessandrogregorio.gestorespese.ui.screens.category
+package com.expense.management.ui.screens.category
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,8 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.alessandrogregorio.gestorespese.R
-import com.alessandrogregorio.gestorespese.data.CategoryEntity
+import com.expense.management.R
+import com.expense.management.data.CategoryEntity
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)

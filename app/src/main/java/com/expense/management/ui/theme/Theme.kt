@@ -1,4 +1,4 @@
-package com.alessandrogregorio.gestorespese.ui.theme
+package com.expense.management.ui.theme
 
 import android.app.Activity
 import android.os.Build

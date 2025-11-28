@@ -1,10 +1,9 @@
-package com.alessandrogregorio.gestorespese
+package com.expense.management
 
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,19 +46,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.alessandrogregorio.gestorespese.data.CategoryEntity
-import com.alessandrogregorio.gestorespese.data.TransactionEntity
-import com.alessandrogregorio.gestorespese.ui.screens.AddTransactionScreen
-import com.alessandrogregorio.gestorespese.ui.screens.DashboardScreen
-import com.alessandrogregorio.gestorespese.ui.screens.DataManagementScreen
-import com.alessandrogregorio.gestorespese.ui.screens.ReportScreen
-import com.alessandrogregorio.gestorespese.ui.screens.SettingsScreen
-import com.alessandrogregorio.gestorespese.ui.screens.category.CATEGORIES
-import com.alessandrogregorio.gestorespese.ui.screens.category.CategoryScreen
-import com.alessandrogregorio.gestorespese.ui.theme.GestoreSpeseTheme
-import com.alessandrogregorio.gestorespese.viewmodel.ExpenseViewModel
+import com.expense.management.data.TransactionEntity
+import com.expense.management.ui.screens.AddTransactionScreen
+import com.expense.management.ui.screens.DashboardScreen
+import com.expense.management.ui.screens.DataManagementScreen
+import com.expense.management.ui.screens.ReportScreen
+import com.expense.management.ui.screens.SettingsScreen
+import com.expense.management.ui.screens.category.CategoryScreen
+import com.expense.management.ui.theme.GestoreSpeseTheme
+import com.expense.management.viewmodel.ExpenseViewModel
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,11 +66,10 @@ import java.io.OutputStreamWriter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.UUID
 import java.util.concurrent.Executor
 
 // Modifica: MainActivity ora estende FragmentActivity per supportare BiometricPrompt
-class MainActivity : FragmentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -188,7 +183,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = stringResource(R.string.app_name),
+                    text = stringResource(_root_ide_package_.com.expense.management.R.string.app_name),
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -210,7 +205,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.categories_title)) },
+                    label = { Text(stringResource(_root_ide_package_.com.expense.management.R.string.categories_title)) },
                     selected = currentRoute == "categories",
                     onClick = {
                         navController.navigate("categories")
@@ -221,7 +216,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.data_management)) },
+                    label = { Text(stringResource(_root_ide_package_.com.expense.management.R.string.data_management)) },
                     selected = currentRoute == "data_management",
                     onClick = {
                         navController.navigate("data_management")
@@ -232,7 +227,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.settings)) },
+                    label = { Text(stringResource(_root_ide_package_.com.expense.management.R.string.settings)) },
                     selected = currentRoute == "settings",
                     onClick = {
                         navController.navigate("settings")
@@ -252,10 +247,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             val title = when (currentRoute) {
                                 "dashboard" -> "Dashboard"
                                 "report" -> "Report"
-                                "categories" -> stringResource(R.string.categories_title)
-                                "settings" -> stringResource(R.string.settings)
-                                "data_management" -> stringResource(R.string.data_management)
-                                else -> stringResource(R.string.app_name)
+                                "categories" -> stringResource(_root_ide_package_.com.expense.management.R.string.categories_title)
+                                "settings" -> stringResource(_root_ide_package_.com.expense.management.R.string.settings)
+                                "data_management" -> stringResource(_root_ide_package_.com.expense.management.R.string.data_management)
+                                else -> stringResource(_root_ide_package_.com.expense.management.R.string.app_name)
                             }
                             Text(title)
                         },
@@ -311,7 +306,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = Color.White
                     ) {
-                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
+                        Icon(Icons.Filled.Add, stringResource(_root_ide_package_.com.expense.management.R.string.add_transaction))
                     }
                 }
             }
@@ -605,7 +600,7 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
                     reader.forEachLine { sb.append(it) }
                 }
             }
-            val type = object : TypeToken<List<TransactionEntity>>() {}.type
+            val type = object : com.google.gson.reflect.TypeToken<List<TransactionEntity>>() {}.type
             // Gson gestisce la conversione da JSON in TransactionEntity aggiornata
             val list: List<TransactionEntity> = Gson().fromJson(sb.toString(), type)
             viewModel.restoreData(list)

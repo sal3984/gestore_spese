@@ -1,4 +1,4 @@
-package com.alessandrogregorio.gestorespese.data
+package com.expense.management.data
 
 import android.content.Context
 import androidx.room.Database
