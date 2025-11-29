@@ -31,11 +31,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Aggiungi questa variabile nel ViewModel
     var isAppUnlocked = mutableStateOf(false)
 
-    // Stato per i suggerimenti (inizialmente vuoto)
-    private val _descriptionSuggestions = MutableStateFlow<List<String>>(emptyList())
-    val descriptionSuggestions: StateFlow<List<String>> = _descriptionSuggestions.asStateFlow()
-
-
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> = dao.getAllFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -91,6 +86,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Mantiene il mese visualizzato sulla dashboard anche dopo navigazioni
     private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
     val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
+
+    // SUGGERIMENTI AUTOCOMPLETE
+    private val _suggestions = MutableStateFlow<List<String>>(emptyList())
+    val suggestions = _suggestions.asStateFlow()
 
 
     init {
@@ -182,9 +181,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Funzione per l'Autocomplete
-    suspend fun getSuggestions(query: String): List<String> {
-        return if (query.length < 2) emptyList()
-        else withContext(Dispatchers.IO) { dao.getDescriptionSuggestions(query) }
+    fun searchDescriptionSuggestions(query: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (query.length < 2) {
+                _suggestions.value = emptyList()
+            } else {
+                _suggestions.value = dao.getDescriptionSuggestions(query)
+            }
+        }
     }
 
     // Aggiornamento Impostazioni
@@ -244,23 +248,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         // Filtra in memoria per semplicità (la query SQL sarebbe complessa con JOIN e filtraggi)
         return dao.getAllList().filter { it.type == "expense" }
     }
-
-    // Funzione per cercare le descrizioni nel Database
-    fun searchDescriptionSuggestions(query: String) {
-        viewModelScope.launch {
-            if (query.length >= 2) { // Cerca solo se l'utente ha digitato almeno 2 caratteri
-                // Assumendo che tu abbia un repository, chiamalo qui.
-                // Se usi direttamente il DAO: dao.getDescriptionSuggestions(query)
-                val results = dao.getDescriptionSuggestions(query)
-                _descriptionSuggestions.value = results
-            } else {
-                _descriptionSuggestions.value = emptyList()
-            }
-        }
-    }
 }
-
-
 
 data class BackupData(
     val transactions: List<TransactionEntity>,

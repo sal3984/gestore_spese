@@ -136,7 +136,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
 
-    val suggestions by viewModel.descriptionSuggestions.collectAsStateWithLifecycle()
+    val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
 
 

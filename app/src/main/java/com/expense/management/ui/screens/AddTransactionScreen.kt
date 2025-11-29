@@ -416,7 +416,7 @@ fun AddTransactionScreen(
                     label = { Text(stringResource(R.string.description)) }, // Assicurati di avere la stringa o usa una stringa fissa
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true), // Necessario per Material3 1.2+
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true), // Necessario per Material3 1.2+
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     trailingIcon = {
