@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -94,7 +95,8 @@ fun AddTransactionScreen(
     availableCategories: List<CategoryEntity>, // NUOVO: Lista dinamica delle categorie
     onSave: (TransactionEntity) -> Unit,
     onDelete: (String) -> Unit, // ID String (UUID)
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDescriptionChange: (String) -> Unit
 ) {
     // Stati Transazione
     var type by remember { mutableStateOf(transactionToEdit?.type ?: "expense") }
@@ -397,51 +399,59 @@ fun AddTransactionScreen(
                 }
             }
 
+            // ... All'interno della tua Column principale ...
+
+// Gestione Autocomplete Descrizione
             ExposedDropdownMenuBox(
-                expanded = isDescriptionExpanded,
-                onExpandedChange = { isDescriptionExpanded = !isDescriptionExpanded },
-                modifier = Modifier.fillMaxWidth()
+                expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
+                onExpandedChange = { isDescriptionExpanded = it }
             ) {
                 OutlinedTextField(
                     value = description,
-                    onValueChange = {
-                        description = it
+                    onValueChange = { newText ->
+                        description = newText
                         isDescriptionExpanded = true
+                        onDescriptionChange(newText) // Chiama il ViewModel per aggiornare i suggerimenti
                     },
-                    label = { Text(stringResource(R.string.description)) },
-                    placeholder = { stringResource(R.string.description_placeholder)},
+                    label = { Text(stringResource(R.string.description)) }, // Assicurati di avere la stringa o usa una stringa fissa
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true), // Necessario per Material3 1.2+
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDescriptionExpanded)
+                        // Icona per pulire il testo (opzionale ma comoda)
+                        if (description.isNotEmpty()) {
+                            IconButton(onClick = {
+                                description = ""
+                                onDescriptionChange("")
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear") // Importa Icons.Default.Close
+                            }
+                        }
                     },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        capitalization = KeyboardCapitalization.Sentences
-                    )
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                 )
 
-                if (filteredSuggestions.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = isDescriptionExpanded,
-                        onDismissRequest = { isDescriptionExpanded = false }
-                    ) {
-                        filteredSuggestions.forEach { suggestion ->
-                            DropdownMenuItem(
-                                text = { Text(text = suggestion) },
-                                onClick = {
-                                    description = suggestion
-                                    isDescriptionExpanded = false
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
-                        }
+                // Menu a tendina con i suggerimenti
+                ExposedDropdownMenu(
+                    expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
+                    onDismissRequest = { isDescriptionExpanded = false }
+                ) {
+                    suggestions.forEach { suggestion ->
+                        DropdownMenuItem(
+                            text = { Text(text = suggestion) },
+                            onClick = {
+                                description = suggestion
+                                isDescriptionExpanded = false
+                                onDescriptionChange("") // Pulisci i suggerimenti dopo la selezione
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
                     }
                 }
             }
+
 
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -31,6 +31,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Aggiungi questa variabile nel ViewModel
     var isAppUnlocked = mutableStateOf(false)
 
+    // Stato per i suggerimenti (inizialmente vuoto)
+    private val _descriptionSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val descriptionSuggestions: StateFlow<List<String>> = _descriptionSuggestions.asStateFlow()
+
+
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> = dao.getAllFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -239,7 +244,23 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         // Filtra in memoria per semplicità (la query SQL sarebbe complessa con JOIN e filtraggi)
         return dao.getAllList().filter { it.type == "expense" }
     }
+
+    // Funzione per cercare le descrizioni nel Database
+    fun searchDescriptionSuggestions(query: String) {
+        viewModelScope.launch {
+            if (query.length >= 2) { // Cerca solo se l'utente ha digitato almeno 2 caratteri
+                // Assumendo che tu abbia un repository, chiamalo qui.
+                // Se usi direttamente il DAO: dao.getDescriptionSuggestions(query)
+                val results = dao.getDescriptionSuggestions(query)
+                _descriptionSuggestions.value = results
+            } else {
+                _descriptionSuggestions.value = emptyList()
+            }
+        }
+    }
 }
+
+
 
 data class BackupData(
     val transactions: List<TransactionEntity>,

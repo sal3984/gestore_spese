@@ -69,6 +69,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -134,6 +135,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState() // RECUPERO LO STATO DEL MESE DASHBOARD
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
+
+    val suggestions by viewModel.descriptionSuggestions.collectAsStateWithLifecycle()
+
+
 
 
     // Stato per gestire l'autenticazione
@@ -517,7 +522,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 ccDelay = currentCcDelay,
                                 currencySymbol = currentCurrency,
                                 // Aggiunto argomento suggestions (vuoto per ora) e rimosso onGetSuggestions non necessario
-                                suggestions = emptyList(),
+                                suggestions = suggestions,
                                 dateFormat = currentDateFormat, // Nome argomento corretto
                                 onSave = { transaction ->
                                     viewModel.saveTransaction(transaction)
@@ -529,7 +534,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 },
                                 transactionToEdit = transactionToEdit,
                                 onBack = { navController.popBackStack() },
-                                availableCategories = allCategories
+                                availableCategories = allCategories,
+                                onDescriptionChange = { query ->
+                                    viewModel.searchDescriptionSuggestions(query) // Chiama la funzione del ViewModel
+                                }
                             )
                         }
                     }
