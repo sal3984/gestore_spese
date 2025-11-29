@@ -10,7 +10,7 @@
 
 ## Italiano
 
-**Gestore Spese** è un'applicazione Android nativa sviluppata con **Kotlin** e **Jetpack Compose**, progettata per offrire un controllo completo e flessibile sulle finanze personali.
+**Gestore Spese** è una moderna applicazione Android nativa sviluppata con **Kotlin** e **Jetpack Compose**, progettata per offrire un controllo completo e flessibile sulle finanze personali.
 
 A differenza delle classiche app di tracciamento spese, Gestore Spese include funzionalità avanzate per gestire scenari reali complessi come **carte di credito** (con addebito posticipato) e **pagamenti rateali**.
 
