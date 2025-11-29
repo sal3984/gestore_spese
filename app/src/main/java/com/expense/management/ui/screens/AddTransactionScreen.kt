@@ -55,6 +55,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -129,7 +131,7 @@ fun AddTransactionScreen(
     // Stati Pagamento Rateale
     // Logica mutualmente esclusiva: se isInstallment è true, ccDelay standard è ignorato in favore del calcolo rateale
     var isInstallment by remember { mutableStateOf(false) }
-    var installmentsCount by remember { mutableStateOf(3) } // Default 3 rate
+    var installmentsCount by remember { mutableIntStateOf(3) } // Default 3 rate
 
     var ignoreDateWarning by remember { mutableStateOf(false) }
 
@@ -144,6 +146,7 @@ fun AddTransactionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
+    val context = LocalContext.current
 
     var showPreviousMonthAlert by remember { mutableStateOf(false) }
 
@@ -155,8 +158,8 @@ fun AddTransactionScreen(
 
     // Funzione di Salvataggio
     fun trySave() {
-        val amount = try { amountText.replace(',', '.').toDouble() } catch (_: Exception) { 0.0 }
-        val originalAmount = try { originalAmountText.replace(',', '.').toDouble() } catch (_: Exception) { amount }
+        val amount = try { amountText.replace(',', '.').toDouble() } catch (e: Exception) { 0.0 }
+        val originalAmount = try { originalAmountText.replace(',', '.').toDouble() } catch (e: Exception) { amount }
 
         if (amount <= 0 || description.isBlank()) {
             scope.launch {
@@ -167,7 +170,7 @@ fun AddTransactionScreen(
 
         val transactionDate: LocalDate = try {
             LocalDate.parse(dateStr, displayFormatter)
-        } catch (_: DateTimeParseException) {
+        } catch (e: DateTimeParseException) {
             scope.launch { snackbarHostState.showSnackbar(errorInvalidDateFormat, "OK") }
             return
         }
@@ -385,9 +388,23 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Gestione Autocomplete Descrizione
+            // 2. Campo Descrizione con Autocomplete
+            val filteredSuggestions = remember(description, suggestions) {
+                if (description.isBlank()) {
+                    emptyList()
+                } else {
+                    suggestions.filter {
+                        it.contains(description, ignoreCase = true) &&
+                            !it.equals(description, ignoreCase = true)
+                    }
+                }
+            }
+
+            // ... All'interno della tua Column principale ...
+
+// Gestione Autocomplete Descrizione
             ExposedDropdownMenuBox(
-                expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
+                expanded = isDescriptionExpanded && filteredSuggestions.isNotEmpty(),
                 onExpandedChange = { isDescriptionExpanded = it }
             ) {
                 OutlinedTextField(
@@ -688,7 +705,7 @@ fun AddTransactionScreen(
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = try {
                 LocalDate.parse(dateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 Instant.now().toEpochMilli()
             }
         )
