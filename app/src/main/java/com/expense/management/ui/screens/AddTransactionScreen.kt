@@ -145,7 +145,6 @@ fun AddTransactionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
-    val context = LocalContext.current
 
     var showPreviousMonthAlert by remember { mutableStateOf(false) }
 
@@ -157,8 +156,8 @@ fun AddTransactionScreen(
 
     // Funzione di Salvataggio
     fun trySave() {
-        val amount = try { amountText.replace(',', '.').toDouble() } catch (e: Exception) { 0.0 }
-        val originalAmount = try { originalAmountText.replace(',', '.').toDouble() } catch (e: Exception) { amount }
+        val amount = try { amountText.replace(',', '.').toDouble() } catch (_: Exception) { 0.0 }
+        val originalAmount = try { originalAmountText.replace(',', '.').toDouble() } catch (_: Exception) { amount }
 
         if (amount <= 0 || description.isBlank()) {
             scope.launch {
@@ -169,7 +168,7 @@ fun AddTransactionScreen(
 
         val transactionDate: LocalDate = try {
             LocalDate.parse(dateStr, displayFormatter)
-        } catch (e: DateTimeParseException) {
+        } catch (_: DateTimeParseException) {
             scope.launch { snackbarHostState.showSnackbar(errorInvalidDateFormat, "OK") }
             return
         }

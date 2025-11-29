@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
+import androidx.core.content.edit
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -146,13 +147,13 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun loadEarliestMonth() {
         // Questo viene lanciato ogni volta che la lista delle transazioni cambia (dal DAO)
-        allTransactions.collect { transactions ->
+        allTransactions.collect { _ ->
             val minDateString = dao.getMinEffectiveDate()
             if (minDateString != null) {
                 try {
                     val minDate = LocalDate.parse(minDateString)
                     _earliestMonth.value = YearMonth.from(minDate)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Se la data è invalida, resta su YearMonth.now()
                     _earliestMonth.value = YearMonth.now()
                 }
@@ -194,17 +195,17 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Aggiornamento Impostazioni
     fun updateCurrency(symbol: String) {
         _currency.value = symbol
-        prefs.edit().putString("currency", symbol).apply()
+        prefs.edit { putString("currency", symbol) }
     }
 
     fun updateDateFormat(format: String) {
         _dateFormat.value = format
-        prefs.edit().putString("date_format", format).apply()
+        prefs.edit { putString("date_format", format) }
     }
 
     fun updateCcLimit(limit: Float) {
         _ccLimit.value = limit
-        prefs.edit().putFloat("cc_limit", limit).apply()
+        prefs.edit { putFloat("cc_limit", limit) }
     }
 
     fun updateCcDelay(delay: Int) {

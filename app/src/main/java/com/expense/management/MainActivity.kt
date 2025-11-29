@@ -104,7 +104,7 @@ import java.util.Locale
 import java.util.concurrent.Executor
 
 // Modifica: MainActivity ora estende FragmentActivity per supportare BiometricPrompt
-class MainActivity : androidx.fragment.app.FragmentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -143,7 +143,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     // Stato per gestire l'autenticazione
     var isAuthenticated by remember { viewModel.isAppUnlocked }
-    var showBiometricPrompt by remember { mutableStateOf(isBiometricEnabled) }
 
     // Effetto per avviare l'autenticazione biometrica se abilitata
     LaunchedEffect(isBiometricEnabled) {
@@ -586,7 +585,7 @@ fun authenticateUser(context: Context, onSuccess: () -> Unit, onError: () -> Uni
 }
 
 // --- Funzioni di gestione file (Backup/Restore/Export) ---
-suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
+fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
     val formatter = DateTimeFormatter.ofPattern(dateFormat)
     val coroutineScope = CoroutineScope(Dispatchers.IO)
     coroutineScope.launch {
@@ -598,7 +597,7 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
             expenses.forEach { t ->
                 val dateStr = try {
                     LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     t.date
                 }
                 val effectiveDateStr = try {
@@ -686,7 +685,7 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
                    Toast.makeText(context, "Ripristino completato: ${backupData.transactions.size} movimenti e ${backupData.categories.size} categorie.", Toast.LENGTH_SHORT).show()
                 }
                 return@launch
-            } catch (e: JsonSyntaxException) {
+            } catch (_: JsonSyntaxException) {
                 // Ignore and try legacy format
             } catch (e: Exception) {
                 e.printStackTrace()
