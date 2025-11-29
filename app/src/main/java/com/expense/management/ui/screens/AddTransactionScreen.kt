@@ -45,6 +45,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -331,40 +334,55 @@ fun AddTransactionScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Toggle Tipo (Spesa/Entrata)
-            Row(
+            // Toggle Tipo (Spesa/Entrata) - Modernizzato con SegmentedButton
+            SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                listOf("expense", "income").forEach { itemType ->
-                    val isSelected = type == itemType
-                    val color = if (itemType == "expense") Color(0xFFEF5350) else Color(0xFF43A047)
-                    Text(
-                        text = if (itemType == "expense") stringResource(R.string.expense_type) else stringResource(R.string.income_type),
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                type = itemType
-                                // Cambia categoria di default se cambia il tipo
-                                // AGGIORNAMENTO: Quando cambia il tipo, resetta selectedCategory
-                                // alla prima categoria valida del nuovo tipo
-                                val newCategory =
-                                    availableCategories.firstOrNull { it.type == itemType }
-                                if (newCategory != null) {
-                                    selectedCategory = newCategory.id
-                                }
+                val expenseSelected = type == "expense"
+                SegmentedButton(
+                    selected = expenseSelected,
+                    onClick = {
+                        if (type != "expense") {
+                            type = "expense"
+                            val newCategory =
+                                availableCategories.firstOrNull { it.type == "expense" }
+                            if (newCategory != null) {
+                                selectedCategory = newCategory.id
                             }
-                            .background(if (isSelected) color else Color.Transparent)
-                            .padding(12.dp)
+                        }
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = Color(0xFFEF5350), // Rosso
+                        activeContentColor = Color.White,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     )
+                ) {
+                    Text(stringResource(R.string.expense_type))
+                }
+
+                val incomeSelected = type == "income"
+                SegmentedButton(
+                    selected = incomeSelected,
+                    onClick = {
+                        if (type != "income") {
+                            type = "income"
+                            val newCategory = availableCategories.firstOrNull { it.type == "income" }
+                            if (newCategory != null) {
+                                selectedCategory = newCategory.id
+                            }
+                        }
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = Color(0xFF43A047), // Verde
+                        activeContentColor = Color.White,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    )
+                ) {
+                    Text(stringResource(R.string.income_type))
                 }
             }
 
@@ -388,23 +406,9 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2. Campo Descrizione con Autocomplete
-            val filteredSuggestions = remember(description, suggestions) {
-                if (description.isBlank()) {
-                    emptyList()
-                } else {
-                    suggestions.filter {
-                        it.contains(description, ignoreCase = true) &&
-                            !it.equals(description, ignoreCase = true)
-                    }
-                }
-            }
-
-            // ... All'interno della tua Column principale ...
-
-// Gestione Autocomplete Descrizione
+            // Gestione Autocomplete Descrizione
             ExposedDropdownMenuBox(
-                expanded = isDescriptionExpanded && filteredSuggestions.isNotEmpty(),
+                expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
                 onExpandedChange = { isDescriptionExpanded = it }
             ) {
                 OutlinedTextField(
