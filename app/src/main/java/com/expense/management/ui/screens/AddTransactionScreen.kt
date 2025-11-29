@@ -35,6 +35,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -353,7 +354,7 @@ fun AddTransactionScreen(
                                 // AGGIORNAMENTO: Quando cambia il tipo, resetta selectedCategory
                                 // alla prima categoria valida del nuovo tipo
                                 val newCategory =
-                                    availableCategories.filter { it.type == itemType }.firstOrNull()
+                                    availableCategories.firstOrNull { it.type == itemType }
                                 if (newCategory != null) {
                                     selectedCategory = newCategory.id
                                 }
@@ -411,7 +412,8 @@ fun AddTransactionScreen(
                     placeholder = { stringResource(R.string.description_placeholder)},
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(),
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDescriptionExpanded)
                     },
@@ -672,7 +674,7 @@ fun AddTransactionScreen(
                     onClick = {
                         showPreviousMonthAlert = false
                         ignoreDateWarning = true
-                        trySave() // Richiama salvataggio dopo conferma
+                        trySave()
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {

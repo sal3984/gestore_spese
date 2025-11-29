@@ -88,6 +88,7 @@ import com.expense.management.viewmodel.BackupData
 import com.expense.management.viewmodel.ExpenseViewModel
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -318,7 +319,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 )
                             }
                         },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                             titleContentColor = MaterialTheme.colorScheme.onSurface
                         )
@@ -584,7 +585,6 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
             // AGGIORNATO: Nuovo header con Valuta Originale
             val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
             val csvContent = StringBuilder(csvHeader)
-
             expenses.forEach { t ->
                 val dateStr = try {
                     LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
@@ -594,7 +594,7 @@ suspend fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri:
                 val effectiveDateStr = try {
                     // Assumendo che effectiveDate sia salvato come ISO_LOCAL_DATE (yyyy-MM-dd)
                     LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     t.effectiveDate
                 }
 
@@ -670,13 +670,12 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
             // Try new format (BackupData)
             try {
                  val backupData = Gson().fromJson(jsonString, BackupData::class.java)
-                 if (backupData.transactions != null) { // Check if it's really BackupData
-                     viewModel.restoreData(backupData)
-                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Ripristino completato: ${backupData.transactions.size} movimenti e ${backupData.categories.size} categorie.", Toast.LENGTH_SHORT).show()
-                     }
-                     return@launch
-                 }
+                // Check if it's really BackupData
+                viewModel.restoreData(backupData)
+                withContext(Dispatchers.Main) {
+                   Toast.makeText(context, "Ripristino completato: ${backupData.transactions.size} movimenti e ${backupData.categories.size} categorie.", Toast.LENGTH_SHORT).show()
+                }
+                return@launch
             } catch (e: JsonSyntaxException) {
                 // Ignore and try legacy format
             } catch (e: Exception) {
@@ -684,7 +683,7 @@ fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
             }
 
             // Try legacy format (List<TransactionEntity>)
-            val type = object : com.google.gson.reflect.TypeToken<List<TransactionEntity>>() {}.type
+            val type = object : TypeToken<List<TransactionEntity>>() {}.type
             val list: List<TransactionEntity> = Gson().fromJson(jsonString, type)
             viewModel.restoreLegacyData(list)
 
