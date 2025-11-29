@@ -63,7 +63,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -386,21 +385,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2. Campo Descrizione con Autocomplete
-            val filteredSuggestions = remember(description, suggestions) {
-                if (description.isBlank()) {
-                    emptyList()
-                } else {
-                    suggestions.filter {
-                        it.contains(description, ignoreCase = true) &&
-                            !it.equals(description, ignoreCase = true)
-                    }
-                }
-            }
-
-            // ... All'interno della tua Column principale ...
-
-// Gestione Autocomplete Descrizione
+            // Gestione Autocomplete Descrizione
             ExposedDropdownMenuBox(
                 expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
                 onExpandedChange = { isDescriptionExpanded = it }
@@ -703,7 +688,7 @@ fun AddTransactionScreen(
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = try {
                 LocalDate.parse(dateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 Instant.now().toEpochMilli()
             }
         )

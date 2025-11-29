@@ -210,19 +210,19 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateCcDelay(delay: Int) {
         _ccDelay.value = delay
-        prefs.edit().putInt("cc_delay", delay).apply()
+        prefs.edit { putInt("cc_delay", delay) }
     }
 
     // --- NUOVO: Funzione di aggiornamento isAmountHidden ---
     fun updateIsAmountHidden(isHidden: Boolean) {
         _isAmountHidden.value = isHidden
-        prefs.edit().putBoolean("hide_amount", isHidden).apply()
+        prefs.edit { putBoolean("hide_amount", isHidden) }
     }
 
     // --- NUOVO: Funzione di aggiornamento isBiometricEnabled ---
     fun updateBiometricEnabled(isEnabled: Boolean) {
         _isBiometricEnabled.value = isEnabled
-        prefs.edit().putBoolean("is_biometric_enabled", isEnabled).apply()
+        prefs.edit { putBoolean("is_biometric_enabled", isEnabled) }
     }
 
     // Metodi Backup
