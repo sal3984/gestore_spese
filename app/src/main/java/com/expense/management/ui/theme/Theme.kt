@@ -80,10 +80,15 @@ fun GestoreSpeseTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+
+            // 2. Gestisci il contrasto delle icone (scure su sfondo chiaro, chiare su sfondo scuro)
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
+
 
     MaterialTheme(
         colorScheme = colorScheme,
