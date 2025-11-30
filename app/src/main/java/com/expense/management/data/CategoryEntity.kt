@@ -11,5 +11,5 @@ data class CategoryEntity(
     // "income" o "expense"
     val type: String,
     // Per distinguere quelle default da quelle utente
-    val isCustom: Boolean = false
+    val isCustom: Boolean = false,
 )

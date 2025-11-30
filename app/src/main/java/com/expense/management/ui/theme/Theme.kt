@@ -11,7 +11,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -36,12 +35,13 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
 
     error = ExpenseRed,
-    onError = TextWhite
+    onError = TextWhite,
 )
 
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryDarkTheme,
-    onPrimary = Color(0xFF001054), // Dark blue text on light primary
+    // Dark blue text on light primary
+    onPrimary = Color(0xFF001054),
     primaryContainer = Color(0xFF1A237E),
     onPrimaryContainer = Color(0xFFE8EAF6),
 
@@ -57,15 +57,15 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = Color(0xFFE0E0E0),
 
     error = Color(0xFFCF6679),
-    onError = Color(0xFF37000B)
+    onError = Color(0xFF37000B),
 )
 
 @Composable
 fun GestoreSpeseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disabling dynamic color to enforce our custom palette for consistency
-    content: @Composable () -> Unit
+    // Dynamic color is available on Android 12+ Disabling dynamic color to enforce our custom palette for consistency
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -89,10 +89,9 @@ fun GestoreSpeseTheme(
         }
     }
 
-
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
+        content = content,
     )
 }
