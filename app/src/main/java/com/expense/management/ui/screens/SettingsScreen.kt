@@ -1,5 +1,6 @@
 package com.expense.management.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -178,7 +179,8 @@ fun SettingsScreen(
                     when(ccPaymentMode) {
                         "single" -> stringResource(R.string.setting_credit_card_message_1)
                         "installment" -> stringResource(R.string.setting_credit_card_message_2)
-                        else -> stringResource(R.string.setting_credit_card_message_3)                     },
+                        else -> stringResource(R.string.setting_credit_card_message_3)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -186,40 +188,55 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Ritardo Addebito
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                     Text(stringResource(R.string.debit_delay), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                     Surface(
-                         color = MaterialTheme.colorScheme.primaryContainer,
-                         shape = RoundedCornerShape(8.dp)
-                     ) {
-                         Text(
-                             if (ccDelay == 0) stringResource(R.string.immediate) else stringResource(R.string.months_delay, ccDelay),
-                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                             style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                             fontWeight = FontWeight.Bold
-                         )
-                     }
+                // Ritardo Addebito (Solo per Saldo Unico)
+                AnimatedVisibility(visible = ccPaymentMode == "single") {
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                stringResource(R.string.debit_delay),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    if (ccDelay == 0) stringResource(R.string.immediate) else stringResource(
+                                        R.string.months_delay,
+                                        ccDelay
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Slider(
+                            value = ccDelay.toFloat(),
+                            onValueChange = { onDelayChange(it.toInt()) },
+                            valueRange = 0f..3f,
+                            steps = 2,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Text(
+                            stringResource(R.string.cc_delay_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Slider(
-                    value = ccDelay.toFloat(),
-                    onValueChange = { onDelayChange(it.toInt()) },
-                    valueRange = 0f..3f,
-                    steps = 2,
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-                Text(
-                    stringResource(R.string.cc_delay_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

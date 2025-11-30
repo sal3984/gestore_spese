@@ -41,6 +41,7 @@
     <string name="proceed_and_save">PROCEDI E SALVA</string>
     <string name="delete_transaction_title">Elimina Movimento</string>
     <string name="delete_transaction_message">Sei sicuro di voler eliminare questa transazione? L\'azione non può essere annullata.</string>
+    <string name="delete_installment_message">Questa transazione fa parte di un piano rateale. L\'eliminazione rimuoverà tutte le rate associate. Continuare?</string>
     <string name="delete_uppercase">ELIMINA</string>
     <string name="error_invalid_input">Inserisci un importo e una descrizione validi.</string>
     <string name="error_invalid_date_format">Formato data non valido.</string>
@@ -80,7 +81,7 @@
     <string name="report_year">Report %1$d</string>
     <string name="total_savings">Risparmio Totale</string>
     <string name="balance_12_months">Bilancio anno Corrente</string>
-    <string name="category_detail_current_month">Dettaglio Categorie (Mese Corrente)</string>
+    <string name="category_detail_current_month">Dettaglio Categorie (%1$s)</string>
 
     <!-- Categories Screen -->
     <string name="categories_title">Categorie</string>
@@ -117,10 +118,21 @@
     <string name="exit">Esci</string>
     <string name="credit_card_mode">Modalità Carta di Credito</string>
     <string name="single_balance">Saldo Unico</string>
-    <string name="installment_plan">Pagamento Rateale</string>
+    <string name="installment_plan">Rateale</string>
     <string name="manual">Manuale</string>
     <string name="setting_credit_card_message_1">Tutte le spese con carta saranno impostate automaticamente a Saldo Unico</string>
     <string name="setting_credit_card_message_2">Tutte le spese con carta saranno impostate automaticamente come Rateali (potrai comunque modificarle)</string>
     <string name="setting_credit_card_message_3">Potrai scegliere volta per volta se pagare a Saldo o a Rate</string>
     <string name="installment">Rata</string>
+
+    <string name="payment_options">Opzioni Pagamento</string>
+    <string name="mode_locked_by_settings">Modalità bloccata dalle impostazioni.</string>
+    <string name="number_of_installments">Numero Rate: %1$d</string>
+    <string name="apply_cc_delay">Applica ritardo carta di credito</string>
+    <string name="cc_delay_installment_message_on">Le rate appariranno nel mese di addebito (mese succ.)</string>
+    <string name="cc_delay_installment_message_off">Le rate appariranno nel mese della data rata</string>
+    <string name="first_installment_date">Data Prima Rata</string>
+    <string name="first_installment_date_desc">La prima rata verrà addebitata a partire da questa data.</string>
+    <string name="expected_debit_date">Data Addebito Prevista:</string>
+    <string name="expected_debit_date_calc">Calcolata automaticamente con %1$d mesi di ritardo.</string>
 </resources>
