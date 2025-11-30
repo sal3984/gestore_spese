@@ -1,7 +1,6 @@
 package com.expense.management
 
 import android.app.Activity
-import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -9,8 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -67,7 +64,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -86,22 +82,11 @@ import com.expense.management.ui.screens.SecurityScreen
 import com.expense.management.ui.screens.SettingsScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.theme.GestoreSpeseTheme
-import com.expense.management.viewmodel.BackupData
+import com.expense.management.utils.BackupUtils
+import com.expense.management.utils.BiometricUtils
 import com.expense.management.viewmodel.ExpenseViewModel
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import java.util.concurrent.Executor
 
 // Modifica: MainActivity ora estende FragmentActivity per supportare BiometricPrompt
 class MainActivity : FragmentActivity() {
@@ -148,7 +133,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     // Effetto per avviare l'autenticazione biometrica se abilitata
     LaunchedEffect(isBiometricEnabled) {
         if (isBiometricEnabled && !isAuthenticated) {
-             authenticateUser(context,
+             BiometricUtils.authenticateUser(context,
                  onSuccess = { viewModel.isAppUnlocked.value = true },
                  onError = { /* Gestisci errore o chiudi app */ }
              )
@@ -165,7 +150,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 Text("Autenticati per accedere ai tuoi dati", style = MaterialTheme.typography.bodyLarge)
 
                 Button(onClick = {
-                     authenticateUser(context,
+                     BiometricUtils.authenticateUser(context,
                          onSuccess = { viewModel.isAppUnlocked.value = true},
                          onError = { }
                      )
@@ -182,13 +167,13 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri?.let { performRestore(context, viewModel, it) }
+        uri?.let { BackupUtils.performRestore(context, viewModel, it) }
     }
 
     val backupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
-        uri?.let { performBackup(context, viewModel, it) }
+        uri?.let { BackupUtils.performBackup(context, viewModel, it) }
     }
 
     val exportCsvLauncher = rememberLauncherForActivityResult(
@@ -196,7 +181,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     ) { uri: Uri? ->
         uri?.let {
             coroutineScope.launch {
-                performCsvExport(
+                BackupUtils.performCsvExport(
                     context = context,
                     viewModel = viewModel,
                     uri = it,
@@ -452,9 +437,9 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             onBiometricEnabledChange = { isEnabled ->
                                 // Se si tenta di abilitare, chiedi conferma biometrica
                                 if (isEnabled) {
-                                    authenticateUser(context,
+                                    BiometricUtils.authenticateUser(context,
                                         onSuccess = { viewModel.updateBiometricEnabled(true) },
-                                        onError = { Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show() }
+                                        onError = { }
                                     )
                                 } else {
                                     viewModel.updateBiometricEnabled(false)
@@ -545,168 +530,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-// Funzione helper per l'autenticazione biometrica
-fun authenticateUser(context: Context, onSuccess: () -> Unit, onError: () -> Unit) {
-    val fragmentActivity = context as? FragmentActivity ?: return
-    val executor: Executor = ContextCompat.getMainExecutor(context)
-
-    val biometricPrompt = BiometricPrompt(fragmentActivity, executor,
-        object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                super.onAuthenticationSucceeded(result)
-                onSuccess()
-            }
-
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                super.onAuthenticationError(errorCode, errString)
-                // Gestione errori (es. annullamento o nessun hardware)
-                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                     Toast.makeText(context, "Errore autenticazione: $errString", Toast.LENGTH_SHORT).show()
-                }
-                onError()
-            }
-
-            override fun onAuthenticationFailed() {
-                super.onAuthenticationFailed()
-                 Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show()
-            }
-        })
-
-    // AGGIORNATO PER SUPPORTO PIN/PATTERN
-    val promptInfo = BiometricPrompt.PromptInfo.Builder()
-        .setTitle("Accesso Gestore Spese")
-        .setSubtitle("Usa biometria o PIN per accedere")
-        // setNegativeButtonText NON può essere usato se si abilita DEVICE_CREDENTIAL
-        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-        .build()
-
-    biometricPrompt.authenticate(promptInfo)
-}
-
-// --- Funzioni di gestione file (Backup/Restore/Export) ---
-fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
-    val formatter = DateTimeFormatter.ofPattern(dateFormat)
-    val coroutineScope = CoroutineScope(Dispatchers.IO)
-    coroutineScope.launch {
-        try {
-            val expenses = viewModel.getExpensesForExport()
-            // AGGIORNATO: Nuovo header con Valuta Originale
-            val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
-            val csvContent = StringBuilder(csvHeader)
-            expenses.forEach { t ->
-                val dateStr = try {
-                    LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                } catch (_: Exception) {
-                    t.date
-                }
-                val effectiveDateStr = try {
-                    // Assumendo che effectiveDate sia salvato come ISO_LOCAL_DATE (yyyy-MM-dd)
-                    LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                } catch (_: Exception) {
-                    t.effectiveDate
-                }
-
-                // AGGIORNATO: Aggiunti i campi di valuta originale
-                csvContent.append(
-                    "${t.id}," +
-                        "\"$dateStr\"," +
-                        "\"${t.description.replace('\"', '\'')}\"," +
-                        "${String.format(Locale.US, "%.2f", t.amount)}," +
-                        "${String.format(Locale.US, "%.2f", t.originalAmount)}," + // Nuovo campo
-                        "\"${t.originalCurrency}\"," + // Nuovo campo
-                        "${t.categoryId}," +
-                        "${t.type}," +
-                        "${if (t.isCreditCard) "Sì" else "No"}," +
-                        "\"$effectiveDateStr\"\n"
-                )
-            }
-
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                OutputStreamWriter(outputStream).use { writer ->
-                    writer.write(csvContent.toString())
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Esportate ${expenses.size} spese in CSV!", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Errore durante l'esportazione: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-}
-
-fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
-    val coroutineScope = CoroutineScope(Dispatchers.IO)
-    coroutineScope.launch {
-        try {
-            val allData = viewModel.getAllForBackup()
-            // Gson gestisce i campi UUID e valuta, purché TransactionEntity sia aggiornata
-            val json = Gson().toJson(allData)
-
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                OutputStreamWriter(outputStream).use { writer ->
-                    writer.write(json)
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Backup salvato con successo!", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Errore durante il backup: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-}
-
-fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
-    val scope = CoroutineScope(Dispatchers.IO)
-    scope.launch {
-        try {
-            val sb = StringBuilder()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).use { reader ->
-                    reader.forEachLine { sb.append(it) }
-                }
-            }
-            val jsonString = sb.toString()
-
-            // Try new format (BackupData)
-            try {
-                 val backupData = Gson().fromJson(jsonString, BackupData::class.java)
-                // Check if it's really BackupData
-                viewModel.restoreData(backupData)
-                withContext(Dispatchers.Main) {
-                   Toast.makeText(context, "Ripristino completato: ${backupData.transactions.size} movimenti e ${backupData.categories.size} categorie.", Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            } catch (_: JsonSyntaxException) {
-                // Ignore and try legacy format
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            // Try legacy format (List<TransactionEntity>)
-            val type = object : TypeToken<List<TransactionEntity>>() {}.type
-            val list: List<TransactionEntity> = Gson().fromJson(jsonString, type)
-            viewModel.restoreLegacyData(list)
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Ripristinati ${list.size} movimenti (formato vecchio)! I dati appariranno a breve.", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Errore Ripristino: File non valido o corrotto", Toast.LENGTH_LONG).show()
             }
         }
     }
