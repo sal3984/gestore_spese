@@ -27,8 +27,8 @@ val CATEGORIES =
         Category("other", "Altro", "\u2753", "expense"),
         // ENTRATE (income)
         Category("salary", "Stipendio", "\uD83D\uDCB0", "income"),
-        Category("bonifico", "Bonifico", "\uD83D\uDCB3", "income"), // NUOVA
-        Category("gift", "Regalo", "\uD83C\uDF81", "income"), // NUOVA
-        Category("refund", "Rimborso", "\u21A9\uFE0F", "income"), // NUOVA
+        Category("bonifico", "Bonifico", "\uD83D\uDCB3", "income"),
+        Category("gift", "Regalo", "\uD83C\uDF81", "income"),
+        Category("refund", "Rimborso", "\u21A9\uFE0F", "income"),
         Category("investment", "Investimenti", "\uD83D\uDCCA", "income"),
     )

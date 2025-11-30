@@ -34,7 +34,7 @@ fun TransactionItem(
     dateFormat: String,
     isAmountHidden: Boolean,
     onDelete: (String) -> Unit,
-    onEdit: (String) -> Unit
+    onEdit: (String) -> Unit,
 ) {
     val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
@@ -44,7 +44,8 @@ fun TransactionItem(
     // Formatta la data della transazione
     val formattedDate = remember(transaction.date, dateFormat) {
         try {
-            val date = LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat)) // Assumendo che transaction.date sia salvata in dateFormat
+            // Assumendo che transaction.date sia salvata in dateFormat
+            val date = LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat))
             // Se transaction.date non è in formato ISO ma nel formato custom, il parse sopra funziona se dateFormat è corretto.
             // Tuttavia, AddTransactionScreen salva la data usando displayFormatter (che è dateFormat).
             // Quindi qui dobbiamo fare il parsing inverso se vogliamo riformattarla, oppure mostrarla direttamente.
@@ -69,7 +70,7 @@ fun TransactionItem(
                         onDelete(transaction.id)
                         showDeleteDialog = false
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text(stringResource(R.string.delete_uppercase))
                 }
@@ -78,7 +79,7 @@ fun TransactionItem(
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text(stringResource(R.string.cancel).uppercase())
                 }
-            }
+            },
         )
     }
 
@@ -88,19 +89,20 @@ fun TransactionItem(
             .padding(vertical = 4.dp)
             .clickable { onEdit(transaction.id) },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Flat look
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        // Flat look
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 // Icona Categoria
                 Box(
@@ -108,14 +110,17 @@ fun TransactionItem(
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(
-                             if(isIncome) MaterialTheme.colorScheme.secondaryContainer
-                             else MaterialTheme.colorScheme.primaryContainer
+                            if (isIncome) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            },
                         ),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = category.icon,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 }
 
@@ -127,15 +132,15 @@ fun TransactionItem(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
+                        maxLines = 1,
                     )
 
                     // Riga con Categoria e Data
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                         Text(
+                        Text(
                             categoryLabel,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
 
                         // Separatore (bullet point)
@@ -143,18 +148,18 @@ fun TransactionItem(
                             " • ",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp)
+                            modifier = Modifier.padding(horizontal = 4.dp),
                         )
 
                         // Data visualizzata accanto alla categoria
                         Text(
                             formattedDate,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
-                    if(transaction.isCreditCard && !isIncome) {
+                    if (transaction.isCreditCard && !isIncome) {
                         val ccLabel = if (transaction.installmentNumber != null && transaction.totalInstallments != null) {
                             "${stringResource(R.string.credit_card)} (${transaction.installmentNumber}/${transaction.totalInstallments})"
                         } else {
@@ -166,7 +171,7 @@ fun TransactionItem(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(top = 2.dp)
+                            modifier = Modifier.padding(top = 2.dp),
                         )
                     }
                 }
@@ -175,7 +180,7 @@ fun TransactionItem(
             // Sezione Importo e Delete
             Column(horizontalAlignment = Alignment.End) {
                 val amountText = if (isAmountHidden) {
-                    "*** ${currencySymbol}**"
+                    "*** $currencySymbol**"
                 } else {
                     "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.getDefault(), "%.2f", transaction.amount)}"
                 }
@@ -184,18 +189,18 @@ fun TransactionItem(
                     text = amountText,
                     style = MaterialTheme.typography.titleMedium,
                     color = amountColor,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
 
                 IconButton(
                     onClick = { showDeleteDialog = true },
-                    modifier = Modifier.size(24.dp).offset(x = 8.dp, y = 4.dp)
+                    modifier = Modifier.size(24.dp).offset(x = 8.dp, y = 4.dp),
                 ) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = stringResource(R.string.delete),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
@@ -205,7 +210,7 @@ fun TransactionItem(
 
 @Composable
 fun getLocalizedCategoryLabel(category: CategoryEntity): String {
-    return when(category.id) {
+    return when (category.id) {
         "food" -> stringResource(R.string.cat_food)
         "transport" -> stringResource(R.string.cat_transport)
         "housing" -> stringResource(R.string.cat_housing)
