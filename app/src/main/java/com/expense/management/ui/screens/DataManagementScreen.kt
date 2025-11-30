@@ -22,23 +22,21 @@ import com.expense.management.R
 fun DataManagementScreen(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
-    onExportCsv: () -> Unit
+    onExportCsv: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
-
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-
                 // Esporta CSV
                 Text(stringResource(R.string.export_data_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -49,7 +47,7 @@ fun DataManagementScreen(
                     onClick = onExportCsv,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(modifier = Modifier.width(12.dp))
@@ -67,9 +65,9 @@ fun DataManagementScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
                         onClick = onBackup,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)), // Green
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        modifier = Modifier.weight(1f).height(56.dp),
                     ) {
                         Icon(Icons.Default.CloudUpload, null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -78,9 +76,9 @@ fun DataManagementScreen(
 
                     Button(
                         onClick = onRestore,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)), // Orange
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        modifier = Modifier.weight(1f).height(56.dp),
                     ) {
                         Icon(Icons.Default.CloudDownload, null)
                         Spacer(modifier = Modifier.width(8.dp))

@@ -7,7 +7,7 @@ data class Category(
     val label: String,
     val icon: String,
     val type: String,
-) // AGGIUNTO: type
+)
 
 // Nota: Le label qui sono usate solo per il mapping interno/default se non si usa il contesto di composizione.
 // Per la UI, utilizzeremo le stringhe localizzate mappate dinamicamente nelle schermate.
