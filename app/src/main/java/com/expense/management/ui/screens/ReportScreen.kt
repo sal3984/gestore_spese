@@ -44,9 +44,8 @@ fun ReportScreen(
     isAmountHidden: Boolean,
 ) {
     // --- 1. STATO DEL MESE SELEZIONATO ---
-    // Di default nullo, oppure potremmo impostarlo su YearMonth.now() per mostrare subito il mese corrente.
-    // Se null, mostriamo il mese corrente per coerenza con la richiesta utente.
-    var selectedReportMonth by remember { mutableStateOf<YearMonth?>(null) }
+    // Di default inizializzato al mese corrente (YearMonth.now())
+    var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
 
     // Calcolo Risparmio Anno Corrente (Invariato)
     val currentYear = LocalDate.now().year
@@ -62,6 +61,7 @@ fun ReportScreen(
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
     // Determina quale mese usare: quello selezionato o quello corrente
+    // Se selectedReportMonth è null (per qualche motivo, anche se ora è inizializzato), usa now()
     val monthToShow = selectedReportMonth ?: YearMonth.now()
 
     val expenseByCategory = remember(transactions, monthToShow) {
@@ -183,7 +183,7 @@ fun ReportScreen(
                         currencySymbol = currencySymbol,
                         isAmountHidden = isAmountHidden,
                         selectedMonth = selectedReportMonth,
-                        onMonthSelected = { selectedReportMonth = if (selectedReportMonth == it) null else it }
+                        onMonthSelected = { selectedReportMonth = it } // Rimosso if per toggle, seleziona sempre
                     )
                 }
             }
@@ -390,7 +390,7 @@ fun MonthlyBarChart(
 
             Popup(
                 alignment = Alignment.TopCenter,
-                onDismissRequest = { onMonthSelected(month) } // Deseleziona cliccando fuori? No, meglio gestire diversamente o rimuovere onDismiss qui se gestito dal click sul grafico
+                onDismissRequest = { /* Non fare nulla al dismiss per non deselezionare involontariamente */ }
             ) {
                 // ... Logica popup invariata, solo visiva ...
                  Card(
