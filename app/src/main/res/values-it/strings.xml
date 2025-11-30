@@ -79,7 +79,7 @@
     <!-- Report -->
     <string name="report_year">Report %1$d</string>
     <string name="total_savings">Risparmio Totale</string>
-    <string name="balance_last_6_months">Bilancio Ultimi 6 Mesi</string>
+    <string name="balance_12_months">Bilancio anno Corrente</string>
     <string name="category_detail_current_month">Dettaglio Categorie (Mese Corrente)</string>
 
     <!-- Categories Screen -->

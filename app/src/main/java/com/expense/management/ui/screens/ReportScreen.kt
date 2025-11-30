@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -73,11 +71,15 @@ fun ReportScreen(
 
     val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
 
-    // Calcolo Bilancio Mensile (Ultimi 6 Mesi)
-    val monthlyBalances = remember(transactions) {
-        val currentYearMonth = YearMonth.now()
-        (0..5).map { i ->
-            val targetMonth = currentYearMonth.minusMonths(5 - i.toLong())
+    // Calcolo Bilancio Mensile (Anno Corrente) - MODIFICATO DA 6 MESI A TUTTO L'ANNO
+    val monthlyBalances = remember(transactions, currentYear) {
+        (1..12).map { month ->
+            val targetMonth = YearMonth.of(currentYear, month)
+            // Filtra le transazioni future rispetto al mese corrente?
+            // Se si vuole mostrare tutto l'anno anche i mesi vuoti/futuri, va bene così.
+            // Se si vuole nascondere i mesi futuri:
+            // if (targetMonth > YearMonth.now()) return@map targetMonth to 0.0
+
             val monthlyTransactions = transactions.filter {
                 try {
                     YearMonth.from(LocalDate.parse(it.effectiveDate)) == targetMonth
@@ -166,11 +168,12 @@ fun ReportScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        stringResource(R.string.balance_last_6_months),
+                        stringResource(R.string.balance_12_months), // Puoi rinominare la stringa se vuoi "Bilancio Annuale"
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
+                    // Passiamo la lista completa dei 12 mesi
                     MonthlyBarChart(monthlyBalances, currencySymbol, isAmountHidden)
                 }
             }
@@ -300,7 +303,8 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxWidth()
+                                .padding(horizontal = 2.dp), // Padding laterale per separare le barre
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             if (balance > 0) {
@@ -308,7 +312,7 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
-                                        .width(16.dp)
+                                        .fillMaxWidth() // Occupa tutta la larghezza disponibile (con padding)
                                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                         .background(
                                             if (selectedMonth == month) Color(0xFF2E7D32) else Color(
@@ -326,7 +330,8 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxWidth()
+                                .padding(horizontal = 2.dp), // Padding laterale per separare le barre
                             contentAlignment = Alignment.TopCenter
                         ) {
                             if (balance < 0) {
@@ -334,7 +339,7 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
-                                        .width(16.dp)
+                                        .fillMaxWidth() // Occupa tutta la larghezza disponibile
                                         .clip(
                                             RoundedCornerShape(
                                                 bottomStart = 4.dp,
@@ -351,9 +356,9 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Etichetta Mese
+                    // Etichetta Mese (solo iniziale)
                     Text(
-                        text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase().take(3),
+                        text = month.month.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(), // NARROW = "G", "F", "M"...
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (selectedMonth == month) FontWeight.ExtraBold else FontWeight.Bold,
                         fontSize = 10.sp,

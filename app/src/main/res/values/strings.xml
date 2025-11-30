@@ -75,7 +75,7 @@
     <!-- Report -->
     <string name="report_year">Report %1$d</string>
     <string name="total_savings">Total Savings</string>
-    <string name="balance_last_6_months">Balance Last 6 Months</string>
+    <string name="balance_12_months">Balance current Year</string>
     <string name="category_detail_current_month">Category Details (Current Month)</string>
 
     <!-- Categories Screen -->
