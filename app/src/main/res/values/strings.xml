@@ -135,4 +135,19 @@
     <string name="first_installment_date_desc">The first installment will be charged starting from this date.</string>
     <string name="expected_debit_date">Expected Debit Date:</string>
     <string name="expected_debit_date_calc">Calculated automatically with %1$d month(s) delay.</string>
+
+    <string name="export_success_csv">Exported %1$d expenses to CSV!</string>
+    <string name="export_error">Export error: %1$s</string>
+    <string name="backup_success">Backup saved successfully!</string>
+    <string name="backup_error">Backup error: %1$s</string>
+    <string name="restore_success">Restore completed: %1$d transactions and %2$d categories.</string>
+    <string name="restore_legacy_success">Restored %1$d transactions (legacy format)! Your data will appear shortly.</string>
+    <string name="restore_error_file">Restore Error: Invalid or corrupt file</string>
+
+    <!-- Biometric Utils Messages -->
+    <string name="biometric_error_auth">Authentication error: %1$s</string>
+    <string name="biometric_failed">Authentication failed</string>
+    <string name="biometric_title">Expense Manager Access</string>
+    <string name="biometric_subtitle">Use biometrics or PIN to log in</string>
+
 </resources>

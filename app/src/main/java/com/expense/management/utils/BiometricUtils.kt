@@ -6,6 +6,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.expense.management.R
 import java.util.concurrent.Executor
 
 object BiometricUtils {
@@ -23,20 +24,20 @@ object BiometricUtils {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
                     if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
-                        Toast.makeText(context, "Errore autenticazione: $errString", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.biometric_error_auth, errString), Toast.LENGTH_SHORT).show()
                     }
                     onError()
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    Toast.makeText(context, "Autenticazione fallita", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.biometric_failed), Toast.LENGTH_SHORT).show()
                 }
             })
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Accesso Gestore Spese")
-            .setSubtitle("Usa biometria o PIN per accedere")
+            .setTitle(context.getString(R.string.biometric_title))
+            .setSubtitle(context.getString(R.string.biometric_subtitle))
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
             .build()
 

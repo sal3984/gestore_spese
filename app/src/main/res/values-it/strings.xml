@@ -135,4 +135,19 @@
     <string name="first_installment_date_desc">La prima rata verrà addebitata a partire da questa data.</string>
     <string name="expected_debit_date">Data Addebito Prevista:</string>
     <string name="expected_debit_date_calc">Calcolata automaticamente con %1$d mesi di ritardo.</string>
+
+    <string name="export_success_csv">Esportate %1$d spese in CSV!</string>
+    <string name="export_error">Errore durante l\'esportazione: %1$s</string>
+    <string name="backup_success">Backup salvato con successo!</string>
+    <string name="backup_error">Errore durante il backup: %1$s</string>
+    <string name="restore_success">Ripristino completato: %1$d movimenti e %2$d categorie.</string>
+    <string name="restore_legacy_success">Ripristinati %1$d movimenti (formato vecchio)! I dati appariranno a breve.</string>
+    <string name="restore_error_file">Errore Ripristino: File non valido o corrotto</string>
+
+    <!-- Biometric Utils Messages -->
+    <string name="biometric_error_auth">Errore autenticazione: %1$s</string>
+    <string name="biometric_failed">Autenticazione fallita</string>
+    <string name="biometric_title">Accesso Gestore Spese</string>
+    <string name="biometric_subtitle">Usa biometria o PIN per accedere</string>
+
 </resources>

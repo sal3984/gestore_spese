@@ -3,6 +3,7 @@ package com.expense.management.utils
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import com.expense.management.R
 import com.expense.management.data.TransactionEntity
 import com.expense.management.viewmodel.BackupData
 import com.expense.management.viewmodel.ExpenseViewModel
@@ -28,6 +29,9 @@ object BackupUtils {
         coroutineScope.launch {
             try {
                 val expenses = viewModel.getExpensesForExport()
+                // Note: Header columns could also be localized if needed, but CSV headers are often technical/fixed.
+                // Keeping them hardcoded for now or you can fetch them from resources if strictly required.
+                // "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
                 val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
                 val csvContent = StringBuilder(csvHeader)
                 expenses.forEach { t ->
@@ -63,11 +67,11 @@ object BackupUtils {
                 }
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Esportate ${expenses.size} spese in CSV!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.export_success_csv, expenses.size), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Errore durante l'esportazione: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.export_error, e.localizedMessage), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -87,11 +91,11 @@ object BackupUtils {
                 }
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Backup salvato con successo!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.backup_success), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Errore durante il backup: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.backup_error, e.localizedMessage), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -113,7 +117,7 @@ object BackupUtils {
                      val backupData = Gson().fromJson(jsonString, BackupData::class.java)
                     viewModel.restoreData(backupData)
                     withContext(Dispatchers.Main) {
-                       Toast.makeText(context, "Ripristino completato: ${backupData.transactions.size} movimenti e ${backupData.categories.size} categorie.", Toast.LENGTH_SHORT).show()
+                       Toast.makeText(context, context.getString(R.string.restore_success, backupData.transactions.size, backupData.categories.size), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {
@@ -126,12 +130,12 @@ object BackupUtils {
                 viewModel.restoreLegacyData(list)
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Ripristinati ${list.size} movimenti (formato vecchio)! I dati appariranno a breve.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.restore_legacy_success, list.size), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Errore Ripristino: File non valido o corrotto", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.restore_error_file), Toast.LENGTH_LONG).show()
                 }
             }
         }
