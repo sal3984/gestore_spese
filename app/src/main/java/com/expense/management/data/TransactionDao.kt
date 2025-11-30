@@ -26,6 +26,10 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: String)
 
+    // NUOVO: Cancellazione per GroupID (per le rate)
+    @Query("DELETE FROM transactions WHERE groupId = :groupId")
+    suspend fun deleteByGroupId(groupId: String)
+
     // AGGIORNATO: L'ID per l'ottenimento è String
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?

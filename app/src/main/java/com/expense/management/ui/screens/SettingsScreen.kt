@@ -32,6 +32,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -61,10 +64,12 @@ fun SettingsScreen(
     currentDateFormat: String,
     ccDelay: Int,
     ccLimit: Float,
+    ccPaymentMode: String,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
-    onLimitChange: (Float) -> Unit
+    onLimitChange: (Float) -> Unit,
+    onCcPaymentModeChange: (String) -> Unit
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
@@ -135,6 +140,48 @@ fun SettingsScreen(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Modalità Pagamento (Saldo vs Rateale)
+                Text(
+                    stringResource(R.string.credit_card_mode),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = ccPaymentMode == "single",
+                        onClick = { onCcPaymentModeChange("single") },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                    ) {
+                        Text(stringResource(R.string.single_balance))
+                    }
+                    SegmentedButton(
+                        selected = ccPaymentMode == "installment",
+                        onClick = { onCcPaymentModeChange("installment") },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                    ) {
+                        Text(stringResource(R.string.installment_plan))
+                    }
+                    SegmentedButton(
+                        selected = ccPaymentMode == "manual",
+                        onClick = { onCcPaymentModeChange("manual") },
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                    ) {
+                        Text(stringResource(R.string.manual))
+                    }
+                }
+                Text(
+                    when(ccPaymentMode) {
+                        "single" -> stringResource(R.string.setting_credit_card_message_1)
+                        "installment" -> stringResource(R.string.setting_credit_card_message_2)
+                        else -> stringResource(R.string.setting_credit_card_message_3)                     },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))

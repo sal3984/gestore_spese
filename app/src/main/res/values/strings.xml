@@ -41,6 +41,7 @@
     <string name="proceed_and_save">PROCEED AND SAVE</string>
     <string name="delete_transaction_title">Delete Transaction</string>
     <string name="delete_transaction_message">Are you sure you want to delete this transaction? This action cannot be undone.</string>
+    <string name="delete_installment_message">This transaction is part of an installment plan. Deleting it will remove all related installments. Continue?</string>
     <string name="delete_uppercase">DELETE</string>
     <string name="error_invalid_input">Please enter a valid amount and description.</string>
     <string name="error_invalid_date_format">Invalid date format.</string>
@@ -107,18 +108,31 @@
     <string name="cat_refund">Refund</string>
     <string name="cat_investment">Investments</string>
     <string name="data_management_subtitle">Manage your data, backups and exports</string>
-    <!-- ... existing strings ... -->
 
-    <!-- Add this line to fix your specific error -->
     <string name="export_data_title">Export Data</string>
     <string name="error_category_already_exists">Category already present</string>
 
     <string name="unlock">Unlock</string>
     <string name="exit">Exit</string>
+    <string name="credit_card_mode">Credit Card Mode</string>
+    <string name="single_balance">Single Balance</string>
 
+    <string name="installment_plan">Installment plan</string>
+    <string name="manual">Manual</string>
+    <string name="installment">Rate</string>
 
-    <!-- You likely need these as well, based on your code -->
-    <!-- <string name="export_csv_desc">Export your data to a CSV file</string> -->
+    <string name="setting_credit_card_message_1">All card expenses will automatically be set to a single balance.</string>
+    <string name="setting_credit_card_message_2">All card expenses will automatically be set to installment payments (you can still change them).</string>
+    <string name="setting_credit_card_message_3">You can choose whether to pay by balance or installments.</string>
 
-    <!-- <string name="data_management_subtitle">Manage your data, backups, and exports</string> -->
+    <string name="payment_options">Payment Options</string>
+    <string name="mode_locked_by_settings">Mode locked by settings.</string>
+    <string name="number_of_installments">Number of Installments: %1$d</string>
+    <string name="apply_cc_delay">Apply credit card delay</string>
+    <string name="cc_delay_installment_message_on">Installments will appear in the debit month (next month)</string>
+    <string name="cc_delay_installment_message_off">Installments will appear in the installment date month</string>
+    <string name="first_installment_date">First Installment Date</string>
+    <string name="first_installment_date_desc">The first installment will be charged starting from this date.</string>
+    <string name="expected_debit_date">Expected Debit Date:</string>
+    <string name="expected_debit_date_calc">Calculated automatically based on closing day (%1$d of the month).</string>
 </resources>

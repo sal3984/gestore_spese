@@ -79,6 +79,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _isBiometricEnabled = MutableStateFlow(prefs.getBoolean("is_biometric_enabled", false))
     val isBiometricEnabled = _isBiometricEnabled.asStateFlow()
 
+    // NUOVO: Modalità Pagamento Carta di Credito (single vs installment)
+    // "single" = Rata Unica Mese Successivo (Default)
+    // "installment" = Pagamento Rateale
+    private val _ccPaymentMode = MutableStateFlow(prefs.getString("cc_payment_mode", "single") ?: "single")
+    val ccPaymentMode = _ccPaymentMode.asStateFlow()
+
     // NUOVO: Mese della transazione più vecchia per la navigazione
     private val _earliestMonth = MutableStateFlow(YearMonth.now())
     val earliestMonth = _earliestMonth.asStateFlow()
@@ -172,8 +178,20 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    // AGGIORNATO: Gestisce la cancellazione singola o per gruppo (rate)
     fun deleteTransaction(id: String) {
-        viewModelScope.launch(Dispatchers.IO) { dao.delete(id) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val transaction = dao.getById(id)
+            if (transaction != null) {
+                if (transaction.groupId != null) {
+                    // Se fa parte di un gruppo (rate), cancella tutto il gruppo
+                    dao.deleteByGroupId(transaction.groupId)
+                } else {
+                    // Altrimenti cancella la singola transazione
+                    dao.delete(id)
+                }
+            }
+        }
     }
 
     // NUOVO: Ottiene una transazione specifica
@@ -211,6 +229,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun updateCcDelay(delay: Int) {
         _ccDelay.value = delay
         prefs.edit { putInt("cc_delay", delay) }
+    }
+
+    // NUOVO: Update payment mode
+    fun updateCcPaymentMode(mode: String) {
+        _ccPaymentMode.value = mode
+        prefs.edit { putString("cc_payment_mode", mode) }
     }
 
     // --- NUOVO: Funzione di aggiornamento isAmountHidden ---

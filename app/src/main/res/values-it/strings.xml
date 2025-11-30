@@ -115,4 +115,12 @@
 
     <string name="unlock">Sblocca</string>
     <string name="exit">Esci</string>
+    <string name="credit_card_mode">Modalità Carta di Credito</string>
+    <string name="single_balance">Saldo Unico</string>
+    <string name="installment_plan">Pagamento Rateale</string>
+    <string name="manual">Manuale</string>
+    <string name="setting_credit_card_message_1">Tutte le spese con carta saranno impostate automaticamente a Saldo Unico</string>
+    <string name="setting_credit_card_message_2">Tutte le spese con carta saranno impostate automaticamente come Rateali (potrai comunque modificarle)</string>
+    <string name="setting_credit_card_message_3">Potrai scegliere volta per volta se pagare a Saldo o a Rate</string>
+    <string name="installment">Rata</string>
 </resources>

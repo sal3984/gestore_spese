@@ -130,6 +130,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentCurrency by viewModel.currency.collectAsState()
     val currentCcLimit by viewModel.ccLimit.collectAsState()
     val currentCcDelay by viewModel.ccDelay.collectAsState()
+    val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsState() // NUOVO STATO
     val currentDateFormat by viewModel.dateFormat.collectAsState()
     val earliestMonth by viewModel.earliestMonth.collectAsState()
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState() // RECUPERO LO STATO DEL MESE DASHBOARD
@@ -472,10 +473,12 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             currentDateFormat = currentDateFormat,
                             ccDelay = currentCcDelay,
                             ccLimit = currentCcLimit,
+                            ccPaymentMode = currentCcPaymentMode,
                             onCurrencyChange = viewModel::updateCurrency,
                             onDateFormatChange = viewModel::updateDateFormat,
                             onDelayChange = viewModel::updateCcDelay,
-                            onLimitChange = viewModel::updateCcLimit
+                            onLimitChange = viewModel::updateCcLimit,
+                            onCcPaymentModeChange = viewModel::updateCcPaymentMode
                         )
                     }
 
@@ -520,6 +523,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             AddTransactionScreen(
                                 ccDelay = currentCcDelay,
                                 currencySymbol = currentCurrency,
+                                ccPaymentMode = currentCcPaymentMode,
                                 // Aggiunto argomento suggestions (vuoto per ora) e rimosso onGetSuggestions non necessario
                                 suggestions = suggestions,
                                 dateFormat = currentDateFormat, // Nome argomento corretto

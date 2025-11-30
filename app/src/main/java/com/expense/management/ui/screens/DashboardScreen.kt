@@ -81,6 +81,14 @@ fun DashboardScreen(
 
     val ccProgress = if (ccLimit > 0) (creditCardUsed / ccLimit).toFloat() else 0f
 
+    // LIMITI NAVIGAZIONE:
+    // - Indietro: min(earliestMonth, oggi - 3 mesi)
+    // - Avanti: max(oggi + 3 mesi, ultima transazione nel futuro)
+    // (Nota: qui consideriamo solo 3 mesi in avanti fisso per semplicità, estendibile se ci sono rate future)
+
+    val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)
+    val maxMonth = today.plusMonths(12)
+
     // Unica LazyColumn per permettere lo scroll di tutta la pagina (anche header) in landscape
     LazyColumn(
         modifier = Modifier
@@ -115,7 +123,7 @@ fun DashboardScreen(
                     ) {
                         IconButton(
                             onClick = { onMonthChange(currentDashboardMonth.minusMonths(1)) },
-                            enabled = currentDashboardMonth > earliestMonth
+                            enabled = currentDashboardMonth > minMonth
                         ) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.previous_month), tint = Color.White)
                         }
@@ -129,7 +137,7 @@ fun DashboardScreen(
 
                         IconButton(
                             onClick = { onMonthChange(currentDashboardMonth.plusMonths(1)) },
-                            enabled = currentDashboardMonth < today
+                            enabled = currentDashboardMonth < maxMonth
                         ) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.next_month), tint = Color.White)
                         }

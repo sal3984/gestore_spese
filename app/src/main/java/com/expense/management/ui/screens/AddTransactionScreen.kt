@@ -57,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,26 +96,31 @@ fun AddTransactionScreen(
     currencySymbol: String,
     dateFormat: String,
     ccDelay: Int,
+    ccPaymentMode: String,
     suggestions: List<String>,
-    availableCategories: List<CategoryEntity>, // NUOVO: Lista dinamica delle categorie
+    availableCategories: List<CategoryEntity>,
     onSave: (TransactionEntity) -> Unit,
     onDelete: (String) -> Unit, // ID String (UUID)
     onBack: () -> Unit,
     onDescriptionChange: (String) -> Unit
 ) {
+    val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Stati Transazione
     var type by remember { mutableStateOf(transactionToEdit?.type ?: "expense") }
     var amountText by remember { mutableStateOf(transactionToEdit?.amount?.toString() ?: "") }
     var description by remember { mutableStateOf(transactionToEdit?.description ?: "") }
     var isDescriptionExpanded by remember { mutableStateOf(false) }
 
-
     // Filtra le categorie in base al tipo selezionato
     val currentTypeCategories = remember(availableCategories, type) {
         availableCategories.filter { it.type == type }
     }
 
-    // Seleziona categoria: usa quella esistente se c'è, altrimenti la prima disponibile del tipo corrente, o una di fallback
+    // Seleziona categoria
     var selectedCategory by remember(type, currentTypeCategories) {
         mutableStateOf(
             transactionToEdit?.categoryId.takeIf { id -> availableCategories.any { it.id == id } } // Mantieni se esiste
@@ -132,31 +138,76 @@ fun AddTransactionScreen(
     var showCurrencyDialog by remember { mutableStateOf(false) }
 
     // Stati Pagamento Rateale
-    // Logica mutualmente esclusiva: se isInstallment è true, ccDelay standard è ignorato in favore del calcolo rateale
-    var isInstallment by remember { mutableStateOf(false) }
-    var installmentsCount by remember { mutableIntStateOf(3) } // Default 3 rate
+    // Se è una nuova transazione, usiamo l'impostazione globale ccPaymentMode
+    // Se stiamo modificando, usiamo lo stato salvato nella transazione (se disponibile) o l'impostazione globale
+    var isInstallment by remember {
+        mutableStateOf(
+            if (transactionToEdit != null) {
+                // Se è una rata o ha totalInstallments > 1, è rateale
+                (transactionToEdit.totalInstallments ?: 1) > 1
+            } else {
+                // Nuova transazione: Default dalle impostazioni
+                ccPaymentMode == "installment"
+            }
+        )
+    }
+
+    // Se cambiamo ccPaymentMode dall'esterno (settings), vogliamo aggiornare isInstallment per le nuove transazioni?
+    // Probabilmente sì, ma solo se non è in modifica.
+    LaunchedEffect(ccPaymentMode) {
+        if (transactionToEdit == null) {
+            isInstallment = (ccPaymentMode == "installment")
+        }
+    }
+
+
+    var installmentsCount by remember {
+        mutableIntStateOf(transactionToEdit?.totalInstallments ?: 3)
+    } // Default 3 rate o valore esistente
+
+    var applyCcDelayToInstallments by remember { mutableStateOf(true) }
+
 
     var ignoreDateWarning by remember { mutableStateOf(false) }
 
     // Stati UI
     var dateStr by remember {
         mutableStateOf(
-            transactionToEdit?.date ?: LocalDate.now().format(DateTimeFormatter.ofPattern(dateFormat))
+            transactionToEdit?.date ?: LocalDate.now().format(displayFormatter)
         )
     }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
-    val context = LocalContext.current
+
+    // --- NUOVO: Stato per la data di inizio rata (solo per modalità rateale) ---
+    // Inizializzazione corretta: Se è una nuova transazione e applyCcDelayToInstallments è true, calcoliamo il 15 del mese successivo
+    var installmentStartDateStr by remember {
+        mutableStateOf(
+            if (transactionToEdit == null && applyCcDelayToInstallments) {
+                try {
+                    val tDate = LocalDate.now()
+                    tDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
+                } catch (e: Exception) {
+                    LocalDate.now().format(displayFormatter)
+                }
+            } else {
+                 // Default o manteniamo quello che c'era (in realtà per edit non usiamo questa logica solitamente)
+                 LocalDate.now().format(displayFormatter)
+            }
+        )
+    }
+    var showInstallmentDatePicker by remember { mutableStateOf(false) }
+
 
     var showPreviousMonthAlert by remember { mutableStateOf(false) }
+
+
 
     // Messaggi localizzati
     val errorInvalidInput = stringResource(R.string.error_invalid_input)
     val errorInvalidDateFormat = stringResource(R.string.error_invalid_date_format)
     val errorPastLimitDate = stringResource(R.string.error_past_limit_date)
+    val installmentLabel = stringResource(R.string.installment)
 
 
     // Funzione di Salvataggio
@@ -178,9 +229,8 @@ fun AddTransactionScreen(
             return
         }
 
-        // GESTIONE ID ROBUSTA: Se è una modifica, usa l'ID esistente. Se è nuova, genera un nuovo UUID.
+        // GESTIONE ID ROBUSTA
         val transactionId = transactionToEdit?.id ?: UUID.randomUUID().toString()
-
 
         // LOGICA AVVISO MESE PRECEDENTE
         val limitMonth = YearMonth.now().minusMonths(1)
@@ -201,34 +251,59 @@ fun AddTransactionScreen(
         }
 
         // LOGICA RATEALE
-        // Se è rateale e NON è una modifica (solo nuove transazioni rateali per ora per semplicità)
         if (isCreditCard && isInstallment && transactionToEdit == null) {
             val installmentAmount = amount / installmentsCount
             val groupId = UUID.randomUUID().toString()
 
+            // Parsing della data di inizio rata scelta dall'utente
+            val startInstallmentDate: LocalDate = try {
+                 LocalDate.parse(installmentStartDateStr, displayFormatter)
+            } catch (e: DateTimeParseException) {
+                 // Fallback alla data transazione se c'è un errore, ma non dovrebbe capitare col picker
+                 transactionDate
+            }
+
             // Loop per creare N transazioni
             for (i in 0 until installmentsCount) {
-                // Calcola la data della rata: aggiungi 'i' mesi alla data originale
-                val installmentDate = transactionDate.plusMonths(i.toLong())
+                // La data "contabile" della rata è la data di partenza + i mesi
+                val installmentDate = startInstallmentDate.plusMonths(i.toLong())
+
+                val shouldUseCcDelay = applyCcDelayToInstallments
 
                 // Calcola l'effective date per questa specifica rata
-                // NOTA: Le rate seguono la logica standard del ritardo CC se necessario, ma di base sono mensili
-                val effectiveDate = calculateEffectiveDate(installmentDate, true, ccDelay)
+                // Se è rateale, usiamo la data calcolata come effective date.
+                // Nota: Se l'utente ha scelto una data specifica per la rata, quella dovrebbe essere rispettata.
+                // Qui assumiamo che la data scelta sia già quella "di addebito" desiderata o comunque la data base.
+                // Se vogliamo applicare comunque il ritardo CC sulla data scelta, usiamo calculateEffectiveDate.
+                // Se l'utente ha scelto esplicitamente la data di partenza della rata, probabilmente intende quella.
+                // Tuttavia, per coerenza col sistema CC, applichiamo il ritardo se la data scelta non è già "futura" abbastanza?
+                // Semplificazione: Usiamo calculateEffectiveDate sulla data della rata, che rispetterà la logica del ritardo CC se configurata.
 
-                val newId = if(i==0) transactionId else UUID.randomUUID().toString() // La prima usa l'ID generato sopra
+                val effectiveDate = if (applyCcDelayToInstallments) {
+                    // CASO 1: Applica ritardo -> 15 del mese successivo
+                    installmentDate
+                        .plusMonths(1)       // Va al mese successivo
+                        .withDayOfMonth(15)  // Imposta il giorno 15 (o usa 'ccDelay' se preferisci variabile)
+                        .format(DateTimeFormatter.ISO_LOCAL_DATE)
+                } else {
+                    // CASO 2: Niente ritardo -> Mantieni la data della rata così com'è
+                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+
+                val newId = if(i==0) transactionId else UUID.randomUUID().toString()
 
                 onSave(
                     TransactionEntity(
                         id = newId,
-                        date = installmentDate.format(displayFormatter),
-                        description = "$description (Rata ${i+1}/$installmentsCount)", // Descrizione con info rata
+                        date = installmentDate.format(displayFormatter), // Data visualizzata della rata
+                        description = "$description ($installmentLabel ${i+1}/$installmentsCount)",
                         amount = installmentAmount,
                         categoryId = selectedCategory,
                         type = type,
                         isCreditCard = true,
                         originalAmount = originalAmount / installmentsCount,
                         originalCurrency = originalCurrency,
-                        effectiveDate = effectiveDate,
+                        effectiveDate = effectiveDate, // Data effettiva per il saldo
                         installmentNumber = i + 1,
                         totalInstallments = installmentsCount,
                         groupId = groupId
@@ -249,7 +324,7 @@ fun AddTransactionScreen(
                     originalAmount = originalAmount,
                     originalCurrency = originalCurrency,
                     effectiveDate = calculateEffectiveDate(transactionDate, isCreditCard, ccDelay),
-                    installmentNumber = transactionToEdit?.installmentNumber, // Mantieni se esiste (modifica rata)
+                    installmentNumber = transactionToEdit?.installmentNumber,
                     totalInstallments = transactionToEdit?.totalInstallments,
                     groupId = transactionToEdit?.groupId
                 )
@@ -279,31 +354,29 @@ fun AddTransactionScreen(
             )
         },
         bottomBar = {
-            // Sostituisci BottomAppBar con Surface per avere il pieno controllo del layout
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 8.dp, // Dà l'effetto di "rialzo" tipico della barra inferiore
+                shadowElevation = 8.dp,
                 color = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 16.dp) // Togli il bottom qui
-                        .navigationBarsPadding() // Aggiungi questo: spinge su il contenuto sopra la barra di sistema
-                        .padding(bottom = 16.dp) // Un po' di margine extra estetico
-                    // Opzionale: se usi edge-to-edge, aggiungi .navigationBarsPadding() qui
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                        .navigationBarsPadding()
+                        .padding(bottom = 16.dp)
                 ) {
                     Button(
                         onClick = { trySave() },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp), // Altezza esplicita per evitare che sia troppo basso
+                            .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp) // Opzionale: arrotonda un po' il pulsante
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
@@ -334,7 +407,7 @@ fun AddTransactionScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Toggle Tipo (Spesa/Entrata) - Modernizzato con SegmentedButton
+            // Toggle Tipo (Spesa/Entrata) - SegmentedButton
             SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -346,16 +419,13 @@ fun AddTransactionScreen(
                     onClick = {
                         if (type != "expense") {
                             type = "expense"
-                            val newCategory =
-                                availableCategories.firstOrNull { it.type == "expense" }
-                            if (newCategory != null) {
-                                selectedCategory = newCategory.id
-                            }
+                            val newCategory = availableCategories.firstOrNull { it.type == "expense" }
+                            if (newCategory != null) selectedCategory = newCategory.id
                         }
                     },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = Color(0xFFEF5350), // Rosso
+                        activeContainerColor = Color(0xFFEF5350),
                         activeContentColor = Color.White,
                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     )
@@ -370,14 +440,12 @@ fun AddTransactionScreen(
                         if (type != "income") {
                             type = "income"
                             val newCategory = availableCategories.firstOrNull { it.type == "income" }
-                            if (newCategory != null) {
-                                selectedCategory = newCategory.id
-                            }
+                            if (newCategory != null) selectedCategory = newCategory.id
                         }
                     },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = Color(0xFF43A047), // Verde
+                        activeContainerColor = Color(0xFF43A047),
                         activeContentColor = Color.White,
                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     )
@@ -387,8 +455,6 @@ fun AddTransactionScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // --- ORDINE CAMBIATO: Data -> Descrizione -> Importo ---
 
             // 1. Data Transazione
             OutlinedTextField(
@@ -406,7 +472,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Gestione Autocomplete Descrizione
+            // 2. Descrizione con Autocomplete
             ExposedDropdownMenuBox(
                 expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
                 onExpandedChange = { isDescriptionExpanded = it }
@@ -416,29 +482,26 @@ fun AddTransactionScreen(
                     onValueChange = { newText ->
                         description = newText
                         isDescriptionExpanded = true
-                        onDescriptionChange(newText) // Chiama il ViewModel per aggiornare i suggerimenti
+                        onDescriptionChange(newText)
                     },
-                    label = { Text(stringResource(R.string.description)) }, // Assicurati di avere la stringa o usa una stringa fissa
+                    label = { Text(stringResource(R.string.description)) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true), // Necessario per Material3 1.2+
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     trailingIcon = {
-                        // Icona per pulire il testo (opzionale ma comoda)
                         if (description.isNotEmpty()) {
                             IconButton(onClick = {
                                 description = ""
                                 onDescriptionChange("")
                             }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear") // Importa Icons.Default.Close
+                                Icon(Icons.Default.Close, contentDescription = "Clear")
                             }
                         }
                     },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                 )
-
-                // Menu a tendina con i suggerimenti
                 ExposedDropdownMenu(
                     expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
                     onDismissRequest = { isDescriptionExpanded = false }
@@ -449,7 +512,7 @@ fun AddTransactionScreen(
                             onClick = {
                                 description = suggestion
                                 isDescriptionExpanded = false
-                                onDescriptionChange("") // Pulisci i suggerimenti dopo la selezione
+                                onDescriptionChange("")
                             },
                             contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                         )
@@ -457,10 +520,9 @@ fun AddTransactionScreen(
                 }
             }
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 3. Campo Importo nella Valuta Principale
+            // 3. Importo
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it.replace(',', '.') },
@@ -470,7 +532,7 @@ fun AddTransactionScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // NUOVO: Opzione Valuta Originale
+            // Valuta Originale
             AnimatedVisibility(visible = originalCurrency != currencySymbol) {
                 Column {
                     Row(
@@ -479,7 +541,6 @@ fun AddTransactionScreen(
                             .padding(top = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Importo Originale
                         OutlinedTextField(
                             value = originalAmountText,
                             onValueChange = { originalAmountText = it.replace(',', '.') },
@@ -488,28 +549,18 @@ fun AddTransactionScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.weight(1f)
                         )
-
                         Spacer(modifier = Modifier.width(8.dp))
-
-                        // Pulsante Valuta Originale
                         OutlinedTextField(
                             value = originalCurrency,
                             onValueChange = { originalCurrency = it.uppercase(Locale.ROOT) },
                             label = { Text(stringResource(R.string.currency_original_label)) },
                             readOnly = true,
-                            trailingIcon = {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            },
+                            trailingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                             modifier = Modifier
                                 .weight(0.7f)
                                 .clickable { showCurrencyDialog = true }
                         )
                     }
-
                     Text(
                         text = stringResource(R.string.main_currency_hint, currencySymbol),
                         style = MaterialTheme.typography.labelSmall,
@@ -530,7 +581,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Selezione Categoria
+            // Categoria
             Text(
                 stringResource(R.string.category_label),
                 modifier = Modifier.fillMaxWidth(),
@@ -567,10 +618,7 @@ fun AddTransactionScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = category.icon,
-                                    fontSize = 24.sp
-                                )
+                                Text(text = category.icon, fontSize = 24.sp)
                             }
                             Text(
                                 text = category.label.split(" ").first(),
@@ -586,68 +634,196 @@ fun AddTransactionScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Opzione Carta di Credito
+            // Modifica: disabilitata se stiamo modificando una transazione esistente
+            val isEditing = transactionToEdit != null
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isCreditCard = !isCreditCard }
+                    .then(if(!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(checked = isCreditCard, onCheckedChange = { isCreditCard = it })
+                Checkbox(
+                    checked = isCreditCard,
+                    onCheckedChange = { if(!isEditing) isCreditCard = it },
+                    enabled = !isEditing // Disabilita la checkbox in modifica
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge)
             }
 
-            // Opzione Rateale (Visibile solo se CC è attivo e non stiamo modificando una transazione esistente)
-            // AGGIORNATO: Il titolo ora è "Pagamento Rateale (Alternativo al saldo mensile)" per chiarezza
-            AnimatedVisibility(visible = isCreditCard && transactionToEdit == null) {
+            // Gestione Avanzata Carta di Credito (Mutuamente esclusiva + Data personalizzabile)
+            // VISIBILE SE: (isCreditCard è true) E (Siamo in modalità creazione OPPURE siamo in modifica di una transazione esistente)
+            AnimatedVisibility(visible = isCreditCard) {
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceContainerLow,
-                        RoundedCornerShape(8.dp)
-                    )
-                    .border(
-                        1.dp,
-                        MaterialTheme.colorScheme.outlineVariant,
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(8.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .padding(16.dp) // Padding interno aumentato
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = isInstallment, onCheckedChange = { isInstallment = it })
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text("Pagamento Rateale", style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "Paga in più rate mensili invece che in un'unica soluzione posticipata.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    Text(
+                        text = stringResource(R.string.payment_options),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    // SE STIAMO MODIFICANDO (transactionToEdit != null), BLOCCA LE OPZIONI
+                    val isSelectionLocked = (ccPaymentMode != "manual") || isEditing
+
+                    // Segmented Button per scelta Saldo vs Rateale
+                    // Ora riflette ccPaymentMode, ma l'utente può sovrascrivere per questa transazione
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = !isInstallment,
+                            onClick = { if (!isSelectionLocked) isInstallment = false },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            enabled = !isSelectionLocked
+                        ) {
+                            Text(stringResource(R.string.single_balance))
+                        }
+                        SegmentedButton(
+                            selected = isInstallment,
+                            onClick = { if (!isSelectionLocked) isInstallment = true },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            enabled = !isSelectionLocked
+                        ) {
+                            Text(stringResource(R.string.installment_plan))
                         }
                     }
 
-                    if(isInstallment) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) // Usato HorizontalDivider invece di Divider
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Numero Rate: $installmentsCount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                        }
+                    if (isSelectionLocked) {
+                        Text(
+                            text = if (isEditing) stringResource(R.string.mode_locked_by_settings) else stringResource(R.string.mode_locked_by_settings),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if(isCreditCard && isInstallment) {
+                        // SEZIONE RATEALE
+                        Text(stringResource(R.string.number_of_installments, installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Slider(
                             value = installmentsCount.toFloat(),
                             onValueChange = { installmentsCount = it.toInt() },
-                            valueRange = 2f..12f, // Da 2 a 12 rate
-                            steps = 10
+                            valueRange = 2f..12f,
+                            steps = 10,
+                            enabled = !isEditing // Disabilita se in modifica
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // SE IN MODIFICA, NASCONDI LE OPZIONI DI CREAZIONE PIANO (Delay, Data Inizio)
+                        if (!isEditing) {
+
+                            // NUOVO SWITCH: Applica ritardo CC
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { applyCcDelayToInstallments = !applyCcDelayToInstallments }
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Checkbox(
+                                    checked = applyCcDelayToInstallments,
+                                    onCheckedChange = { isChecked ->
+                                        applyCcDelayToInstallments = isChecked
+                                        // LOGICA AGGIUNTA: Se attivo il ritardo, imposto il 15 del mese successivo
+                                        if (isChecked) {
+                                            try {
+                                                val tDate = LocalDate.parse(dateStr, displayFormatter)
+                                                val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
+                                                installmentStartDateStr = nextMonth15.format(displayFormatter)
+                                            } catch (e: Exception) {
+                                                // Fallback in caso di errore parsing
+                                                installmentStartDateStr = dateStr
+                                            }
+                                        } else {
+                                            // Se lo disattivo, torno alla data della transazione
+                                            installmentStartDateStr = dateStr
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = stringResource(R.string.apply_cc_delay),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = if (applyCcDelayToInstallments)
+                                            stringResource(R.string.cc_delay_installment_message_on)
+                                        else
+                                            stringResource(R.string.cc_delay_installment_message_off),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Data Partenza Prima Rata
+                             OutlinedTextField(
+                                value = installmentStartDateStr,
+                                onValueChange = { installmentStartDateStr = it },
+                                label = { Text(stringResource(R.string.first_installment_date)) },
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { showInstallmentDatePicker = true }) {
+                                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                stringResource(R.string.first_installment_date_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+
+                    } else {
+                        // SEZIONE SALDO UNICO
+                        // Mostriamo la data di addebito prevista (calcolata)
+                        val effectiveDate = try {
+                            // Se stiamo modificando, usiamo la effectiveDate salvata se disponibile, altrimenti ricalcoliamo
+                            if (transactionToEdit != null && transactionToEdit.effectiveDate.isNotEmpty()) {
+                                transactionToEdit.effectiveDate
+                            } else {
+                                // Parsing della data transazione corrente
+                                val tDate = LocalDate.parse(dateStr, displayFormatter)
+                                calculateEffectiveDate(tDate, true, ccDelay)
+                            }
+                        } catch (e: Exception) { "" }
+
+                        val formattedEffectiveDate = try {
+                            LocalDate.parse(effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(displayFormatter)
+                        } catch (e: Exception) { effectiveDate }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                             Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                             Spacer(modifier = Modifier.width(8.dp))
+                             Column {
+                                 Text(stringResource(R.string.expected_debit_date), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                 Text(formattedEffectiveDate, style = MaterialTheme.typography.bodyLarge)
+                             }
+                        }
+                        Text(
+                            stringResource(R.string.expected_debit_date_calc, ccDelay),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
             }
-
-
         }
     }
 
@@ -704,7 +880,7 @@ fun AddTransactionScreen(
         )
     }
 
-    // Dialog Data Picker
+    // Dialog Data Picker Transazione
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = try {
@@ -719,8 +895,46 @@ fun AddTransactionScreen(
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
                         dateStr = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(displayFormatter)
+
+                        // LOGICA MODIFICATA:
+                        // Se cambio la data transazione, aggiorno la data inizio rata rispettando la scelta del ritardo
+                        if (applyCcDelayToInstallments) {
+                            try {
+                                val tDate = LocalDate.parse(dateStr, displayFormatter)
+                                val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
+                                installmentStartDateStr = nextMonth15.format(displayFormatter)
+                            } catch (e: Exception) {
+                                installmentStartDateStr = dateStr
+                            }
+                        } else {
+                            installmentStartDateStr = dateStr
+                        }
                     }
                     showDatePicker = false
+                }) { Text("OK") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // NUOVO: Dialog Data Picker per Rata
+    if (showInstallmentDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = try {
+                LocalDate.parse(installmentStartDateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            } catch (e: Exception) {
+                Instant.now().toEpochMilli()
+            }
+        )
+        DatePickerDialog(
+            onDismissRequest = { showInstallmentDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        installmentStartDateStr = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(displayFormatter)
+                    }
+                    showInstallmentDatePicker = false
                 }) { Text("OK") }
             }
         ) {
@@ -733,11 +947,18 @@ fun AddTransactionScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text(stringResource(R.string.delete_transaction_title)) },
-            text = { Text(stringResource(R.string.delete_transaction_message)) },
+            text = {
+                // Se è una rata (ha un groupId), avvisa che verranno cancellate tutte
+                if (transactionToEdit?.groupId != null) {
+                     Text(stringResource(R.string.delete_installment_message))
+                } else {
+                     Text(stringResource(R.string.delete_transaction_message))
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        transactionToEdit?.let { onDelete(it.id) }
+                        transactionToEdit?.let { onDelete(it.id) } // onDelete gestirà la logica del groupId
                         showDeleteDialog = false
                         onBack()
                     },
@@ -755,14 +976,12 @@ fun AddTransactionScreen(
     }
 }
 
-// Funzione helper per il calcolo della data di addebito
+// Funzione helper per il calcolo della data di addebito (INVARIATA)
 private fun calculateEffectiveDate(transactionDate: LocalDate, isCreditCard: Boolean, ccDelay: Int): String {
     val effectiveDate = if (isCreditCard) {
-        // Logica per CC: Pagamento rateizzato ogni [ccDelay] del mese successivo
         var nextPaymentMonth = YearMonth.from(transactionDate).plusMonths(1)
-        var paymentDate = nextPaymentMonth.atDay(ccDelay.coerceIn(1, nextPaymentMonth.lengthOfMonth()))
+        var paymentDate = nextPaymentMonth.atDay(ccDelay.coerceIn(15, nextPaymentMonth.lengthOfMonth()))
 
-        // Se la data di pagamento è già passata nel mese successivo (es. oggi è 20/01 e paymentDate è 15/02, OK; ma se transactionDate è 20/02 e pagamento è 15/02, si sposta al mese dopo)
         if (paymentDate.isBefore(transactionDate)) {
             nextPaymentMonth = nextPaymentMonth.plusMonths(1)
             paymentDate = nextPaymentMonth.atDay(ccDelay.coerceIn(1, nextPaymentMonth.lengthOfMonth()))
@@ -770,8 +989,7 @@ private fun calculateEffectiveDate(transactionDate: LocalDate, isCreditCard: Boo
         paymentDate
 
     } else {
-        // Per tutte le altre: la data della transazione stessa
         transactionDate
     }
-    return effectiveDate.format(DateTimeFormatter.ISO_LOCAL_DATE) // Salva in formato standard per l'ordinamento
+    return effectiveDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 }
