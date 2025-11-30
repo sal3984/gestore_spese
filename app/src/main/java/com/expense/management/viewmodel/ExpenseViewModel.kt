@@ -30,7 +30,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val repository = ExpenseRepository(db.transactionDao(), db.categoryDao())
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
-    var isAppUnlocked = mutableStateOf(false)
+    // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
+    // Se la biometria NON è abilitata, l'app è sbloccata di default (true).
+    // Se la biometria È abilitata, l'app è bloccata (false).
+    var isAppUnlocked = mutableStateOf(!prefs.getBoolean("is_biometric_enabled", false))
 
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> = repository.allTransactions
