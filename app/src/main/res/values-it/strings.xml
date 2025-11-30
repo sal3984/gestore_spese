@@ -22,7 +22,7 @@
     <string name="update_transaction">AGGIORNA MOVIMENTO</string>
     <string name="expense_type">SPESA</string>
     <string name="income_type">ENTRATA</string>
-    <string name="amount_converted_label">Importo (%1$s - Converso)</string>
+    <string name="amount_converted_label">Importo (%1$s - Convertito)</string>
     <string name="amount_original_label">Importo Orig.</string>
     <string name="currency_original_label">Valuta Orig.</string>
     <string name="main_currency_hint">Inserisci l\'importo nella valuta principale (%1$s) nel campo superiore.</string>
