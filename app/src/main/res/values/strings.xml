@@ -134,5 +134,5 @@
     <string name="first_installment_date">First Installment Date</string>
     <string name="first_installment_date_desc">The first installment will be charged starting from this date.</string>
     <string name="expected_debit_date">Expected Debit Date:</string>
-    <string name="expected_debit_date_calc">Calculated automatically based on closing day (%1$d of the month).</string>
+    <string name="expected_debit_date_calc">Calculated automatically with %1$d month(s) delay.</string>
 </resources>

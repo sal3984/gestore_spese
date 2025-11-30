@@ -281,8 +281,7 @@ fun AddTransactionScreen(
 
                 val effectiveDate = if (applyCcDelayToInstallments) {
                     // CASO 1: Applica ritardo -> 15 del mese successivo
-                    installmentDate
-                        .plusMonths(1)       // Va al mese successivo
+                    installmentDate // Va al mese successivo
                         .withDayOfMonth(15)  // Imposta il giorno 15 (o usa 'ccDelay' se preferisci variabile)
                         .format(DateTimeFormatter.ISO_LOCAL_DATE)
                 } else {
@@ -976,17 +975,31 @@ fun AddTransactionScreen(
     }
 }
 
-// Funzione helper per il calcolo della data di addebito (INVARIATA)
+// Funzione helper per il calcolo della data di addebito
 private fun calculateEffectiveDate(transactionDate: LocalDate, isCreditCard: Boolean, ccDelay: Int): String {
     val effectiveDate = if (isCreditCard) {
-        var nextPaymentMonth = YearMonth.from(transactionDate).plusMonths(1)
-        var paymentDate = nextPaymentMonth.atDay(ccDelay.coerceIn(15, nextPaymentMonth.lengthOfMonth()))
+        // 1. Calcola il mese di pagamento previsto (Mese successivo)
+        var paymentMonth = YearMonth.from(transactionDate).plusMonths(1)
 
-        if (paymentDate.isBefore(transactionDate)) {
-            nextPaymentMonth = nextPaymentMonth.plusMonths(1)
-            paymentDate = nextPaymentMonth.atDay(ccDelay.coerceIn(1, nextPaymentMonth.lengthOfMonth()))
+        // 2. Calcola la data, usando ccDelay come numero di MESI di ritardo
+        // Se ccDelay è 0 (Immediato) -> transactionDate
+        // Se ccDelay è > 0 -> Giorno 15 del mese (paymentMonth + (ccDelay-1))
+
+        if (ccDelay == 0) {
+            transactionDate
+        } else {
+            // Se c'è ritardo, fissiamo al giorno 15 del mese successivo (+eventuali mesi extra se ccDelay > 1)
+            // Nota: ccDelay=1 significa "1 Mese dopo".
+            // La logica precedente usava ccDelay come GIORNO nel coerceIn. Correggiamo.
+
+            // Se ccDelay rappresenta i mesi di ritardo (es. 1), allora:
+            // Mese base: transactionDate
+            // Mese target: transactionDate + ccDelay mesi
+            // Giorno target: 15 (standard)
+
+            val targetMonth = YearMonth.from(transactionDate).plusMonths(ccDelay.toLong())
+            targetMonth.atDay(15)
         }
-        paymentDate
 
     } else {
         transactionDate
