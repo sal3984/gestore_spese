@@ -1,5 +1,8 @@
 package com.expense.management.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
@@ -44,7 +46,6 @@ fun ReportScreen(
     isAmountHidden: Boolean,
 ) {
     // --- 1. STATO DEL MESE SELEZIONATO ---
-    // Di default inizializzato al mese corrente (YearMonth.now())
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
 
     // Calcolo Risparmio Anno Corrente (Invariato)
@@ -60,8 +61,6 @@ fun ReportScreen(
         .sumOf { if(it.type == "income") it.amount else -it.amount }
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
-    // Determina quale mese usare: quello selezionato o quello corrente
-    // Se selectedReportMonth è null (per qualche motivo, anche se ora è inizializzato), usa now()
     val monthToShow = selectedReportMonth ?: YearMonth.now()
 
     val expenseByCategory = remember(transactions, monthToShow) {
@@ -183,7 +182,7 @@ fun ReportScreen(
                         currencySymbol = currencySymbol,
                         isAmountHidden = isAmountHidden,
                         selectedMonth = selectedReportMonth,
-                        onMonthSelected = { selectedReportMonth = it } // Rimosso if per toggle, seleziona sempre
+                        onMonthSelected = { selectedReportMonth = it }
                     )
                 }
             }
@@ -285,15 +284,16 @@ fun MonthlyBarChart(
     data: List<Pair<YearMonth, Double>>,
     currencySymbol: String,
     isAmountHidden: Boolean,
-    selectedMonth: YearMonth?, // Nuovo parametro
-    onMonthSelected: (YearMonth) -> Unit // Nuova callback
+    selectedMonth: YearMonth?,
+    onMonthSelected: (YearMonth) -> Unit
 ) {
     if (data.isEmpty()) return
 
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
-    // Rimosso stato locale selectedMonth
 
-    Box {
+    // MODIFICA: Box padre che contiene il grafico E il tooltip (non più Popup)
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // Il grafico
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -308,10 +308,9 @@ fun MonthlyBarChart(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onMonthSelected(month) }, // Usa la callback
+                        ) { onMonthSelected(month) },
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Area del grafico
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -380,40 +379,38 @@ fun MonthlyBarChart(
             }
         }
 
-        // Popup informativo (opzionale, mantenuto se utile per vedere l'importo esatto)
-        selectedMonth?.let { month ->
-            // Mostra il popup solo se stiamo cliccando (o sempre se selezionato? Dipende dalla UX desiderata.
-            // Attualmente il popup copre un po', ma ora che la lista sotto cambia, forse il popup è ridondante?
-            // Lo lascio perché dà il valore esatto del bilancio (entrate - uscite), mentre la lista sotto mostra solo le SPESE.
-
-            val balance = data.find { it.first == month }?.second ?: 0.0
-
-            Popup(
-                alignment = Alignment.TopCenter,
-                onDismissRequest = { /* Non fare nulla al dismiss per non deselezionare involontariamente */ }
-            ) {
-                // ... Logica popup invariata, solo visiva ...
-                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface),
+        // TOOLTIP EMBEDDED (non Popup)
+        // Lo mostriamo sopra il grafico usando l'allineamento del Box
+        // AnimatedVisibility per un effetto più fluido
+        AnimatedVisibility(
+            visible = selectedMonth != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            selectedMonth?.let { month ->
+                val balance = data.find { it.first == month }?.second ?: 0.0
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f)),
                     shape = RoundedCornerShape(8.dp),
-                    elevation = CardDefaults.cardElevation(8.dp),
-                    modifier = Modifier.padding(top = 16.dp)
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    // Un po' di margine superiore se necessario, o padding interno
                 ) {
                     Column(
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                         Text(
-                             text = month.month.getDisplayName(TextStyle.FULL, Locale.getDefault()).replaceFirstChar { it.uppercase() },
-                             style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.inverseOnSurface
-                         )
-                         Text(
-                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", balance)}",
-                             style = MaterialTheme.typography.bodyLarge,
-                             fontWeight = FontWeight.Bold,
-                             color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
-                         )
+                        Text(
+                            text = month.month.getDisplayName(TextStyle.FULL, Locale.getDefault()).replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.inverseOnSurface
+                        )
+                        Text(
+                            text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", balance)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
+                        )
                     }
                 }
             }
