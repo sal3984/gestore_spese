@@ -346,7 +346,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     DataManagementScreen(
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
-                        onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
+                        onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
+                        onBack = { navController.popBackStack() } // Aggiunto callback mancante
                     )
                 }
 
@@ -372,7 +373,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             } else {
                                 viewModel.updateBiometricEnabled(false)
                             }
-                        }
+                        },
+                        onBack = { navController.popBackStack() } // Aggiunto callback mancante
                     )
                 }
 
