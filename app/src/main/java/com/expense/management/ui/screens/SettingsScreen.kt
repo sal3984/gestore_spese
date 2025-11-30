@@ -20,8 +20,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,7 +72,9 @@ fun SettingsScreen(
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
-    onCcPaymentModeChange: (String) -> Unit
+    onCcPaymentModeChange: (String) -> Unit,
+    onNavigateToSecurity: () -> Unit,
+    onNavigateToDataManagement: () -> Unit
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
@@ -109,6 +113,22 @@ fun SettingsScreen(
                     title = stringResource(R.string.date_format),
                     value = currentDateFormat,
                     onClick = { showDateFormatDialog = true }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+
+                // NUOVI LINK A SECURITY E DATA MANAGEMENT
+                SettingsListItem(
+                    icon = Icons.Default.Security,
+                    title = stringResource(R.string.security_usability),
+                    value = stringResource(R.string.app_lock) + ", " + stringResource(R.string.hide_amounts),
+                    onClick = onNavigateToSecurity
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                SettingsListItem(
+                    icon = Icons.Default.Backup,
+                    title = stringResource(R.string.data_management),
+                    value = stringResource(R.string.backup) + ", " + stringResource(R.string.restore) + ", CSV",
+                    onClick = onNavigateToDataManagement
                 )
             }
         }
