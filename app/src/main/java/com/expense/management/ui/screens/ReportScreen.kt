@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,18 +31,24 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
 fun ReportScreen(
     transactions: List<TransactionEntity>,
-    categories: List<CategoryEntity>, // AGGIUNTO
+    categories: List<CategoryEntity>,
     currencySymbol: String,
     dateFormat: String,
-    isAmountHidden: Boolean, // NUOVO PARAMETRO
+    isAmountHidden: Boolean,
 ) {
-    // Calcolo Risparmio Anno Corrente
+    // --- 1. STATO DEL MESE SELEZIONATO ---
+    // Di default nullo, oppure potremmo impostarlo su YearMonth.now() per mostrare subito il mese corrente.
+    // Se null, mostriamo il mese corrente per coerenza con la richiesta utente.
+    var selectedReportMonth by remember { mutableStateOf<YearMonth?>(null) }
+
+    // Calcolo Risparmio Anno Corrente (Invariato)
     val currentYear = LocalDate.now().year
     val savings = transactions
         .filter {
@@ -52,13 +60,15 @@ fun ReportScreen(
         }
         .sumOf { if(it.type == "income") it.amount else -it.amount }
 
-    // Calcolo Spese per Categoria (Mese Corrente)
-    val currentMonth = LocalDate.now().monthValue
-    val expenseByCategory = remember(transactions) {
+    // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
+    // Determina quale mese usare: quello selezionato o quello corrente
+    val monthToShow = selectedReportMonth ?: YearMonth.now()
+
+    val expenseByCategory = remember(transactions, monthToShow) {
         transactions
             .filter {
                 it.type == "expense" && try {
-                    LocalDate.parse(it.effectiveDate).monthValue == currentMonth
+                    YearMonth.from(LocalDate.parse(it.effectiveDate)) == monthToShow
                 } catch (e: Exception) {
                     false
                 }
@@ -71,15 +81,10 @@ fun ReportScreen(
 
     val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
 
-    // Calcolo Bilancio Mensile (Anno Corrente) - MODIFICATO DA 6 MESI A TUTTO L'ANNO
+    // Calcolo Bilancio Mensile (Anno Corrente)
     val monthlyBalances = remember(transactions, currentYear) {
         (1..12).map { month ->
             val targetMonth = YearMonth.of(currentYear, month)
-            // Filtra le transazioni future rispetto al mese corrente?
-            // Se si vuole mostrare tutto l'anno anche i mesi vuoti/futuri, va bene così.
-            // Se si vuole nascondere i mesi futuri:
-            // if (targetMonth > YearMonth.now()) return@map targetMonth to 0.0
-
             val monthlyTransactions = transactions.filter {
                 try {
                     YearMonth.from(LocalDate.parse(it.effectiveDate)) == targetMonth
@@ -93,16 +98,14 @@ fun ReportScreen(
         }
     }
 
-    // AGGIUNTO: Stato per lo scroll della pagina intera
     val scrollState = rememberScrollState()
-
 
     Column(modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        .verticalScroll(scrollState) // MODIFICA 1: Rende l'intera pagina scrollabile
+        .verticalScroll(scrollState)
     ) {
-        // --- HEADER: Report Annuale ---
+        // --- HEADER ---
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -168,96 +171,106 @@ fun ReportScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        stringResource(R.string.balance_12_months), // Puoi rinominare la stringa se vuoi "Bilancio Annuale"
+                        stringResource(R.string.balance_12_months),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    // Passiamo la lista completa dei 12 mesi
-                    MonthlyBarChart(monthlyBalances, currencySymbol, isAmountHidden)
+
+                    // --- 3. PASSA IL MESE SELEZIONATO E LA CALLBACK AL GRAFICO ---
+                    MonthlyBarChart(
+                        data = monthlyBalances,
+                        currencySymbol = currencySymbol,
+                        isAmountHidden = isAmountHidden,
+                        selectedMonth = selectedReportMonth,
+                        onMonthSelected = { selectedReportMonth = if (selectedReportMonth == it) null else it }
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- 4. TITOLO DINAMICO ---
+            val monthName = monthToShow.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
             Text(
-                stringResource(R.string.category_detail_current_month),
+                stringResource(R.string.category_detail_current_month, monthName), // Stringa che accetta un parametro
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
             )
 
             // Lista Spese per Categoria
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                expenseByCategory.forEach { (categoryId, amount) ->
-                    // Usa la lista categories passata per cercare la categoria
-                    val category = categories.firstOrNull { it.id == categoryId }
-                        ?: categories.firstOrNull { it.id == "other" }
+            if (expenseByCategory.isEmpty()) {
+                Text(
+                    text = "Nessuna spesa registrata in questo mese.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    expenseByCategory.forEach { (categoryId, amount) ->
+                        val category = categories.firstOrNull { it.id == categoryId }
+                            ?: categories.firstOrNull { it.id == "other" }
 
-                    val percentage = if (totalMonthlyExpense > 0) (amount / totalMonthlyExpense).toFloat() else 0f
+                        val percentage = if (totalMonthlyExpense > 0) (amount / totalMonthlyExpense).toFloat() else 0f
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Icona
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = category?.icon ?: "❓", style = MaterialTheme.typography.titleMedium)
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        // Dati
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    // Se è custom usa label diretta, altrimenti cerchiamo di localizzare (se vogliamo).
-                                    // Qui usiamo getLocalizedCategoryLabel se vogliamo uniformità, oppure la label diretta se l'app lo permette.
-                                    // Per ora uso getLocalizedCategoryLabel per coerenza con TransactionItem se la funzione è accessibile,
-                                    // ma getLocalizedCategoryLabel è in Utils.kt e prende CategoryEntity.
-                                    // Siccome CategoryEntity è importato, possiamo usare Utils.kt function se pubblica.
-                                    // Controllo se getLocalizedCategoryLabel è accessibile. Si, è in Utils.kt.
-                                    category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", amount)}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text(text = category?.icon ?: "❓", style = MaterialTheme.typography.titleMedium)
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            // Progress Bar
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                LinearProgressIndicator(
-                                    progress = { percentage },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(6.dp)
-                                        .clip(RoundedCornerShape(3.dp)),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    strokeCap = StrokeCap.Round,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = String.format(Locale.getDefault(), "%.0f%%", percentage * 100),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", amount)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    LinearProgressIndicator(
+                                        progress = { percentage },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp)),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        strokeCap = StrokeCap.Round,
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = String.format(Locale.getDefault(), "%.0f%%", percentage * 100),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -268,11 +281,17 @@ fun ReportScreen(
 }
 
 @Composable
-fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String, isAmountHidden: Boolean) {
+fun MonthlyBarChart(
+    data: List<Pair<YearMonth, Double>>,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    selectedMonth: YearMonth?, // Nuovo parametro
+    onMonthSelected: (YearMonth) -> Unit // Nuova callback
+) {
     if (data.isEmpty()) return
 
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
-    var selectedMonth by remember { mutableStateOf<YearMonth?>(null) }
+    // Rimosso stato locale selectedMonth
 
     Box {
         Row(
@@ -288,23 +307,23 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                         .weight(1f)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null // Rimuovi il ripple effect
-                        ) { selectedMonth = if (selectedMonth == month) null else month },
+                            indication = null
+                        ) { onMonthSelected(month) }, // Usa la callback
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Area del grafico (Divisa in due: Positiva e Negativa)
+                    // Area del grafico
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // PARTE POSITIVA (Sopra la linea)
+                        // PARTE POSITIVA
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(horizontal = 2.dp), // Padding laterale per separare le barre
+                                .padding(horizontal = 2.dp),
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             if (balance > 0) {
@@ -312,26 +331,23 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
-                                        .fillMaxWidth() // Occupa tutta la larghezza disponibile (con padding)
+                                        .fillMaxWidth()
                                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                         .background(
-                                            if (selectedMonth == month) Color(0xFF2E7D32) else Color(
-                                                0xFF43A047
-                                            ) // Verde scuro se selezionato
+                                            if (selectedMonth == month) Color(0xFF2E7D32) else Color(0xFF43A047)
                                         )
                                 )
                             }
                         }
 
-                        // Linea dello Zero
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
 
-                        // PARTE NEGATIVA (Sotto la linea)
+                        // PARTE NEGATIVA
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(horizontal = 2.dp), // Padding laterale per separare le barre
+                                .padding(horizontal = 2.dp),
                             contentAlignment = Alignment.TopCenter
                         ) {
                             if (balance < 0) {
@@ -339,15 +355,10 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
-                                        .fillMaxWidth() // Occupa tutta la larghezza disponibile
-                                        .clip(
-                                            RoundedCornerShape(
-                                                bottomStart = 4.dp,
-                                                bottomEnd = 4.dp
-                                            )
-                                        )
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                                         .background(
-                                            if (selectedMonth == month) Color(0xFFB71C1C) else MaterialTheme.colorScheme.error // Rosso scuro se selezionato
+                                            if (selectedMonth == month) Color(0xFFB71C1C) else MaterialTheme.colorScheme.error
                                         )
                                 )
                             }
@@ -356,9 +367,8 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Etichetta Mese (solo iniziale)
                     Text(
-                        text = month.month.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(), // NARROW = "G", "F", "M"...
+                        text = month.month.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (selectedMonth == month) FontWeight.ExtraBold else FontWeight.Bold,
                         fontSize = 10.sp,
@@ -370,21 +380,24 @@ fun MonthlyBarChart(data: List<Pair<YearMonth, Double>>, currencySymbol: String,
             }
         }
 
-        // Popup informativo
+        // Popup informativo (opzionale, mantenuto se utile per vedere l'importo esatto)
         selectedMonth?.let { month ->
+            // Mostra il popup solo se stiamo cliccando (o sempre se selezionato? Dipende dalla UX desiderata.
+            // Attualmente il popup copre un po', ma ora che la lista sotto cambia, forse il popup è ridondante?
+            // Lo lascio perché dà il valore esatto del bilancio (entrate - uscite), mentre la lista sotto mostra solo le SPESE.
+
             val balance = data.find { it.first == month }?.second ?: 0.0
 
-            // Posizionamento semplice al centro (o in alto/basso a seconda di dove vuoi)
-            // Per semplicità lo metto in alto al centro del grafico per ora
             Popup(
                 alignment = Alignment.TopCenter,
-                onDismissRequest = { selectedMonth = null }
+                onDismissRequest = { onMonthSelected(month) } // Deseleziona cliccando fuori? No, meglio gestire diversamente o rimuovere onDismiss qui se gestito dal click sul grafico
             ) {
-                Card(
+                // ... Logica popup invariata, solo visiva ...
+                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface),
                     shape = RoundedCornerShape(8.dp),
                     elevation = CardDefaults.cardElevation(8.dp),
-                    modifier = Modifier.padding(top = 16.dp) // Un po' di offset
+                    modifier = Modifier.padding(top = 16.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(8.dp),
