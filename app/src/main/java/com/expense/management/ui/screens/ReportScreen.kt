@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.zIndex
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
@@ -291,8 +293,11 @@ fun MonthlyBarChart(
 
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
 
-    // MODIFICA: Box padre che contiene il grafico E il tooltip (non più Popup)
-    Box(modifier = Modifier.fillMaxWidth()) {
+    // BoxWithConstraints per calcolare la posizione orizzontale del tooltip
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val totalWidth = maxWidth
+        val barWidth = totalWidth / data.size // Larghezza di ogni "slot" mese
+
         // Il grafico
         Row(
             modifier = Modifier
@@ -379,38 +384,64 @@ fun MonthlyBarChart(
             }
         }
 
-        // TOOLTIP EMBEDDED (non Popup)
-        // Lo mostriamo sopra il grafico usando l'allineamento del Box
-        // AnimatedVisibility per un effetto più fluido
-        AnimatedVisibility(
-            visible = selectedMonth != null,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
-            selectedMonth?.let { month ->
-                val balance = data.find { it.first == month }?.second ?: 0.0
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f)),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = CardDefaults.cardElevation(4.dp),
-                    // Un po' di margine superiore se necessario, o padding interno
+        // TOOLTIP POSIZIONATO DINAMICAMENTE SOPRA IL GRAFICO
+        selectedMonth?.let { month ->
+            val index = data.indexOfFirst { it.first == month }
+            if (index >= 0) {
+                // Calcolo offset orizzontale: CENTRO della colonna
+                val xOffset = (barWidth * index) + (barWidth / 2)
+
+                // CORREZIONE BORDI:
+                // Se siamo nei primi mesi (gennaio/febbraio, index 0-1), spostiamo il tooltip a destra
+                // Se siamo negli ultimi (novembre/dicembre, index 10-11), spostiamo a sinistra
+                val extraOffset = when {
+                    index > 10 -> (-60).dp
+                    else -> (-20).dp
+                }
+
+                // Box ANCORA per il tooltip
+                // Ha dimensione 0, si posiziona al centro della colonna e 50dp sopra + extraOffset
+                Box(
+                    modifier = Modifier
+                        .absoluteOffset(x = xOffset + extraOffset, y = (-50).dp)
+                        .zIndex(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
                     ) {
-                        Text(
-                            text = month.month.getDisplayName(TextStyle.FULL, Locale.getDefault()).replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.inverseOnSurface
-                        )
-                        Text(
-                            text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", balance)}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350)
-                        )
+                        val balance = data.find { it.first == month }?.second ?: 0.0
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f)),
+                            shape = RoundedCornerShape(4.dp),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                            // Nessun modifier width, si adatta al contenuto
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.0f", balance)} $currencySymbol",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350),
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
                 }
             }
