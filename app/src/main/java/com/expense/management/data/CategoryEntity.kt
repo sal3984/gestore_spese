@@ -8,6 +8,8 @@ data class CategoryEntity(
     @PrimaryKey val id: String,
     val label: String,
     val icon: String,
-    val type: String, // "expense" o "income"
-    val isCustom: Boolean = false // Per distinguere quelle default da quelle utente
+    // "income" o "expense"
+    val type: String,
+    // Per distinguere quelle default da quelle utente
+    val isCustom: Boolean = false
 )

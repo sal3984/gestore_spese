@@ -33,21 +33,21 @@ fun SecurityScreen(
     isAmountHidden: Boolean,
     isBiometricEnabled: Boolean,
     onAmountHiddenChange: (Boolean) -> Unit,
-    onBiometricEnabledChange: (Boolean) -> Unit
+    onBiometricEnabledChange: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
         SettingsSectionHeader(stringResource(R.string.security_usability))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         ) {
             Column {
                 SettingsSwitchItem(
@@ -55,7 +55,7 @@ fun SecurityScreen(
                     title = stringResource(R.string.hide_amounts),
                     subtitle = stringResource(R.string.hide_amounts_desc),
                     checked = isAmountHidden,
-                    onCheckedChange = onAmountHiddenChange
+                    onCheckedChange = onAmountHiddenChange,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 SettingsSwitchItem(
@@ -63,7 +63,7 @@ fun SecurityScreen(
                     title = stringResource(R.string.app_lock),
                     subtitle = stringResource(R.string.app_lock_desc),
                     checked = isBiometricEnabled,
-                    onCheckedChange = onBiometricEnabledChange
+                    onCheckedChange = onBiometricEnabledChange,
                 )
             }
         }
@@ -76,7 +76,7 @@ fun SettingsSwitchItem(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
@@ -86,15 +86,15 @@ fun SettingsSwitchItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp)
+                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp),
             )
         },
         trailingContent = {
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange
+                onCheckedChange = onCheckedChange,
             )
         },
-        modifier = Modifier.clickable { onCheckedChange(!checked) }
+        modifier = Modifier.clickable { onCheckedChange(!checked) },
     )
 }

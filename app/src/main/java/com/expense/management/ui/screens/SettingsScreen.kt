@@ -70,7 +70,7 @@ fun SettingsScreen(
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
-    onCcPaymentModeChange: (String) -> Unit
+    onCcPaymentModeChange: (String) -> Unit,
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
@@ -85,30 +85,29 @@ fun SettingsScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
-
         // --- SEZIONE GENERALI ---
         SettingsSectionHeader(stringResource(R.string.general))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         ) {
             Column {
                 SettingsListItem(
                     icon = Icons.Default.AttachMoney,
                     title = stringResource(R.string.currency),
                     value = stringResource(R.string.displayed_symbol, currentCurrency),
-                    onClick = { showCurrencyDialog = true }
+                    onClick = { showCurrencyDialog = true },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 SettingsListItem(
                     icon = Icons.Default.CalendarToday,
                     title = stringResource(R.string.date_format),
                     value = currentDateFormat,
-                    onClick = { showDateFormatDialog = true }
+                    onClick = { showDateFormatDialog = true },
                 )
             }
         }
@@ -121,7 +120,7 @@ fun SettingsScreen(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Plafond
@@ -139,8 +138,8 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                    )
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    ),
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -150,40 +149,40 @@ fun SettingsScreen(
                     stringResource(R.string.credit_card_mode),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
                         selected = ccPaymentMode == "single",
                         onClick = { onCcPaymentModeChange("single") },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                     ) {
                         Text(stringResource(R.string.single_balance))
                     }
                     SegmentedButton(
                         selected = ccPaymentMode == "installment",
                         onClick = { onCcPaymentModeChange("installment") },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                     ) {
                         Text(stringResource(R.string.installment_plan))
                     }
                     SegmentedButton(
                         selected = ccPaymentMode == "manual",
                         onClick = { onCcPaymentModeChange("manual") },
-                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                     ) {
                         Text(stringResource(R.string.manual))
                     }
                 }
                 Text(
-                    when(ccPaymentMode) {
+                    when (ccPaymentMode) {
                         "single" -> stringResource(R.string.setting_credit_card_message_1)
                         "installment" -> stringResource(R.string.setting_credit_card_message_2)
                         else -> stringResource(R.string.setting_credit_card_message_3)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -194,26 +193,30 @@ fun SettingsScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
                                 stringResource(R.string.debit_delay),
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
                             )
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(8.dp),
                             ) {
                                 Text(
-                                    if (ccDelay == 0) stringResource(R.string.immediate) else stringResource(
-                                        R.string.months_delay,
-                                        ccDelay
-                                    ),
+                                    if (ccDelay == 0) {
+                                        stringResource(R.string.immediate)
+                                    } else {
+                                        stringResource(
+                                            R.string.months_delay,
+                                            ccDelay,
+                                        )
+                                    },
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
@@ -227,13 +230,13 @@ fun SettingsScreen(
                             steps = 2,
                             colors = SliderDefaults.colors(
                                 thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
-                            )
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
                         )
                         Text(
                             stringResource(R.string.cc_delay_desc),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -257,7 +260,7 @@ fun SettingsScreen(
                                     showCurrencyDialog = false
                                 }
                                 .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = (symbol == currentCurrency), onClick = null)
                             Spacer(modifier = Modifier.width(16.dp))
@@ -266,7 +269,7 @@ fun SettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } }
+            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
@@ -287,7 +290,7 @@ fun SettingsScreen(
                                     showDateFormatDialog = false
                                 }
                                 .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = (format == currentDateFormat), onClick = null)
                             Spacer(modifier = Modifier.width(16.dp))
@@ -296,7 +299,7 @@ fun SettingsScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text(stringResource(R.string.cancel)) } }
+            confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -310,7 +313,7 @@ fun SettingsSectionHeader(title: String) {
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
     )
 }
 
@@ -319,7 +322,7 @@ fun SettingsListItem(
     icon: ImageVector,
     title: String,
     value: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
@@ -329,12 +332,12 @@ fun SettingsListItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp)
+                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp),
             )
         },
         trailingContent = {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         },
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier.clickable(onClick = onClick),
     )
 }

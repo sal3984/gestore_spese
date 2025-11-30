@@ -13,17 +13,19 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         @Volatile
-        private var INSTANCE: AppDatabase? = null
+        private var instance: AppDatabase? = null
 
         fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
+            return instance ?: synchronized(this) {
                 Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "spese_db_v5" // Aggiornato a v5 per reset e applicazione nuovi campi rateali
+                    // Aggiornato a v5 per reset e applicazione nuovi campi rateali
+                    "spese_db_v5",
                 )
-                    .fallbackToDestructiveMigration() // Cancella i dati vecchi al cambio versione (Ok per prototipazione)
-                    .build().also { INSTANCE = it }
+                    // Cancella i dati vecchi al cambio versione (Ok per prototipazione)
+                    .fallbackToDestructiveMigration()
+                    .build().also { instance = it }
             }
         }
     }

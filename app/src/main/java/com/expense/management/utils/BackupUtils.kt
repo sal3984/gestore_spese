@@ -22,8 +22,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object BackupUtils {
-
-    fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
+    fun performCsvExport(
+        context: Context,
+        viewModel: ExpenseViewModel,
+        uri: Uri,
+        currencySymbol: String,
+        dateFormat: String,
+    ) {
         val formatter = DateTimeFormatter.ofPattern(dateFormat)
         val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
@@ -32,19 +37,21 @@ object BackupUtils {
                 // Note: Header columns could also be localized if needed, but CSV headers are often technical/fixed.
                 // Keeping them hardcoded for now or you can fetch them from resources if strictly required.
                 // "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
-                val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
+                val csvHeader = "ID,Data,Descrizione,Importo ($currencySymbol - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
                 val csvContent = StringBuilder(csvHeader)
                 expenses.forEach { t ->
-                    val dateStr = try {
-                        LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                    } catch (_: Exception) {
-                        t.date
-                    }
-                    val effectiveDateStr = try {
-                        LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                    } catch (_: Exception) {
-                        t.effectiveDate
-                    }
+                    val dateStr =
+                        try {
+                            LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
+                        } catch (_: Exception) {
+                            t.date
+                        }
+                    val effectiveDateStr =
+                        try {
+                            LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
+                        } catch (_: Exception) {
+                            t.effectiveDate
+                        }
 
                     csvContent.append(
                         "${t.id}," +
@@ -56,7 +63,7 @@ object BackupUtils {
                             "${t.categoryId}," +
                             "${t.type}," +
                             "${if (t.isCreditCard) "Sì" else "No"}," +
-                            "\"$effectiveDateStr\"\n"
+                            "\"$effectiveDateStr\"\n",
                     )
                 }
 
@@ -77,7 +84,11 @@ object BackupUtils {
         }
     }
 
-    fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
+    fun performBackup(
+        context: Context,
+        viewModel: ExpenseViewModel,
+        uri: Uri,
+    ) {
         val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
             try {
@@ -101,7 +112,11 @@ object BackupUtils {
         }
     }
 
-    fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
+    fun performRestore(
+        context: Context,
+        viewModel: ExpenseViewModel,
+        uri: Uri,
+    ) {
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch {
             try {
@@ -114,10 +129,10 @@ object BackupUtils {
                 val jsonString = sb.toString()
 
                 try {
-                     val backupData = Gson().fromJson(jsonString, BackupData::class.java)
+                    val backupData = Gson().fromJson(jsonString, BackupData::class.java)
                     viewModel.restoreData(backupData)
                     withContext(Dispatchers.Main) {
-                       Toast.makeText(context, context.getString(R.string.restore_success, backupData.transactions.size, backupData.categories.size), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.restore_success, backupData.transactions.size, backupData.categories.size), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {

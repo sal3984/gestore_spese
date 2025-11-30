@@ -3,6 +3,7 @@ package com.expense.management.viewmodel
 import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.AppDatabase
@@ -21,11 +22,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
-import androidx.core.content.edit
 
-class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
-
+class ExpenseViewModel(
+    application: Application,
+) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
+
     // Use Repository instead of DAOs directly
     private val repository = ExpenseRepository(db.transactionDao(), db.categoryDao())
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
@@ -36,25 +38,27 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     var isAppUnlocked = mutableStateOf(!prefs.getBoolean("is_biometric_enabled", false))
 
     // Dati Transazioni
-    val allTransactions: StateFlow<List<TransactionEntity>> = repository.allTransactions
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val allTransactions: StateFlow<List<TransactionEntity>> =
+        repository.allTransactions
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // DATI CATEGORIE
-    val allCategories: StateFlow<List<CategoryEntity>> = repository.allCategoriesFlow
-        .map { dbCategories ->
-            val dbIds = dbCategories.map { it.id }.toSet()
-            val missingDefaults = CATEGORIES.filter { it.id !in dbIds }.map {
-                CategoryEntity(
-                    id = it.id,
-                    label = it.label,
-                    icon = it.icon,
-                    type = it.type,
-                    isCustom = false
-                )
-            }
-            dbCategories + missingDefaults
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val allCategories: StateFlow<List<CategoryEntity>> =
+        repository.allCategoriesFlow
+            .map { dbCategories ->
+                val dbIds = dbCategories.map { it.id }.toSet()
+                val missingDefaults =
+                    CATEGORIES.filter { it.id !in dbIds }.map {
+                        CategoryEntity(
+                            id = it.id,
+                            label = it.label,
+                            icon = it.icon,
+                            type = it.type,
+                            isCustom = false,
+                        )
+                    }
+                dbCategories + missingDefaults
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs.getString("currency", "€") ?: "€")
@@ -87,7 +91,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
 
-
     init {
         viewModelScope.launch {
             loadEarliestMonth()
@@ -101,15 +104,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 val existingCategories = repository.getAllCategories()
                 val existingIds = existingCategories.map { it.id }.toSet()
 
-                val categoriesToAdd = CATEGORIES.filter { it.id !in existingIds }.map {
-                    CategoryEntity(
-                        id = it.id,
-                        label = it.label,
-                        icon = it.icon,
-                        type = it.type,
-                        isCustom = false
-                    )
-                }
+                val categoriesToAdd =
+                    CATEGORIES.filter { it.id !in existingIds }.map {
+                        CategoryEntity(
+                            id = it.id,
+                            label = it.label,
+                            icon = it.icon,
+                            type = it.type,
+                            isCustom = false,
+                        )
+                    }
 
                 if (categoriesToAdd.isNotEmpty()) {
                     repository.insertAllCategories(categoriesToAdd)
@@ -127,7 +131,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun removeCategory(id: String) {
-         viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.deleteCategoryById(id)
         }
     }
@@ -173,9 +177,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    suspend fun getTransactionById(id: String): TransactionEntity? {
-        return withContext(Dispatchers.IO) { repository.getTransactionById(id) }
-    }
+    suspend fun getTransactionById(id: String): TransactionEntity? = withContext(Dispatchers.IO) { repository.getTransactionById(id) }
 
     fun searchDescriptionSuggestions(query: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -224,12 +226,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Metodi Backup
-    suspend fun getAllForBackup(): BackupData {
-        return BackupData(
+    suspend fun getAllForBackup(): BackupData =
+        BackupData(
             transactions = repository.getAllTransactionsList(),
-            categories = repository.getAllCategories()
+            categories = repository.getAllCategories(),
         )
-    }
 
     fun restoreData(backupData: BackupData) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -242,12 +243,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) { repository.insertAllTransactions(list) }
     }
 
-    suspend fun getExpensesForExport(): List<TransactionEntity> {
-        return repository.getAllTransactionsList().filter { it.type == "expense" }
-    }
+    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == "expense" }
 }
 
 data class BackupData(
     val transactions: List<TransactionEntity>,
-    val categories: List<CategoryEntity>
+    val categories: List<CategoryEntity>,
 )

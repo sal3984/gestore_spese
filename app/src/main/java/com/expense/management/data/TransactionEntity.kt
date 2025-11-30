@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-
 @Entity(tableName = "transactions")
 data class TransactionEntity(
     // ID ora è una stringa UUID generata in automatico
@@ -13,13 +12,19 @@ data class TransactionEntity(
     val description: String,
     val amount: Double,
     val categoryId: String,
-    val type: String, // "expense" o "income"
+    val type: String,
     val isCreditCard: Boolean,
-    val effectiveDate: String, // Data reale di addebito
-    val originalAmount: Double, // Importo nella valuta originale (es. 50 USD)
-    val originalCurrency: String, // Valuta usata per la transazione (es. USD)
+    // Data reale di addebito
+    val effectiveDate: String,
+    // Importo nella valuta originale (es. 50 USD)
+    val originalAmount: Double,
+    // Valuta usata per la transazione (es. USD)
+    val originalCurrency: String,
     // Campi per pagamento rateale
-    val installmentNumber: Int? = null, // Es. 1 (di 3)
-    val totalInstallments: Int? = null, // Es. 3
-    val groupId: String? = null // UUID condiviso tra tutte le rate della stessa spesa
+    // Es. 1 (di 3)
+    val installmentNumber: Int? = null,
+    // Es. 3
+    val totalInstallments: Int? = null,
+    // UUID condiviso tra tutte le rate della stessa spesa
+    val groupId: String? = null,
 )

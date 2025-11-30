@@ -9,7 +9,15 @@ trim_trailing_whitespace = true
 [*.{kt,kts}]
 indent_style = space
 indent_size = 4
-# Esempi di regole ktlint personalizzate:
+
+# Permette le funzioni Composable con la maiuscola (es. MainApp)
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# Disabilita il limite di lunghezza della riga
 ktlint_standard_max-line-length = off
+
+# Disabilita il controllo che forza il nome del file uguale alla classe
 ktlint_standard_filename = disabled
+
+# Disabilita il divieto di import con wildcard (import .*)
 ktlint_standard_no-wildcard-imports = disabled
