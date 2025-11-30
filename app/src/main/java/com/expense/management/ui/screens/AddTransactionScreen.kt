@@ -634,26 +634,31 @@ fun AddTransactionScreen(
 
             // Opzione Carta di Credito
             // Modifica: disabilitata se stiamo modificando una transazione esistente
+            // NUOVA MODIFICA: Visibile solo se è una SPESA ("expense")
             val isEditing = transactionToEdit != null
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if(!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = isCreditCard,
-                    onCheckedChange = { if(!isEditing) isCreditCard = it },
-                    enabled = !isEditing // Disabilita la checkbox in modifica
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge)
+
+            AnimatedVisibility(visible = type == "expense") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if(!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isCreditCard,
+                        onCheckedChange = { if(!isEditing) isCreditCard = it },
+                        enabled = !isEditing // Disabilita la checkbox in modifica
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge)
+                }
             }
 
             // Gestione Avanzata Carta di Credito (Mutuamente esclusiva + Data personalizzabile)
             // VISIBILE SE: (isCreditCard è true) E (Siamo in modalità creazione OPPURE siamo in modifica di una transazione esistente)
-            AnimatedVisibility(visible = isCreditCard) {
+            // AGGIUNTO: E se il tipo è SPESA
+            AnimatedVisibility(visible = isCreditCard && type == "expense") {
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
