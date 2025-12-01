@@ -612,7 +612,7 @@ fun AddTransactionScreen(
             }
 
             // NEW: Installment Payment Checkbox (separate from Credit Card)
-            AnimatedVisibility(visible = type == "expense" && !isEditing) {
+            AnimatedVisibility(visible = type == "expense" && !isEditing && (!isCreditCard || ccPaymentMode == "manual")) { // Modificato: Aggiunta condizione per nascondere quando non abilitato
                 // Logic for disabling the checkbox based on ccPaymentMode
                 val installmentCheckboxEnabled = !isCreditCard || ccPaymentMode == "manual"
                 val installmentCheckboxChecked = isInstallment // Use the state from LaunchedEffect
