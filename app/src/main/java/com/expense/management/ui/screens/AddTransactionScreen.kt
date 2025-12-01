@@ -138,21 +138,10 @@ fun AddTransactionScreen(
 
     // Stati Pagamento Rateale
     var isInstallment by remember {
-        mutableStateOf(
-            if (transactionToEdit != null) {
-                (transactionToEdit.totalInstallments ?: 1) > 1
-            } else {
-                ccPaymentMode == "installment"
-            }
-        )
+        mutableStateOf((transactionToEdit?.totalInstallments ?: 1) > 1)
     }
 
-    LaunchedEffect(ccPaymentMode) {
-        if (transactionToEdit == null) {
-            isInstallment = (ccPaymentMode == "installment")
-        }
-    }
-
+    // Removed LaunchedEffect(ccPaymentMode) block
 
     var installmentsCount by remember {
         mutableIntStateOf(transactionToEdit?.totalInstallments ?: 3)
@@ -234,7 +223,7 @@ fun AddTransactionScreen(
             return
         }
 
-        if (isCreditCard && isInstallment && transactionToEdit == null) {
+        if (isInstallment && transactionToEdit == null) { // Modified: Check for isInstallment directly
             val installmentAmount = amount / installmentsCount
             val groupId = UUID.randomUUID().toString()
 
@@ -246,12 +235,11 @@ fun AddTransactionScreen(
 
             for (i in 0 until installmentsCount) {
                 val installmentDate = startInstallmentDate.plusMonths(i.toLong())
-                val effectiveDate = if (applyCcDelayToInstallments) {
-                    installmentDate
-                        .withDayOfMonth(15)
-                        .format(DateTimeFormatter.ISO_LOCAL_DATE)
+                // IMPORTANT: Effective date calculation depends on isCreditCard AND applyCcDelayToInstallments
+                val effectiveDate = if (isCreditCard && applyCcDelayToInstallments) {
+                    calculateEffectiveDate(installmentDate, true, ccDelay) // Use CC delay logic
                 } else {
-                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE) // No CC delay
                 }
 
                 val newId = if(i==0) transactionId else UUID.randomUUID().toString()
@@ -264,7 +252,7 @@ fun AddTransactionScreen(
                         amount = installmentAmount,
                         categoryId = selectedCategory,
                         type = type,
-                        isCreditCard = true,
+                        isCreditCard = isCreditCard, // Pass the current isCreditCard state
                         originalAmount = originalAmount / installmentsCount,
                         originalCurrency = originalCurrency,
                         effectiveDate = effectiveDate,
@@ -609,7 +597,26 @@ fun AddTransactionScreen(
                 }
             }
 
-            AnimatedVisibility(visible = isCreditCard && type == "expense") {
+            // NEW: Installment Payment Checkbox (separate from Credit Card)
+            AnimatedVisibility(visible = type == "expense" && !isEditing) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isInstallment = !isInstallment }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isInstallment,
+                        onCheckedChange = { isInstallment = it }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+
+            // Payment options block (Credit Card details or Installment details)
+            AnimatedVisibility(visible = (isCreditCard || isInstallment) && type == "expense") {
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
@@ -624,39 +631,8 @@ fun AddTransactionScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    val isSelectionLocked = (ccPaymentMode != "manual") || isEditing
-
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = !isInstallment,
-                            onClick = { if (!isSelectionLocked) isInstallment = false },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            enabled = !isSelectionLocked
-                        ) {
-                            Text(stringResource(R.string.single_balance))
-                        }
-                        SegmentedButton(
-                            selected = isInstallment,
-                            onClick = { if (!isSelectionLocked) isInstallment = true },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            enabled = !isSelectionLocked
-                        ) {
-                            Text(stringResource(R.string.installment_plan))
-                        }
-                    }
-
-                    if (isSelectionLocked) {
-                        Text(
-                            text = if (isEditing) stringResource(R.string.mode_locked_by_settings) else stringResource(R.string.mode_locked_by_settings),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp, start = 4.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if(isCreditCard && isInstallment) {
+                    // Installment details
+                    if (isInstallment) {
                         Text(stringResource(R.string.number_of_installments, installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Slider(
                             value = installmentsCount.toFloat(),
@@ -669,52 +645,55 @@ fun AddTransactionScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         if (!isEditing) {
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { applyCcDelayToInstallments = !applyCcDelayToInstallments }
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                Checkbox(
-                                    checked = applyCcDelayToInstallments,
-                                    onCheckedChange = { isChecked ->
-                                        applyCcDelayToInstallments = isChecked
-                                        if (isChecked) {
-                                            try {
-                                                val tDate = LocalDate.parse(dateStr, displayFormatter)
-                                                val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
-                                                installmentStartDateStr = nextMonth15.format(displayFormatter)
-                                            } catch (e: Exception) {
-                                                installmentStartDateStr = dateStr
+                            // Only show CC delay option if it's also a credit card payment
+                            AnimatedVisibility(visible = isCreditCard) {
+                                Column {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { applyCcDelayToInstallments = !applyCcDelayToInstallments }
+                                            .padding(vertical = 8.dp)
+                                    ) {
+                                        Checkbox(
+                                            checked = applyCcDelayToInstallments,
+                                            onCheckedChange = { isChecked ->
+                                                applyCcDelayToInstallments = isChecked
+                                                if (isChecked) {
+                                                    try {
+                                                        val tDate = LocalDate.parse(dateStr, displayFormatter)
+                                                        val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
+                                                        installmentStartDateStr = nextMonth15.format(displayFormatter)
+                                                    } catch (e: Exception) {
+                                                        installmentStartDateStr = dateStr
+                                                    }
+                                                } else {
+                                                    installmentStartDateStr = dateStr
+                                                }
                                             }
-                                        } else {
-                                            installmentStartDateStr = dateStr
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = stringResource(R.string.apply_cc_delay),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = if (applyCcDelayToInstallments)
+                                                    stringResource(R.string.cc_delay_installment_message_on)
+                                                else
+                                                    stringResource(R.string.cc_delay_installment_message_off),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.apply_cc_delay),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = if (applyCcDelayToInstallments)
-                                            stringResource(R.string.cc_delay_installment_message_on)
-                                        else
-                                            stringResource(R.string.cc_delay_installment_message_off),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                             OutlinedTextField(
+                            OutlinedTextField(
                                 value = installmentStartDateStr,
                                 onValueChange = { installmentStartDateStr = it },
                                 label = { Text(stringResource(R.string.first_installment_date)) },
@@ -733,8 +712,7 @@ fun AddTransactionScreen(
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-
-                    } else {
+                    } else if (isCreditCard && !isInstallment) { // Single CC payment
                         val effectiveDate = try {
                             if (transactionToEdit != null && transactionToEdit.effectiveDate.isNotEmpty()) {
                                 transactionToEdit.effectiveDate
