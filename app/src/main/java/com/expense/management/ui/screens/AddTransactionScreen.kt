@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,7 +38,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -169,9 +167,30 @@ fun AddTransactionScreen(
     var ignoreDateWarning by remember { mutableStateOf(false) }
 
     // Stati UI
+    // Modifica: Gestione formato data. Se è un edit, prova a parsare ISO, altrimenti prova formato custom, altrimenti oggi.
+    // Questo assicura compatibilità con vecchi dati e converte tutto in ISO internamente.
     var dateStr by remember {
         mutableStateOf(
-            transactionToEdit?.date ?: LocalDate.now().format(displayFormatter)
+            if (transactionToEdit != null) {
+                try {
+                    // Prova a leggere come ISO (formato nuovo)
+                    LocalDate.parse(transactionToEdit.date, DateTimeFormatter.ISO_LOCAL_DATE).format(displayFormatter)
+                } catch (e: DateTimeParseException) {
+                    try {
+                        // Fallback: prova a leggere con il formato custom salvato (vecchio formato)
+                        // Nota: se l'utente ha cambiato formato nelle impostazioni, questo potrebbe fallire se i dati vecchi sono in un altro formato custom.
+                        // Assumiamo che i dati vecchi siano leggibili o siano già corrotti visivamente.
+                        // Qui assumiamo che transactionToEdit.date sia la stringa salvata.
+                        // Se è salvata come "dd/MM/yyyy", proviamo a parsare con displayFormatter corrente se coincide, o altri tentativi.
+                        // Per semplicità, se fallisce ISO, mostriamo la stringa così com'è, l'utente la correggerà salvando.
+                        transactionToEdit.date
+                    } catch (e2: Exception) {
+                        LocalDate.now().format(displayFormatter)
+                    }
+                }
+            } else {
+                LocalDate.now().format(displayFormatter)
+            }
         )
     }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -239,6 +258,9 @@ fun AddTransactionScreen(
             return
         }
 
+        // Modifica: Salvataggio data sempre in ISO_LOCAL_DATE
+        val dateToSave = transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
         if (isInstallment && transactionToEdit == null) { // Modified: Check for isInstallment directly
             val installmentAmount = amount / installmentsCount
             val groupId = UUID.randomUUID().toString()
@@ -259,11 +281,12 @@ fun AddTransactionScreen(
                 }
 
                 val newId = if(i==0) transactionId else UUID.randomUUID().toString()
+                val installmentDateToSave = installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
                 onSave(
                     TransactionEntity(
                         id = newId,
-                        date = installmentDate.format(displayFormatter),
+                        date = installmentDateToSave, // Salvato come ISO
                         description = "$description ($installmentLabel ${i+1}/$installmentsCount)",
                         amount = installmentAmount,
                         categoryId = selectedCategory,
@@ -282,7 +305,7 @@ fun AddTransactionScreen(
             onSave(
                 TransactionEntity(
                     id = transactionId,
-                    date = transactionDate.format(displayFormatter),
+                    date = dateToSave, // Salvato come ISO
                     description = description.trim(),
                     amount = amount,
                     categoryId = selectedCategory,
@@ -419,7 +442,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Spaziatore orizzontale
 
             OutlinedTextField(
                 value = dateStr,
@@ -434,7 +457,7 @@ fun AddTransactionScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Spaziatore orizzontale
 
             ExposedDropdownMenuBox(
                 expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
@@ -472,10 +495,10 @@ fun AddTransactionScreen(
                     suggestions.forEach { suggestion ->
                         DropdownMenuItem(
                             text = { Text(text = suggestion) },
-                            onClick = {
+                            onClick = { // onClick per la selezione del suggerimento
                                 description = suggestion
                                 isDescriptionExpanded = false
-                                onDescriptionChange("")
+                                onDescriptionChange("") // Pulisce la query dopo la selezione
                             },
                             contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                         )
@@ -483,7 +506,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Spaziatore orizzontale
 
             OutlinedTextField(
                 value = amountText,
@@ -540,7 +563,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Spaziatore orizzontale
 
             Text(
                 stringResource(R.string.category_label),
@@ -591,7 +614,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Spaziatore orizzontale
 
             AnimatedVisibility(visible = type == "expense") {
                 Row(
@@ -612,10 +635,10 @@ fun AddTransactionScreen(
             }
 
             // NEW: Installment Payment Checkbox (separate from Credit Card)
-            AnimatedVisibility(visible = type == "expense" && !isEditing && (!isCreditCard || ccPaymentMode == "manual")) { // Modificato: Aggiunta condizione per nascondere quando non abilitato
+            AnimatedVisibility(visible = type == "expense" && !isEditing && (!isCreditCard || ccPaymentMode == "manual")) { // Aggiunta condizione per nascondere quando non abilitato
                 // Logic for disabling the checkbox based on ccPaymentMode
                 val installmentCheckboxEnabled = !isCreditCard || ccPaymentMode == "manual"
-                val installmentCheckboxChecked = isInstallment // Use the state from LaunchedEffect
+                val installmentCheckboxChecked = isInstallment // Usa lo stato di LaunchedEffect
 
                 Row(
                     modifier = Modifier
@@ -661,10 +684,10 @@ fun AddTransactionScreen(
                             enabled = !isEditing
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp)) // Spaziatore orizzontale
 
                         if (!isEditing) {
-                            // Only show CC delay option if it's also a credit card payment
+                            // Mostra l'opzione di ritardo CC solo se è anche un pagamento con carta di credito
                             AnimatedVisibility(visible = isCreditCard) {
                                 Column {
                                     Row(
@@ -708,7 +731,7 @@ fun AddTransactionScreen(
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(8.dp)) // Spaziatore orizzontale
                                 }
                             }
 
@@ -731,7 +754,7 @@ fun AddTransactionScreen(
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-                    } else if (isCreditCard && !isInstallment) { // Single CC payment
+                    } else if (isCreditCard && !isInstallment) { // Pagamento CC singolo
                         val effectiveDate = try {
                             if (transactionToEdit != null && transactionToEdit.effectiveDate.isNotEmpty()) {
                                 transactionToEdit.effectiveDate
@@ -908,15 +931,12 @@ fun AddTransactionScreen(
 
 private fun calculateEffectiveDate(transactionDate: LocalDate, isCreditCard: Boolean, ccDelay: Int): String {
     val effectiveDate = if (isCreditCard) {
-        var paymentMonth = YearMonth.from(transactionDate).plusMonths(1)
-
         if (ccDelay == 0) {
             transactionDate
         } else {
             val targetMonth = YearMonth.from(transactionDate).plusMonths(ccDelay.toLong())
             targetMonth.atDay(15)
         }
-
     } else {
         transactionDate
     }

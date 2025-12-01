@@ -41,18 +41,21 @@ fun TransactionItem(
     val isIncome = transaction.type == "income"
     val amountColor = if (isIncome) Color(0xFF43A047) else MaterialTheme.colorScheme.onSurface
 
-    // Formatta la data della transazione
+    // Modifica: Formattazione data da ISO a formato utente (con fallback retrocompatibile)
     val formattedDate = remember(transaction.date, dateFormat) {
         try {
-            val date = LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat)) // Assumendo che transaction.date sia salvata in dateFormat
-            // Se transaction.date non è in formato ISO ma nel formato custom, il parse sopra funziona se dateFormat è corretto.
-            // Tuttavia, AddTransactionScreen salva la data usando displayFormatter (che è dateFormat).
-            // Quindi qui dobbiamo fare il parsing inverso se vogliamo riformattarla, oppure mostrarla direttamente.
-            // Se vogliamo mostrare solo giorno e mese o altro, possiamo farlo qui.
-            // Per ora mostriamo la data come salvata (che è già formattata secondo le preferenze)
-            transaction.date
+            // Prova a parsare come ISO (formato nuovo standard)
+            LocalDate.parse(transaction.date, DateTimeFormatter.ISO_LOCAL_DATE)
+                .format(DateTimeFormatter.ofPattern(dateFormat))
         } catch (e: Exception) {
-            transaction.date
+            try {
+                 // Fallback 1: Prova a parsare con il formato utente corrente (magari salvata così)
+                 LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat))
+                     .format(DateTimeFormatter.ofPattern(dateFormat)) // Ridondante ma per verifica
+            } catch (e2: Exception) {
+                // Fallback 2: Restituisci la stringa grezza (vecchio formato custom)
+                transaction.date
+            }
         }
     }
 
