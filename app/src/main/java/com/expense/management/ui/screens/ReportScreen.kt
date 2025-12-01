@@ -23,11 +23,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
@@ -333,6 +335,7 @@ fun MonthlyBarChart(
     if (data.isEmpty()) return
 
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     // BoxWithConstraints per calcolare la posizione orizzontale del tooltip
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -437,11 +440,17 @@ fun MonthlyBarChart(
             val index = data.indexOfFirst { it.first == month }
             if (index >= 0) {
                 val xOffset = (barWidth * index) + (barWidth / 2)
+                val tooltipWidth = 80.dp // Stima approssimativa della larghezza del tooltip
 
-                // Logic to keep tooltip within bounds roughly
+                // Calcola se il tooltip sta per uscire dai bordi
+                val currentX = xOffset
+                val minX = tooltipWidth / 2
+                val maxX = totalWidth - (tooltipWidth / 2)
+
+                // Applica un offset correttivo per mantenerlo nei limiti
                 val extraOffset = when {
-                    index <= 1 -> 16.dp
-                    index >= 10 -> (-16).dp
+                    currentX < minX -> minX - currentX // Sposta a destra
+                    currentX > maxX -> maxX - currentX // Sposta a sinistra
                     else -> 0.dp
                 }
 

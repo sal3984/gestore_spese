@@ -189,8 +189,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val bottomNavRoutes = listOf("dashboard", "report")
-    val drawerRoutes = listOf("categories", "settings", "data_management", "security")
+    // AGGIORNAMENTO ROUTES: Categorie spostato nella BottomBar
+    val bottomNavRoutes = listOf("dashboard", "report", "categories")
+    // Drawer Routes mantiene solo le sezioni di configurazione/gestione
+    val drawerRoutes = listOf("data_management", "security", "settings")
+
     val isBottomBarVisible = currentRoute in bottomNavRoutes
     val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
 
@@ -210,6 +213,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
 
+                // Dashboard mantenuta nel Drawer come "Home"
                 NavigationDrawerItem(
                     label = { Text("Dashboard") },
                     selected = currentRoute == "dashboard",
@@ -223,16 +227,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.categories_title)) },
-                    selected = currentRoute == "categories",
-                    onClick = {
-                        navController.navigate("categories")
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    icon = { Icon(Icons.Default.Category, contentDescription = null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
+                // Categorie rimosse dal Drawer (ora sono nella BottomBar)
 
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.data_management)) },
@@ -348,6 +343,19 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 }
                             }
                         )
+                        // Aggiunto Categorie alla BottomBar
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Category, contentDescription = stringResource(R.string.categories_title)) },
+                            label = { Text(stringResource(R.string.categories_title)) },
+                            selected = currentRoute == "categories",
+                            onClick = {
+                                navController.navigate("categories") {
+                                    popUpTo("dashboard") { saveState = true }
+                                    restoreState = true
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
                     }
                 }
             },
@@ -355,7 +363,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 if (currentRoute == "dashboard") {
                     FloatingActionButton(
                         onClick = { navController.navigate("add_transaction/0") },
-                        shape = RoundedCornerShape(16.dp), // Slightly more rounded
+                        shape = RoundedCornerShape(16.dp),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         elevation = FloatingActionButtonDefaults.elevation(8.dp)
