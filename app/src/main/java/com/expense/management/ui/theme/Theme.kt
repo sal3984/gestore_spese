@@ -81,6 +81,10 @@ fun GestoreSpeseTheme(
         SideEffect {
             val window = (view.context as Activity).window
 
+            // Make status bar transparent
+            window.statusBarColor = Color.Transparent.toArgb()
+            window.navigationBarColor = Color.Transparent.toArgb()
+
             // 2. Gestisci il contrasto delle icone (scure su sfondo chiaro, chiare su sfondo scuro)
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !darkTheme

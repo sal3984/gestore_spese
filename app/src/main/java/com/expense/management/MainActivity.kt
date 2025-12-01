@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
@@ -36,6 +37,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,7 +91,6 @@ import com.expense.management.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-// Modifica: MainActivity ora estende FragmentActivity per supportare BiometricPrompt
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,33 +111,27 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // Recupero gli stati dal ViewModel
     val allTransactions by viewModel.allTransactions.collectAsState()
-    val allCategories by viewModel.allCategories.collectAsState() // CATEGORIE DAL DB
+    val allCategories by viewModel.allCategories.collectAsState()
     val currentCurrency by viewModel.currency.collectAsState()
     val currentCcLimit by viewModel.ccLimit.collectAsState()
     val currentCcDelay by viewModel.ccDelay.collectAsState()
-    val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsState() // NUOVO STATO
+    val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsState()
     val currentDateFormat by viewModel.dateFormat.collectAsState()
     val earliestMonth by viewModel.earliestMonth.collectAsState()
-    val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState() // RECUPERO LO STATO DEL MESE DASHBOARD
+    val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState()
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
-
-
-
-    // Stato per gestire l'autenticazione
     var isAuthenticated by remember { viewModel.isAppUnlocked }
 
-    // Effetto per avviare l'autenticazione biometrica se abilitata
     LaunchedEffect(isBiometricEnabled) {
         if (isBiometricEnabled && !isAuthenticated) {
              BiometricUtils.authenticateUser(context,
                  onSuccess = { viewModel.isAppUnlocked.value = true },
-                 onError = { /* Gestisci errore o chiudi app */ }
+                 onError = { /* Handle error */ }
              )
         } else {
             viewModel.isAppUnlocked.value = true
@@ -161,8 +157,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
         }
         return
     }
-
-    // --- Activity Result Launchers per Backup/Restore/Export ---
 
     val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -195,30 +189,29 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Definizione delle rotte principali
     val bottomNavRoutes = listOf("dashboard", "report")
-    // drawerRoutes ora include anche security
     val drawerRoutes = listOf("categories", "settings", "data_management", "security")
     val isBottomBarVisible = currentRoute in bottomNavRoutes
-    // Mostra TopBar con menu in tutte le schermate principali
     val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
                 Text(
                     text = stringResource(R.string.app_name),
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.titleLarge
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
                 )
-                HorizontalDivider()
-                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
 
-                // Menu Laterale: Home, Categorie e Impostazioni
                 NavigationDrawerItem(
-                    label = { Text("Dashboard") }, // Rinominato da Home a Dashboard per coerenza
+                    label = { Text("Dashboard") },
                     selected = currentRoute == "dashboard",
                     onClick = {
                         navController.navigate("dashboard") {
@@ -274,6 +267,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
+                Spacer(modifier = Modifier.weight(1f))
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.exit)) },
                     selected = false,
@@ -284,6 +281,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Esci") },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     ) {
@@ -301,7 +299,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 "security" -> stringResource(R.string.security_usability)
                                 else -> stringResource(R.string.app_name)
                             }
-                            Text(title)
+                            Text(
+                                text = title,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         },
                         navigationIcon = {
                             IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
@@ -311,17 +312,20 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 )
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            titleContentColor = MaterialTheme.colorScheme.onBackground,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                         )
                     )
                 }
             },
             bottomBar = {
-                // Barra Inferiore: Dashboard e Report (Solo quando visibile)
                 if (isBottomBarVisible) {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp
+                    ) {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.DateRange, contentDescription = "Dashboard") },
                             label = { Text("Dashboard") },
@@ -351,9 +355,10 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 if (currentRoute == "dashboard") {
                     FloatingActionButton(
                         onClick = { navController.navigate("add_transaction/0") },
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(16.dp), // Slightly more rounded
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        elevation = FloatingActionButtonDefaults.elevation(8.dp)
                     ) {
                         Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
                     }
@@ -371,15 +376,15 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     ) {
                         DashboardScreen(
                             transactions = allTransactions,
-                            categories = allCategories, // PASSATA
+                            categories = allCategories,
                             currencySymbol = currentCurrency,
                             ccLimit = currentCcLimit,
                             dateFormat = currentDateFormat,
                             earliestMonth = earliestMonth,
-                            currentDashboardMonth = currentDashboardMonth, // PASSATO LO STATO AL SCREEN
-                            onMonthChange = viewModel::updateDashboardMonth, // CALLBACK PER AGGIORNARE LO STATO
-                            onDelete = viewModel::deleteTransaction, // DELETE DEVE ACCETTARE STRING
-                            onEdit = { transactionId -> // transactionId è ora String
+                            currentDashboardMonth = currentDashboardMonth,
+                            onMonthChange = viewModel::updateDashboardMonth,
+                            onDelete = viewModel::deleteTransaction,
+                            onEdit = { transactionId ->
                                 navController.navigate("add_transaction/$transactionId")
                             },
                             isAmountHidden = isAmountHidden
@@ -393,7 +398,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     ) {
                         ReportScreen(
                             transactions = allTransactions,
-                            categories = allCategories, // PASSATA
+                            categories = allCategories,
                             currencySymbol = currentCurrency,
                             dateFormat = currentDateFormat,
                             isAmountHidden = isAmountHidden
@@ -409,7 +414,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             categories = allCategories,
                             onAddCategory = viewModel::addCategory,
                             onDeleteCategory = viewModel::removeCategory,
-                            // onBack RIMOSSO
                         )
                     }
 
@@ -435,7 +439,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             isBiometricEnabled = isBiometricEnabled,
                             onAmountHiddenChange = viewModel::updateIsAmountHidden,
                             onBiometricEnabledChange = { isEnabled ->
-                                // Se si tenta di abilitare, chiedi conferma biometrica
                                 if (isEnabled) {
                                     BiometricUtils.authenticateUser(context,
                                         onSuccess = { viewModel.updateBiometricEnabled(true) },
@@ -469,7 +472,6 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
                     composable(
                         route = "add_transaction/{transactionId}",
-                        // AGGIORNATO: L'ID è ora NavType.StringType e il default è "0"
                         arguments = listOf(navArgument("transactionId") { type = NavType.StringType; defaultValue = "0" }),
                         enterTransition = {
                             slideIntoContainer(
@@ -484,15 +486,12 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             )
                         }
                     ) { backStackEntry ->
-                        // ID è Stringa (UUID)
                         val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
                         var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
-                        // Condizione per caricamento: se ID è diverso dal placeholder "0"
                         var isLoading by remember { mutableStateOf(transactionId != "0") }
 
                         LaunchedEffect(transactionId) {
                             if (transactionId != "0") {
-                                // CHIAMATA AL VIEWMODEL: getTransactionById DEVE accettare String
                                 transactionToEdit = viewModel.getTransactionById(transactionId)
                                 isLoading = false
                             } else {
@@ -509,22 +508,20 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 ccDelay = currentCcDelay,
                                 currencySymbol = currentCurrency,
                                 ccPaymentMode = currentCcPaymentMode,
-                                // Aggiunto argomento suggestions (vuoto per ora) e rimosso onGetSuggestions non necessario
                                 suggestions = suggestions,
-                                dateFormat = currentDateFormat, // Nome argomento corretto
+                                dateFormat = currentDateFormat,
                                 onSave = { transaction ->
                                     viewModel.saveTransaction(transaction)
-                                    // RIMOSSO popBackStack() qui perché AddTransactionScreen chiama onBack() alla fine di trySave
                                 },
-                                onDelete = { id -> // ID è Stringa
+                                onDelete = { id ->
                                     viewModel.deleteTransaction(id)
-                                    navController.popBackStack() // Qui va bene perché AddTransactionScreen non chiama onBack dopo onDelete
+                                    navController.popBackStack()
                                 },
                                 transactionToEdit = transactionToEdit,
                                 onBack = { navController.popBackStack() },
                                 availableCategories = allCategories,
                                 onDescriptionChange = { query ->
-                                    viewModel.searchDescriptionSuggestions(query) // Chiama la funzione del ViewModel
+                                    viewModel.searchDescriptionSuggestions(query)
                                 }
                             )
                         }

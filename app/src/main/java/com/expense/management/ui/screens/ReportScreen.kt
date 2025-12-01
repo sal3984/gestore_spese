@@ -7,14 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.zIndex
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
@@ -64,7 +63,7 @@ fun ReportScreen(
         }
     }
 
-    // Calcolo Risparmio Anno Corrente (Invariato)
+    // Calcolo Risparmio Anno Corrente
     val currentYear = LocalDate.now().year
     val savings = transactions
         .filter {
@@ -133,28 +132,28 @@ fun ReportScreen(
                     )
                 )
                 .padding(24.dp)
-                .padding(bottom = 24.dp)
+                .padding(bottom = 32.dp) // More space for the card overlap
         ) {
             Text(
                 stringResource(R.string.report_year, currentYear),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onPrimary
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text(
                         stringResource(R.string.total_savings),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                     )
                     Text(
                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", savings)}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -162,10 +161,10 @@ fun ReportScreen(
                     imageVector = if (savings >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                        .padding(8.dp),
-                    tint = Color.White
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                        .padding(12.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -174,25 +173,37 @@ fun ReportScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(y = (-20).dp)
+                .offset(y = (-24).dp) // Slight overlap for better UI depth
                 .padding(horizontal = 16.dp)
         ) {
             // Grafico a Barre Mensili
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(R.string.balance_12_months),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            stringResource(R.string.balance_12_months),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-                    // --- 3. PASSA IL MESE SELEZIONATO E LA CALLBACK AL GRAFICO ---
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // --- 3. GRAFICO ---
                     MonthlyBarChart(
                         data = monthlyBalances,
                         currencySymbol = currencySymbol,
@@ -210,24 +221,32 @@ fun ReportScreen(
                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
             Text(
-                stringResource(R.string.category_detail_current_month, monthName), // Stringa che accetta un parametro
+                stringResource(R.string.category_detail_current_month, monthName),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
             )
 
             // Lista Spese per Categoria
             if (expenseByCategory.isEmpty()) {
-                Text(
-                    text = "Nessuna spesa registrata in questo mese.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Nessuna spesa registrata per ${monthToShow.month.getDisplayName(TextStyle.FULL, Locale.getDefault())}.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
                 Column(
                     modifier = Modifier.fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     expenseByCategory.forEach { (categoryId, amount) ->
                         val category = categories.firstOrNull { it.id == categoryId }
@@ -242,14 +261,17 @@ fun ReportScreen(
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = category?.icon ?: "❓", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    text = category?.icon ?: "🏷️",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
                             }
 
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(16.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(
@@ -258,31 +280,34 @@ fun ReportScreen(
                                 ) {
                                     Text(
                                         category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", amount)}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     LinearProgressIndicator(
                                         progress = { percentage },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(6.dp)
-                                            .clip(RoundedCornerShape(3.dp)),
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
                                         color = MaterialTheme.colorScheme.primary,
                                         trackColor = MaterialTheme.colorScheme.surfaceVariant,
                                         strokeCap = StrokeCap.Round,
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = String.format(Locale.getDefault(), "%.0f%%", percentage * 100),
-                                        style = MaterialTheme.typography.bodySmall,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -291,6 +316,8 @@ fun ReportScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(80.dp)) // Bottom padding for FAB or Nav
         }
     }
 }
@@ -310,7 +337,7 @@ fun MonthlyBarChart(
     // BoxWithConstraints per calcolare la posizione orizzontale del tooltip
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val totalWidth = maxWidth
-        val barWidth = totalWidth / data.size // Larghezza di ogni "slot" mese
+        val barWidth = totalWidth / data.size
 
         // Il grafico
         Row(
@@ -321,6 +348,8 @@ fun MonthlyBarChart(
             verticalAlignment = Alignment.Bottom
         ) {
             data.forEach { (month, balance) ->
+                val isSelected = selectedMonth == month
+
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -341,7 +370,7 @@ fun MonthlyBarChart(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(horizontal = 2.dp),
+                                .padding(horizontal = 3.dp), // Slightly thinner bars
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             if (balance > 0) {
@@ -350,22 +379,26 @@ fun MonthlyBarChart(
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
                                         .background(
-                                            if (selectedMonth == month) Color(0xFF2E7D32) else Color(0xFF43A047)
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                                         )
                                 )
                             }
                         }
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
 
                         // PARTE NEGATIVA
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(horizontal = 2.dp),
+                                .padding(horizontal = 3.dp),
                             contentAlignment = Alignment.TopCenter
                         ) {
                             if (balance < 0) {
@@ -374,9 +407,10 @@ fun MonthlyBarChart(
                                     modifier = Modifier
                                         .fillMaxHeight(heightFraction)
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                                        .clip(RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp))
                                         .background(
-                                            if (selectedMonth == month) Color(0xFFB71C1C) else MaterialTheme.colorScheme.error
+                                            if (isSelected) MaterialTheme.colorScheme.error
+                                            else MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
                                         )
                                 )
                             }
@@ -388,9 +422,9 @@ fun MonthlyBarChart(
                     Text(
                         text = month.month.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (selectedMonth == month) FontWeight.ExtraBold else FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = if (selectedMonth == month) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                        fontSize = 11.sp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         maxLines = 1
                     )
@@ -398,65 +432,65 @@ fun MonthlyBarChart(
             }
         }
 
-        // TOOLTIP POSIZIONATO DINAMICAMENTE SOPRA IL GRAFICO
+        // TOOLTIP POSIZIONATO DINAMICAMENTE
         selectedMonth?.let { month ->
             val index = data.indexOfFirst { it.first == month }
             if (index >= 0) {
-                // Calcolo offset orizzontale: CENTRO della colonna
                 val xOffset = (barWidth * index) + (barWidth / 2)
 
-                // CORREZIONE BORDI:
-                // Se siamo nei primi mesi (gennaio/febbraio, index 0-1), spostiamo il tooltip a destra
-                // Se siamo negli ultimi (novembre/dicembre, index 10-11), spostiamo a sinistra
+                // Logic to keep tooltip within bounds roughly
                 val extraOffset = when {
-                    index > 10 -> (-60).dp
-                    else -> (-20).dp
+                    index <= 1 -> 16.dp
+                    index >= 10 -> (-16).dp
+                    else -> 0.dp
                 }
 
-                // Box ANCORA per il tooltip
-                // Ha dimensione 0, si posiziona al centro della colonna e 50dp sopra + extraOffset
                 Box(
                     modifier = Modifier
-                        .absoluteOffset(x = xOffset + extraOffset, y = (-50).dp)
+                        .absoluteOffset(x = xOffset + extraOffset, y = 0.dp) // y=0 is top of BoxWithConstraints
                         .zIndex(1f),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.BottomCenter // Align to bottom of this anchor point (effectively top of chart)
                 ) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                    ) {
-                        val balance = data.find { it.first == month }?.second ?: 0.0
+                   // We want the tooltip to appear *above* the chart area if possible,
+                   // but BoxWithConstraints starts at top of chart area.
+                   // So y=0 is the top line of the 200dp chart.
 
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f)),
-                            shape = RoundedCornerShape(4.dp),
-                            elevation = CardDefaults.cardElevation(4.dp)
-                            // Nessun modifier width, si adatta al contenuto
+                   // Use a negative offset to push it up.
+                   Box(modifier = Modifier.offset(y = (-48).dp)) {
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            val balance = data.find { it.first == month }?.second ?: 0.0
+                            val isPositive = balance >= 0
+
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                elevation = CardDefaults.cardElevation(6.dp)
                             ) {
-                                Text(
-                                    text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).replaceFirstChar { it.uppercase() },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                                    maxLines = 1
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.0f", balance)} $currencySymbol",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if(balance >= 0) Color(0xFF66BB6A) else Color(0xFFEF5350),
-                                    maxLines = 1
-                                )
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.0f", balance)} $currencySymbol",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
-                    }
+                   }
                 }
             }
         }

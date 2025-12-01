@@ -87,14 +87,15 @@ fun SettingsScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
 
         // --- SEZIONE GENERALI ---
         SettingsSectionHeader(stringResource(R.string.general))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column {
                 SettingsListItem(
@@ -103,7 +104,7 @@ fun SettingsScreen(
                     value = stringResource(R.string.displayed_symbol, currentCurrency),
                     onClick = { showCurrencyDialog = true }
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 SettingsListItem(
                     icon = Icons.Default.CalendarToday,
                     title = stringResource(R.string.date_format),
@@ -113,17 +114,17 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // --- SEZIONE PAGAMENTI (Carta di Credito) ---
         SettingsSectionHeader(stringResource(R.string.credit_card_settings))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 // Plafond
                 OutlinedTextField(
                     value = limitStr,
@@ -136,21 +137,21 @@ fun SettingsScreen(
                     leadingIcon = { Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     )
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 // Modalità Pagamento (Saldo vs Rateale)
                 Text(
                     stringResource(R.string.credit_card_mode),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
@@ -158,23 +159,24 @@ fun SettingsScreen(
                         onClick = { onCcPaymentModeChange("single") },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
                     ) {
-                        Text(stringResource(R.string.single_balance))
+                        Text(stringResource(R.string.single_balance), maxLines = 1)
                     }
                     SegmentedButton(
                         selected = ccPaymentMode == "installment",
                         onClick = { onCcPaymentModeChange("installment") },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
                     ) {
-                        Text(stringResource(R.string.installment_plan))
+                        Text(stringResource(R.string.installment_plan), maxLines = 1)
                     }
                     SegmentedButton(
                         selected = ccPaymentMode == "manual",
                         onClick = { onCcPaymentModeChange("manual") },
                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
                     ) {
-                        Text(stringResource(R.string.manual))
+                        Text(stringResource(R.string.manual), maxLines = 1)
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     when(ccPaymentMode) {
                         "single" -> stringResource(R.string.setting_credit_card_message_1)
@@ -183,10 +185,10 @@ fun SettingsScreen(
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 // Ritardo Addebito (Solo per Saldo Unico)
                 AnimatedVisibility(visible = ccPaymentMode == "single") {
@@ -198,8 +200,8 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 stringResource(R.string.debit_delay),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
                             )
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -210,7 +212,7 @@ fun SettingsScreen(
                                         R.string.months_delay,
                                         ccDelay
                                     ),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.Bold
@@ -218,7 +220,7 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Slider(
                             value = ccDelay.toFloat(),
@@ -239,6 +241,8 @@ fun SettingsScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(80.dp))
     }
 
     // Dialog Selezione Valuta
@@ -307,10 +311,10 @@ fun SettingsScreen(
 fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
     )
 }
 
@@ -322,19 +326,27 @@ fun SettingsListItem(
     onClick: () -> Unit
 ) {
     ListItem(
-        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
+        headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
         supportingContent = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         leadingContent = {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(8.dp)
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .padding(10.dp)
             )
         },
         trailingContent = {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         },
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp)
     )
 }

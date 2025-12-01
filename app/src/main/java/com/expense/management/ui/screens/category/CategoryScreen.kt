@@ -39,15 +39,10 @@ fun CategoryScreen(
     val selectedTabIndex = if (selectedTab == "expense") 0 else 1
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    // Messaggi localizzati
-    val errorCategoryExists = stringResource(R.string.error_category_already_exists)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
-        // RIMOSSO topBar per evitare duplicati con la MainActivity
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },
@@ -67,7 +62,7 @@ fun CategoryScreen(
             // Modern Tab Switcher
             PrimaryTabRow(
                 selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = MaterialTheme.colorScheme.surface, // Use surface for tab row bg
                 contentColor = MaterialTheme.colorScheme.primary,
                 indicator = {
                     TabRowDefaults.PrimaryIndicator(
@@ -94,7 +89,7 @@ fun CategoryScreen(
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
             // Lista Categorie
             val filteredCategories = categories.filter { it.isCustom && it.type == selectedTab }
@@ -138,23 +133,15 @@ fun CategoryScreen(
     if (showAddDialog) {
         AddCategoryDialog(
             type = selectedTab,
-            existingCategories = categories, // Passa la lista esistente
+            existingCategories = categories,
             onDismiss = { showAddDialog = false },
             onConfirm = { label, icon ->
-                // Utilizziamo UUID per l'ID per evitare conflitti e permettere nomi duplicati se necessario,
-                // ma il controllo duplicati sotto usa la label per l'esperienza utente.
-                // Se preferisci usare la label come ID: val newId = label.trim().lowercase()
-
-                // Controllo duplicati per nome (case insensitive)
+                // Controllo duplicati per nome (case insensitive) - ridondante con UI del dialog ma safe
                 val exists = categories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == selectedTab }
 
-                if (exists) {
-                    // Mostra errore (può essere migliorato con uno stato locale nel dialog o snackbar)
-                    // Qui usiamo un Toast/Snackbar rapido o gestiamo lo stato di errore nel dialog
-                    // Per semplicità nel dialog, passiamo l'errore come callback o stato
-                } else {
+                if (!exists) {
                     val newCategory = CategoryEntity(
-                        id = UUID.randomUUID().toString(), // ID univoco
+                        id = UUID.randomUUID().toString(),
                         label = label.trim(),
                         icon = icon,
                         type = selectedTab,
@@ -278,7 +265,7 @@ fun AddCategoryDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f), RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(12.dp))
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                 ) {

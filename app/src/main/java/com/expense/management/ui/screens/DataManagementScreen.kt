@@ -31,60 +31,88 @@ fun DataManagementScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
 
                 // Esporta CSV
-                Text(stringResource(R.string.export_data_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.export_data_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(stringResource(R.string.export_csv_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.export_csv_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
                     onClick = onExportCsv,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(stringResource(R.string.export_csv))
+                    Text(stringResource(R.string.export_csv), style = MaterialTheme.typography.titleMedium)
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 28.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
 
                 // Backup & Ripristino
-                Text(stringResource(R.string.backup), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.backup),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(stringResource(R.string.restore), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.restore),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
                         onClick = onBackup,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)), // Green
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
                         Icon(Icons.Default.CloudUpload, null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.backup))
+                        Text(stringResource(R.string.backup), style = MaterialTheme.typography.labelLarge)
                     }
 
                     Button(
                         onClick = onRestore,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF6C00)), // Orange
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
                         Icon(Icons.Default.CloudDownload, null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.restore))
+                        Text(stringResource(R.string.restore), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,21 +83,17 @@ fun DashboardScreen(
     val ccProgress = if (ccLimit > 0) (creditCardUsed / ccLimit).toFloat() else 0f
 
     // LIMITI NAVIGAZIONE:
-    // - Indietro: min(earliestMonth, oggi - 3 mesi)
-    // - Avanti: max(oggi + 3 mesi, ultima transazione nel futuro)
-    // (Nota: qui consideriamo solo 3 mesi in avanti fisso per semplicità, estendibile se ci sono rate future)
-
     val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)
     val maxMonth = today.plusMonths(12)
 
-    // Unica LazyColumn per permettere lo scroll di tutta la pagina (anche header) in landscape
+    // Unica LazyColumn per permettere lo scroll di tutta la pagina (anche header)
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
-        // ITEM 1: Header + Cards (Raggruppati per gestire l'overlap)
+        // ITEM 1: Header + Cards
         item {
             Column {
                 // --- HEADER: Mese e Saldo Totale ---
@@ -111,7 +108,7 @@ fun DashboardScreen(
                                 )
                             )
                         )
-                        .padding(bottom = 32.dp) // Spazio extra per l'overlap
+                        .padding(bottom = 48.dp) // Increased space for overlap
                 ) {
                     // Navigazione Mese
                     Row(
@@ -125,25 +122,33 @@ fun DashboardScreen(
                             onClick = { onMonthChange(currentDashboardMonth.minusMonths(1)) },
                             enabled = currentDashboardMonth > minMonth
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.previous_month), tint = Color.White)
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = stringResource(R.string.previous_month),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
 
                         Text(
                             currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
 
                         IconButton(
                             onClick = { onMonthChange(currentDashboardMonth.plusMonths(1)) },
                             enabled = currentDashboardMonth < maxMonth
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.next_month), tint = Color.White)
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = stringResource(R.string.next_month),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Saldo Centrale
                     Column(
@@ -152,145 +157,202 @@ fun DashboardScreen(
                     ) {
                         Text(
                             stringResource(R.string.monthly_balance),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.8f)
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                         )
                         Text(
                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
 
                 // --- CARDS ---
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset(y = (-30).dp) // Overlap effect
+                        .offset(y = (-40).dp) // Adjusted overlap
                         .padding(horizontal = 16.dp)
                 ) {
                     // Card Entrate/Uscite
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        shape = RoundedCornerShape(24.dp), // More rounded
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(16.dp)
+                                .padding(20.dp)
                                 .fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             // Entrate
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier
-                                    .size(40.dp)
+                                    .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.ArrowUpward, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.ArrowUpward,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
                                 Column {
-                                    Text(stringResource(R.string.income), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        stringResource(R.string.income),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalIncome)}",
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.width(8.dp))
+                            // Vertical Divider logic could go here if needed, but space is cleaner
 
                             // Uscite
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.errorContainer), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.ArrowDownward, null, tint = MaterialTheme.colorScheme.error)
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
+                                // Align amounts to the end
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text(stringResource(R.string.expenses), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        stringResource(R.string.expenses),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalExpense)}",
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Box(modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.errorContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.ArrowDownward,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Card Carta di Credito (Se attiva)
                     if (ccLimit > 0 && isViewingCurrentMonth) {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                            shape = RoundedCornerShape(20.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(modifier = Modifier.padding(20.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.credit_card_limit_label), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        stringResource(R.string.credit_card_limit_label),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    if (ccProgress > 0.9f) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Icon(
+                                            Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 LinearProgressIndicator(
                                     progress = { ccProgress.coerceAtMost(1f) },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp)),
-                                    color = if (ccProgress > 0.8f) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                                        .height(10.dp)
+                                        .clip(RoundedCornerShape(5.dp)),
+                                    color = if (ccProgress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(
                                         text = if (isAmountHidden) "${stringResource(R.string.spent_label)} $currencySymbol *****" else "${stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", creditCardUsed)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", ccLimit)}",
-                                        style = MaterialTheme.typography.bodySmall,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
             }
         }
 
         // Lista Transazioni
-        groupedTransactions.forEach { (dateString, transactions) ->
-            stickyHeader {
-                DateHeader(dateString)
+        if (groupedTransactions.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Nessuna transazione in questo mese.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            items(transactions, key = { it.id }) { t ->
-                TransactionItem(
-                    transaction = t,
-                    categories = categories,
-                    currencySymbol = currencySymbol,
-                    dateFormat = dateFormat,
-                    isAmountHidden = isAmountHidden,
-                    onDelete = onDelete,
-                    onEdit = onEdit
-                )
+        } else {
+            groupedTransactions.forEach { (dateString, transactions) ->
+                stickyHeader {
+                    DateHeader(dateString)
+                }
+                items(transactions, key = { it.id }) { t ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        TransactionItem(
+                            transaction = t,
+                            categories = categories,
+                            currencySymbol = currencySymbol,
+                            dateFormat = dateFormat,
+                            isAmountHidden = isAmountHidden,
+                            onDelete = onDelete,
+                            onEdit = onEdit
+                        )
+                    }
+                }
             }
         }
     }
@@ -298,13 +360,10 @@ fun DashboardScreen(
 
 @Composable
 fun DateHeader(dateString: String) {
-    // Modifica: Parsing corretto della data ISO per l'header
     val date = try {
         LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
     } catch(e: Exception) {
-        // Fallback per vecchie date non ISO
         try {
-            // Prova a indovinare altri formati se necessario o fallback a oggi
             LocalDate.now()
         } catch(e2: Exception) {
             LocalDate.now()
@@ -322,13 +381,16 @@ fun DateHeader(dateString: String) {
 
     Surface(
         color = MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp) // Added horizontal padding
     ) {
         Text(
             text = label.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp)
         )
     }
 }
