@@ -137,11 +137,27 @@ fun AddTransactionScreen(
     var showCurrencyDialog by remember { mutableStateOf(false) }
 
     // Stati Pagamento Rateale
-    var isInstallment by remember {
-        mutableStateOf((transactionToEdit?.totalInstallments ?: 1) > 1)
-    }
+    var isInstallment by remember { mutableStateOf(false) }
 
-    // Removed LaunchedEffect(ccPaymentMode) block
+    val isEditing = transactionToEdit != null
+
+    // LaunchedEffect per inizializzare isInstallment per le NUOVE transazioni
+    // e per applicare i vincoli della modalità di pagamento della carta di credito
+    LaunchedEffect(isCreditCard, ccPaymentMode, isEditing, transactionToEdit) {
+        if (isEditing) {
+            isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1
+        } else { // Nuova transazione
+            if (isCreditCard) {
+                when (ccPaymentMode) {
+                    "single" -> isInstallment = false
+                    "installment" -> isInstallment = true
+                    "manual" -> isInstallment = false // L'utente sceglie manualmente, default a non rateale
+                }
+            } else {
+                isInstallment = false // Se non è carta di credito, il default è non rateale. L'utente lo spunta se necessario.
+            }
+        }
+    }
 
     var installmentsCount by remember {
         mutableIntStateOf(transactionToEdit?.totalInstallments ?: 3)
@@ -577,8 +593,6 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val isEditing = transactionToEdit != null
-
             AnimatedVisibility(visible = type == "expense") {
                 Row(
                     modifier = Modifier
@@ -599,16 +613,21 @@ fun AddTransactionScreen(
 
             // NEW: Installment Payment Checkbox (separate from Credit Card)
             AnimatedVisibility(visible = type == "expense" && !isEditing) {
+                // Logic for disabling the checkbox based on ccPaymentMode
+                val installmentCheckboxEnabled = !isCreditCard || ccPaymentMode == "manual"
+                val installmentCheckboxChecked = isInstallment // Use the state from LaunchedEffect
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { isInstallment = !isInstallment }
+                        .then(if (installmentCheckboxEnabled) Modifier.clickable { isInstallment = !isInstallment } else Modifier)
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
-                        checked = isInstallment,
-                        onCheckedChange = { isInstallment = it }
+                        checked = installmentCheckboxChecked,
+                        onCheckedChange = { isInstallment = it },
+                        enabled = installmentCheckboxEnabled
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge)
