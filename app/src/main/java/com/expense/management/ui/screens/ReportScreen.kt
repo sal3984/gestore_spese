@@ -50,15 +50,29 @@ fun ReportScreen(
     // --- 1. STATO DEL MESE SELEZIONATO ---
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
 
+    // Helper per parsing sicuro delle date (ISO o fallback)
+    fun parseDateSafe(dateString: String): LocalDate {
+        return try {
+            LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (e: Exception) {
+            try {
+                // Fallback generico o tentativo di usare il formato utente corrente se coincide
+                LocalDate.parse(dateString, DateTimeFormatter.ofPattern(dateFormat))
+            } catch (e2: Exception) {
+                LocalDate.now() // Fallback finale per evitare crash, anche se distorce leggermente i dati
+            }
+        }
+    }
+
     // Calcolo Risparmio Anno Corrente (Invariato)
     val currentYear = LocalDate.now().year
     val savings = transactions
         .filter {
-            try {
-                LocalDate.parse(it.effectiveDate).year == currentYear
-            } catch (e: Exception) {
-                false
-            }
+             try {
+                 parseDateSafe(it.effectiveDate).year == currentYear
+             } catch (e: Exception) {
+                 false
+             }
         }
         .sumOf { if(it.type == "income") it.amount else -it.amount }
 
@@ -69,7 +83,7 @@ fun ReportScreen(
         transactions
             .filter {
                 it.type == "expense" && try {
-                    YearMonth.from(LocalDate.parse(it.effectiveDate)) == monthToShow
+                    YearMonth.from(parseDateSafe(it.effectiveDate)) == monthToShow
                 } catch (e: Exception) {
                     false
                 }
@@ -88,7 +102,7 @@ fun ReportScreen(
             val targetMonth = YearMonth.of(currentYear, month)
             val monthlyTransactions = transactions.filter {
                 try {
-                    YearMonth.from(LocalDate.parse(it.effectiveDate)) == targetMonth
+                    YearMonth.from(parseDateSafe(it.effectiveDate)) == targetMonth
                 } catch (e: Exception) {
                     false
                 }

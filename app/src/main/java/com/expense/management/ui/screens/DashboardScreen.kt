@@ -52,7 +52,7 @@ fun DashboardScreen(
     val currentTrans = transactions
         .filter {
             try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate)) == currentDashboardMonth
+                YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
             } catch (e: Exception) {
                 false
             }
@@ -72,7 +72,7 @@ fun DashboardScreen(
         .filter { it.isCreditCard && it.type == "expense" }
         .filter {
             try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate)) > today
+                YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) > today
             } catch (e: Exception) {
                 false
             }
@@ -298,7 +298,19 @@ fun DashboardScreen(
 
 @Composable
 fun DateHeader(dateString: String) {
-    val date = try { LocalDate.parse(dateString) } catch(e: Exception) { LocalDate.now() }
+    // Modifica: Parsing corretto della data ISO per l'header
+    val date = try {
+        LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
+    } catch(e: Exception) {
+        // Fallback per vecchie date non ISO
+        try {
+            // Prova a indovinare altri formati se necessario o fallback a oggi
+            LocalDate.now()
+        } catch(e2: Exception) {
+            LocalDate.now()
+        }
+    }
+
     val today = LocalDate.now()
     val yesterday = today.minusDays(1)
 
