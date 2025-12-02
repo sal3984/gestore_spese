@@ -119,6 +119,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState()
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
+    val csvExportColumns by viewModel.csvExportColumns.collectAsState() // Read selected columns
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
@@ -183,6 +184,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         uri = it,
                         currencySymbol = currentCurrency,
                         dateFormat = currentDateFormat,
+                        selectedColumns = csvExportColumns // Pass selected columns
                     )
                 }
             }
@@ -480,11 +482,13 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                             ccDelay = currentCcDelay,
                             ccLimit = currentCcLimit,
                             ccPaymentMode = currentCcPaymentMode,
+                            csvExportColumns = csvExportColumns, // Pass selected columns
                             onCurrencyChange = viewModel::updateCurrency,
                             onDateFormatChange = viewModel::updateDateFormat,
                             onDelayChange = viewModel::updateCcDelay,
                             onLimitChange = viewModel::updateCcLimit,
                             onCcPaymentModeChange = viewModel::updateCcPaymentMode,
+                            onCsvExportColumnsChange = viewModel::updateCsvExportColumns // Pass update function
                         )
                     }
 

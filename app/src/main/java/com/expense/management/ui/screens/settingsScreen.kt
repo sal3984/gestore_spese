@@ -22,9 +22,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,6 +60,19 @@ import androidx.compose.ui.unit.sp
 import com.expense.management.R
 import java.util.Locale
 
+val EXPORT_COLUMN_MAP = mapOf(
+    "ID" to "ID",
+    "Data" to "Data",
+    "Descrizione" to "Descrizione",
+    "ImportoConvertito" to "Importo (Convertito)",
+    "ImportoOriginale" to "Importo Originale",
+    "ValutaOriginale" to "Valuta Originale",
+    "Categoria" to "Categoria",
+    "Tipo" to "Tipo",
+    "CartaDiCredito" to "Carta di Credito",
+    "DataAddebito" to "Data Addebito"
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun settingsScreen(
@@ -66,14 +81,17 @@ fun settingsScreen(
     ccDelay: Int,
     ccLimit: Float,
     ccPaymentMode: String,
+    csvExportColumns: Set<String>,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
+    onCsvExportColumnsChange: (Set<String>) -> Unit
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
+    var showExportColumnsDialog by remember { mutableStateOf(false) }
     var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
 
     LaunchedEffect(ccLimit) {
@@ -249,6 +267,26 @@ fun settingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- SEZIONE IMPOSTAZIONI ESPORTAZIONE CSV ---
+        settingsSectionHeader(stringResource(R.string.csv_export_settings))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            Column {
+                settingsListItem(
+                    icon = Icons.Default.Description,
+                    title = stringResource(R.string.customize_csv_export),
+                    value = stringResource(R.string.selected_columns_count, csvExportColumns.size, EXPORT_COLUMN_MAP.size),
+                    onClick = { showExportColumnsDialog = true },
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(80.dp))
     }
 
@@ -308,6 +346,54 @@ fun settingsScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
+    // Dialog Selezione Colonne Esportazione CSV
+    if (showExportColumnsDialog) {
+        var selectedColumns by remember { mutableStateOf(csvExportColumns) }
+        AlertDialog(
+            onDismissRequest = { showExportColumnsDialog = false },
+            title = { Text(stringResource(R.string.select_columns_to_export)) },
+            text = {
+                Column {
+                    EXPORT_COLUMN_MAP.entries.forEach { (key, displayName) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedColumns = if (selectedColumns.contains(key)) {
+                                        selectedColumns - key
+                                    } else {
+                                        selectedColumns + key
+                                    }
+                                }
+                                .padding(vertical = 8.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = selectedColumns.contains(key),
+                                onCheckedChange = { isChecked ->
+                                    selectedColumns = if (isChecked) {
+                                        selectedColumns + key
+                                    } else {
+                                        selectedColumns - key
+                                    }
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(displayName)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onCsvExportColumnsChange(selectedColumns)
+                    showExportColumnsDialog = false
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { showExportColumnsDialog = false }) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }

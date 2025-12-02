@@ -22,20 +22,39 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object BackupUtils {
+
+    val EXPORT_COLUMN_DISPLAY_NAMES = mapOf(
+        "ID" to "ID",
+        "Data" to "Data",
+        "Descrizione" to "Descrizione",
+        "ImportoConvertito" to "Importo (Convertito)",
+        "ImportoOriginale" to "Importo Originale",
+        "ValutaOriginale" to "Valuta Originale",
+        "Categoria" to "Categoria",
+        "Tipo" to "Tipo",
+        "CartaDiCredito" to "Carta di Credito",
+        "DataAddebito" to "Data Addebito"
+    )
+
     fun performCsvExport(
         context: Context,
         viewModel: ExpenseViewModel,
         uri: Uri,
         currencySymbol: String,
         dateFormat: String,
+        selectedColumns: Set<String> // New parameter
     ) {
         val formatter = DateTimeFormatter.ofPattern(dateFormat)
         val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
             try {
                 val expenses = viewModel.getExpensesForExport()
-                // Note: Header columns could also be localized if needed, but CSV headers are often technical/fixed.
-                val csvHeader = "ID,Data,Descrizione,Importo ($currencySymbol - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
+
+                val headerColumns = selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) } // Maintain order
+                    .map { EXPORT_COLUMN_DISPLAY_NAMES[it] ?: it } // Get display name, fallback to key
+                    .map { if (it == "Importo (Convertito)") "Importo ($currencySymbol - Convertito)" else it } // Specific handling for currency symbol
+                val csvHeader = headerColumns.joinToString(",") + "\n"
+
                 val csvContent = StringBuilder(csvHeader)
                 expenses.forEach { t ->
                     val dateStr =
@@ -51,18 +70,22 @@ object BackupUtils {
                             t.effectiveDate
                         }
 
-                    csvContent.append(
-                        "${t.id}," +
-                            "\"$dateStr\"," +
-                            "\"${t.description.replace('\"', '\'')}\"," +
-                            "${String.format(Locale.US, "%.2f", t.amount)}," +
-                            "${String.format(Locale.US, "%.2f", t.originalAmount)}," +
-                            "\"${t.originalCurrency}\"," +
-                            "${t.categoryId}," +
-                            "${t.type}," +
-                            "${if (t.isCreditCard) "Sì" else "No"}," +
-                            "\"$effectiveDateStr\"\n",
-                    )
+                    val row = mutableListOf<String>()
+                    selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) }.forEach { columnKey ->
+                        when (columnKey) {
+                            "ID" -> row.add(t.id)
+                            "Data" -> row.add("\"$dateStr\"")
+                            "Descrizione" -> row.add("\"${t.description.replace('"', '\'')}")
+                            "ImportoConvertito" -> row.add(String.format(Locale.US, "%.2f", t.amount))
+                            "ImportoOriginale" -> row.add(String.format(Locale.US, "%.2f", t.originalAmount))
+                            "ValutaOriginale" -> row.add("\"${t.originalCurrency}\"")
+                            "Categoria" -> row.add(t.categoryId)
+                            "Tipo" -> row.add(t.type.toString()) // Convert Type enum to String
+                            "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
+                            "DataAddebito" -> row.add("\"$effectiveDateStr\"")
+                        }
+                    }
+                    csvContent.append(row.joinToString(",") + "\n")
                 }
 
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->

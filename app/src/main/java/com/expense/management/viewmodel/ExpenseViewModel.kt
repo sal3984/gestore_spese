@@ -93,6 +93,17 @@ class ExpenseViewModel(
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
 
+    val DEFAULT_EXPORT_COLUMNS = setOf(
+        "ID", "Data", "Descrizione", "ImportoConvertito", "ImportoOriginale",
+        "ValutaOriginale", "Categoria", "Tipo", "CartaDiCredito", "DataAddebito"
+    )
+
+    private val _csvExportColumns = MutableStateFlow(
+        prefs.getStringSet("csv_export_columns", DEFAULT_EXPORT_COLUMNS) ?: DEFAULT_EXPORT_COLUMNS
+    )
+    val csvExportColumns = _csvExportColumns.asStateFlow()
+
+
     init {
         viewModelScope.launch {
             loadEarliestMonth()
@@ -276,6 +287,11 @@ class ExpenseViewModel(
         prefs.edit { putBoolean("is_biometric_enabled", isEnabled) }
     }
 
+    fun updateCsvExportColumns(columns: Set<String>) {
+        _csvExportColumns.value = columns
+        prefs.edit { putStringSet("csv_export_columns", columns) }
+    }
+
     // Metodi Backup
     suspend fun getAllForBackup(): BackupData =
         BackupData(
@@ -294,7 +310,7 @@ class ExpenseViewModel(
         viewModelScope.launch(Dispatchers.IO) { repository.insertAllTransactions(list) }
     }
 
-    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == "expense"}
+    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == "expense" }
 }
 
 data class BackupData(

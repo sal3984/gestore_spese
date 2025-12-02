@@ -72,6 +72,11 @@
     <string name="restore">Ripristina</string>
     <string name="choose_currency_symbol">Scegli Simbolo Valuta</string>
     <string name="choose_date_format">Scegli Formato Data</string>
+    <string name="csv_export_settings">Impostazioni Esportazione CSV</string>
+    <string name="customize_csv_export">Personalizza Esportazione CSV</string>
+    <string name="selected_columns_count">%1$d di %2$d colonne selezionate</string>
+    <string name="select_columns_to_export">Seleziona colonne da esportare</string>
+    <string name="save">Salva</string>
 
     <!-- GESTIONE DATI -->
 
