@@ -601,7 +601,14 @@ fun AddTransactionScreen(
                                 enabled = !isEditing
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                            Column { // Wrap Text and Hint in a Column
+                                Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                Text(
+                                    text = stringResource(R.string.credit_card_payment_hint), // TODO: Add this string
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         AnimatedVisibility(visible = !isEditing && (!isCreditCard || ccPaymentMode == "manual")) {
@@ -621,7 +628,14 @@ fun AddTransactionScreen(
                                     enabled = installmentCheckboxEnabled
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                Column { // Wrap Text and Hint in a Column
+                                    Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = stringResource(R.string.installment_payment_hint), // TODO: Add this string
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

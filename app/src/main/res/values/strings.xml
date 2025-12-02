@@ -149,7 +149,7 @@
     <string name="biometric_failed">Authentication failed</string>
     <string name="biometric_title">Expense Manager Access</string>
     <string name="biometric_subtitle">Use biometrics or PIN to log in</string>
-    <string name="installment_payment">Installment Payment(PayPal,Klarna, etc...)</string>
+    <string name="installment_payment">Installment Payment</string>
 
     <string name="delete_this_and_subsequent">Delete this and subsequent installments</string>
     <string name="delete_single_installment">Delete only this installment</string>
@@ -157,6 +157,8 @@
     <string name="report_no_transaction_this_month">Nessuna transazione\nin questo mese</string>
     <string name="report_message_add_transaction">Aggiungi una nuova spesa o entrata\nper iniziare a tracciare i tuoi movimenti.</string>
 
+    <string name="credit_card_payment_hint">The behavior of credit card payments (single, installment, manual) can be configured in the settings.</string>
+    <string name="installment_payment_hint">This refers to installment payments managed by external services (e.g., Klarna, PayPal, Satispay).</string>
 
     <!-- <string name="save_transaction">Save Transaction</string> -->
 
