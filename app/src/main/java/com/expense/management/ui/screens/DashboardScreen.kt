@@ -276,7 +276,7 @@ fun DashboardScreen(
                             // Entrate
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier
-                                    .size(48.dp)
+                                    .size(36.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.secondaryContainer),
                                     contentAlignment = Alignment.Center
@@ -297,7 +297,7 @@ fun DashboardScreen(
                                     )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalIncome)}",
-                                        style = MaterialTheme.typography.titleLarge,
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.secondary
                                     )
@@ -314,14 +314,14 @@ fun DashboardScreen(
                                     )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalExpense)}",
-                                        style = MaterialTheme.typography.titleLarge,
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Box(modifier = Modifier
-                                    .size(48.dp)
+                                    .size(36.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.errorContainer),
                                     contentAlignment = Alignment.Center
