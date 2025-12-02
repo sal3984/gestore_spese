@@ -30,8 +30,6 @@ object BackupUtils {
             try {
                 val expenses = viewModel.getExpensesForExport()
                 // Note: Header columns could also be localized if needed, but CSV headers are often technical/fixed.
-                // Keeping them hardcoded for now or you can fetch them from resources if strictly required.
-                // "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
                 val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
                 val csvContent = StringBuilder(csvHeader)
                 expenses.forEach { t ->
@@ -114,10 +112,20 @@ object BackupUtils {
                 val jsonString = sb.toString()
 
                 try {
-                     val backupData = Gson().fromJson(jsonString, BackupData::class.java)
-                    viewModel.restoreData(backupData)
+                    val backupData = Gson().fromJson(jsonString, BackupData::class.java)
+
+                    // Normalizzazione date (da dd/MM/yyyy a ISO yyyy-MM-dd se necessario)
+                    val normalizedTransactions = backupData.transactions.map { t ->
+                        t.copy(
+                            date = normalizeDate(t.date),
+                            effectiveDate = normalizeDate(t.effectiveDate)
+                        )
+                    }
+                    val normalizedBackupData = backupData.copy(transactions = normalizedTransactions)
+
+                    viewModel.restoreData(normalizedBackupData)
                     withContext(Dispatchers.Main) {
-                       Toast.makeText(context, context.getString(R.string.restore_success, backupData.transactions.size, backupData.categories.size), Toast.LENGTH_SHORT).show()
+                       Toast.makeText(context, context.getString(R.string.restore_success, normalizedBackupData.transactions.size, normalizedBackupData.categories.size), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {
@@ -127,16 +135,42 @@ object BackupUtils {
 
                 val type = object : TypeToken<List<TransactionEntity>>() {}.type
                 val list: List<TransactionEntity> = Gson().fromJson(jsonString, type)
-                viewModel.restoreLegacyData(list)
+
+                // Normalizzazione date anche per backup legacy
+                val normalizedList = list.map { t ->
+                    t.copy(
+                        date = normalizeDate(t.date),
+                        effectiveDate = normalizeDate(t.effectiveDate)
+                    )
+                }
+
+                viewModel.restoreLegacyData(normalizedList)
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, context.getString(R.string.restore_legacy_success, list.size), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.restore_legacy_success, normalizedList.size), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, context.getString(R.string.restore_error_file), Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+
+    private fun normalizeDate(dateStr: String): String {
+        return try {
+            // Prova a parsare come ISO 8601 (yyyy-MM-dd)
+            LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
+            dateStr // Se ha successo, è già nel formato corretto
+        } catch (e: Exception) {
+            try {
+                // Prova a parsare con il vecchio formato dd/MM/yyyy
+                val oldFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                LocalDate.parse(dateStr, oldFormatter).format(DateTimeFormatter.ISO_LOCAL_DATE)
+            } catch (e2: Exception) {
+                // Se entrambi falliscono, restituisce la stringa originale
+                dateStr
             }
         }
     }
