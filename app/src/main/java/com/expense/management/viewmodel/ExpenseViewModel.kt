@@ -162,7 +162,27 @@ class ExpenseViewModel(
 
     fun saveTransaction(transaction: TransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.insertTransaction(transaction)
+            val existingTransaction = repository.getTransactionById(transaction.id)
+
+            if (existingTransaction != null && transaction.groupId != null && transaction.totalInstallments ?: 1 > 1) {
+                // This is an update to an existing installment transaction
+                // Check if the category has changed
+                if (existingTransaction.categoryId != transaction.categoryId) {
+                    // Category has changed, update all transactions in the group
+                    val transactionsInGroup = repository.getAllTransactionsList()
+                        .filter { it.groupId == transaction.groupId }
+
+                    transactionsInGroup.forEach { installment ->
+                        repository.insertTransaction(installment.copy(categoryId = transaction.categoryId))
+                    }
+                } else {
+                    // Category has not changed, just update the single transaction
+                    repository.insertTransaction(transaction)
+                }
+            } else {
+                // New transaction, or a single non-installment transaction, or a new installment group (first transaction)
+                repository.insertTransaction(transaction)
+            }
         }
     }
 
@@ -274,7 +294,7 @@ class ExpenseViewModel(
         viewModelScope.launch(Dispatchers.IO) { repository.insertAllTransactions(list) }
     }
 
-    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == "expense" }
+    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == "expense"}
 }
 
 data class BackupData(
