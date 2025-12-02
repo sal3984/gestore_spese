@@ -115,13 +115,18 @@ fun DashboardScreen(
 
     if (showDeleteDialog != null) {
         val transactionToDelete = showDeleteDialog!!
-        if (transactionToDelete.isInstallment) {
-            // Dialog per transazione rateale
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text(stringResource(R.string.delete_transaction_title)) },
-                text = { Text(stringResource(R.string.delete_installment_message)) }, // TODO: Aggiungere questa stringa in strings.xml
-                confirmButton = {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text(stringResource(R.string.delete_transaction_title)) },
+            text = {
+                if (transactionToDelete.isInstallment) {
+                     Text(stringResource(R.string.delete_installment_message))
+                } else {
+                     Text(stringResource(R.string.delete_transaction_message))
+                }
+            },
+            confirmButton = {
+                if (transactionToDelete.isInstallment) {
                     Column {
                         TextButton(
                             onClick = {
@@ -130,7 +135,7 @@ fun DashboardScreen(
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text(stringResource(R.string.delete_this_and_subsequent)) // TODO: Aggiungere questa stringa in strings.xml
+                            Text(stringResource(R.string.delete_this_and_subsequent))
                         }
                         TextButton(
                             onClick = {
@@ -139,22 +144,14 @@ fun DashboardScreen(
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text(stringResource(R.string.delete_single_installment)) // TODO: Aggiungere questa stringa in strings.xml
+                            Text(stringResource(R.string.delete_single_installment))
                         }
+                        // Spostato il pulsante Annulla qui per allineamento
                         TextButton(onClick = { showDeleteDialog = null }) {
                             Text(stringResource(R.string.cancel).uppercase())
                         }
                     }
-                },
-                dismissButton = { /* Empty, as the cancel button is now in confirmButton's Column */ }
-            )
-        } else {
-            // Dialog per transazione singola (il tuo codice originale)
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text(stringResource(R.string.delete_transaction_title)) },
-                text = { Text(stringResource(R.string.delete_transaction_message)) },
-                confirmButton = {
+                } else {
                     TextButton(
                         onClick = {
                             onDelete(transactionToDelete.transaction.id, DeleteType.SINGLE)
@@ -164,14 +161,10 @@ fun DashboardScreen(
                     ) {
                         Text(stringResource(R.string.delete_uppercase))
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
-                        Text(stringResource(R.string.cancel).uppercase())
-                    }
                 }
-            )
-        }
+            },
+            dismissButton = { /* Vuoto, il pulsante Annulla è ora nel confirmButton's Column */ }
+        )
     }
 
     // Unica LazyColumn per permettere lo scroll di tutta la pagina (anche header)
