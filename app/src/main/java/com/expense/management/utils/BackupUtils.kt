@@ -36,6 +36,19 @@ object BackupUtils {
         "DataAddebito" to "Data Addebito"
     )
 
+    private val CURRENCY_SYMBOL_TO_CODE = mapOf(
+        "€" to "EUR",
+        "$" to "USD",
+        "£" to "GBP",
+        "¥" to "JPY",
+        "CHF" to "CHF", // Already a code, but good to be explicit if needed
+        "₽" to "RUB",
+        "₹" to "INR",
+        "₩" to "KRW",
+        "₪" to "ILS",
+        "₫" to "VND"
+    )
+
     fun performCsvExport(
         context: Context,
         viewModel: ExpenseViewModel,
@@ -75,12 +88,15 @@ object BackupUtils {
                         when (columnKey) {
                             "ID" -> row.add(t.id)
                             "Data" -> row.add("\"$dateStr\"")
-                            "Descrizione" -> row.add("\"${t.description.replace('"', '\'')}")
+                            "Descrizione" -> row.add("\"${t.description}\"")
                             "ImportoConvertito" -> row.add(String.format(Locale.US, "%.2f", t.amount))
                             "ImportoOriginale" -> row.add(String.format(Locale.US, "%.2f", t.originalAmount))
-                            "ValutaOriginale" -> row.add("\"${t.originalCurrency}\"")
+                            "ValutaOriginale" -> {
+                                val code = CURRENCY_SYMBOL_TO_CODE[t.originalCurrency] ?: t.originalCurrency
+                                row.add(code)
+                            }
                             "Categoria" -> row.add(t.categoryId)
-                            "Tipo" -> row.add(t.type.toString()) // Convert Type enum to String
+                            "Tipo" -> row.add(t.type)
                             "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
                             "DataAddebito" -> row.add("\"$effectiveDateStr\"")
                         }
@@ -89,6 +105,7 @@ object BackupUtils {
                 }
 
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    // Removed BOM writing
                     OutputStreamWriter(outputStream).use { writer ->
                         writer.write(csvContent.toString())
                     }
