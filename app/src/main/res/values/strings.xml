@@ -149,7 +149,7 @@
     <string name="biometric_failed">Authentication failed</string>
     <string name="biometric_title">Expense Manager Access</string>
     <string name="biometric_subtitle">Use biometrics or PIN to log in</string>
-    <string name="installment_payment">Installment Payment</string>
+    <string name="installment_payment">Installment Payment(PayPal,Klarna, etc...)</string>
 
     <string name="delete_this_and_subsequent">Delete this and subsequent installments</string>
     <string name="delete_single_installment">Delete only this installment</string>
