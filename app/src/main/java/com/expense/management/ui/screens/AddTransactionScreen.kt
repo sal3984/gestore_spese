@@ -65,7 +65,7 @@ fun AddTransactionScreen(
     suggestions: List<String>,
     availableCategories: List<CategoryEntity>,
     onSave: (TransactionEntity) -> Unit,
-    onDelete: (String, DeleteType) -> Unit, // MODIFICATA LA FIRMA
+    onDelete: (String, DeleteType) -> Unit,
     onBack: () -> Unit,
     onDescriptionChange: (String) -> Unit
 ) {
@@ -146,7 +146,8 @@ fun AddTransactionScreen(
 
     var installmentStartDateStr by remember {
         mutableStateOf(
-            if (transactionToEdit == null && applyCcDelayToInstallments && isCreditCard) { // Only apply delay if it's a new CC installment
+            // Only apply delay if it's a new CC installment
+            if (transactionToEdit == null && applyCcDelayToInstallments && isCreditCard) {
                 try {
                     val tDate = LocalDate.now()
                     tDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
@@ -337,7 +338,7 @@ fun AddTransactionScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 80.dp), // Extra padding for scroll
+                .padding(bottom = 80.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SingleChoiceSegmentedButtonRow(
@@ -602,10 +603,11 @@ fun AddTransactionScreen(
                                 enabled = !isEditing
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column { // Wrap Text and Hint in a Column
+                            // Wrap Text and Hint in a Column
+                            Column {
                                 Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                 Text(
-                                    text = stringResource(R.string.credit_card_payment_hint), // TODO: Add this string
+                                    text = stringResource(R.string.credit_card_payment_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -629,10 +631,11 @@ fun AddTransactionScreen(
                                     enabled = installmentCheckboxEnabled
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Column { // Wrap Text and Hint in a Column
+                                // Wrap Text and Hint in a Column
+                                Column {
                                     Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                     Text(
-                                        text = stringResource(R.string.installment_payment_hint), // TODO: Add this string
+                                        text = stringResource(R.string.installment_payment_hint),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -675,7 +678,7 @@ fun AddTransactionScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        if (!isEditing || (isEditing && isCreditCard)) { // Show delay option only for new transactions or existing CC installments
+                        if (!isEditing || (isEditing && isCreditCard)) {
                             AnimatedVisibility(visible = isCreditCard) {
                                 Column {
                                     Row(
@@ -856,7 +859,9 @@ fun AddTransactionScreen(
                             } catch (e: Exception) {
                                 installmentStartDateStr = dateStr
                             }
-                        } else if (!isCreditCard && isInstallment) { // For non-CC installments, the start date is the transaction date by default
+                        }
+                        // For non-CC installments, the start date is the transaction date by default
+                        else if (!isCreditCard && isInstallment) {
                             installmentStartDateStr = dateStr
                         }
                     }
@@ -907,9 +912,8 @@ fun AddTransactionScreen(
                     Column {
                         TextButton(
                             onClick = {
-                                onDelete(transactionToEdit.id, DeleteType.THIS_AND_SUBSEQUENT) // Pass DeleteType
+                                onDelete(transactionToEdit.id, DeleteType.THIS_AND_SUBSEQUENT)
                                 showDeleteDialog = false
-                                //onBack()
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
@@ -917,9 +921,8 @@ fun AddTransactionScreen(
                         }
                         TextButton(
                             onClick = {
-                                onDelete(transactionToEdit.id, DeleteType.SINGLE) // Pass DeleteType
+                                onDelete(transactionToEdit.id, DeleteType.SINGLE)
                                 showDeleteDialog = false
-                                //onBack()
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
@@ -932,9 +935,9 @@ fun AddTransactionScreen(
                 } else {
                     TextButton(
                         onClick = {
-                            transactionToEdit?.let { onDelete(it.id, DeleteType.SINGLE) } // Pass DeleteType.SINGLE
+                            transactionToEdit?.let { onDelete(it.id, DeleteType.SINGLE) }
                             showDeleteDialog = false
-                            //onBack()
+
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {

@@ -62,7 +62,7 @@ fun CategoryScreen(
             // Modern Tab Switcher
             PrimaryTabRow(
                 selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.surface, // Use surface for tab row bg
+                containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
                 indicator = {
                     TabRowDefaults.PrimaryIndicator(
@@ -237,7 +237,7 @@ fun AddCategoryDialog(
                     value = label,
                     onValueChange = {
                         label = it
-                        errorMessage = null // Resetta errore quando si digita
+                        errorMessage = null
                     },
                     label = { Text(stringResource(R.string.category_name_label)) },
                     singleLine = true,

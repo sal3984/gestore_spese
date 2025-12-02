@@ -64,7 +64,7 @@ fun DashboardScreen(
     earliestMonth: YearMonth,
     currentDashboardMonth: YearMonth,
     onMonthChange: (YearMonth) -> Unit,
-    onDelete: (String, DeleteType) -> Unit, // Modificata la firma di onDelete
+    onDelete: (String, DeleteType) -> Unit,
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
 ) {
@@ -447,8 +447,8 @@ fun DashboardScreen(
                                     transaction = t,
                                     isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1
                                 )
-
-                                false // Mantieni l'elemento in posizione fino alla conferma
+                                // Mantieni l'elemento in posizione fino alla conferma
+                                false
                             } else {
                                 false
                             }
@@ -464,8 +464,10 @@ fun DashboardScreen(
                         SwipeToDismissBox(
                             state = dismissState,
                             modifier = Modifier.padding(vertical = 1.dp),
-                            enableDismissFromStartToEnd = false, // Disabilita swipe da inizio a fine
-                            enableDismissFromEndToStart = true, // Abilita swipe da fine a inizio
+                            // Disabilita swipe da inizio a fine
+                            enableDismissFromStartToEnd = false,
+                            // Abilita swipe da fine a inizio
+                            enableDismissFromEndToStart = true,
                             backgroundContent = {
                                 val color = when (dismissState.targetValue) {
                                     SwipeToDismissBoxValue.EndToStart -> Color.Red

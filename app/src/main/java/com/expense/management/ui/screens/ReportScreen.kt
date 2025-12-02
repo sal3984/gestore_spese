@@ -64,7 +64,8 @@ fun ReportScreen(
                 // Fallback generico o tentativo di usare il formato utente corrente se coincide
                 LocalDate.parse(dateString, DateTimeFormatter.ofPattern(dateFormat))
             } catch (e2: Exception) {
-                LocalDate.now() // Fallback finale per evitare crash, anche se distorce leggermente i dati
+                // Fallback finale per evitare crash, anche se distorce leggermente i dati
+                LocalDate.now()
             }
         }
     }
@@ -143,7 +144,8 @@ fun ReportScreen(
                     )
                 )
                 .padding(24.dp)
-                .padding(bottom = 32.dp) // More space for the card overlap
+                // More space for the card overlap
+                .padding(bottom = 32.dp)
         ) {
             Text(
                 stringResource(R.string.report_year, currentYear),
@@ -184,7 +186,8 @@ fun ReportScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(y = (-24).dp) // Slight overlap for better UI depth
+                // Slight overlap for better UI depth
+                .offset(y = (-24).dp)
                 .padding(horizontal = 16.dp)
         ) {
             // Grafico a Barre Mensili
@@ -345,8 +348,8 @@ fun ReportScreen(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(80.dp)) // Bottom padding for FAB or Nav
+            // Bottom padding for FAB or Nav
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
@@ -400,7 +403,8 @@ fun MonthlyBarChart(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .padding(horizontal = 3.dp), // Slightly thinner bars
+                                // Slightly thinner bars
+                                .padding(horizontal = 3.dp),
                             contentAlignment = Alignment.BottomCenter
                         ) {
                             if (balance > 0) {
@@ -467,7 +471,8 @@ fun MonthlyBarChart(
             val index = data.indexOfFirst { it.first == month }
             if (index >= 0) {
                 val xOffset = (barWidth * index) + (barWidth / 2)
-                val tooltipWidth = 80.dp // Stima approssimativa della larghezza del tooltip
+                // Stima approssimativa della larghezza del tooltip
+                val tooltipWidth = 80.dp
 
                 // Calcola se il tooltip sta per uscire dai bordi
                 val currentX = xOffset
@@ -485,7 +490,8 @@ fun MonthlyBarChart(
                     modifier = Modifier
                         .absoluteOffset(x = xOffset + extraOffset, y = 0.dp) // y=0 is top of BoxWithConstraints
                         .zIndex(1f),
-                    contentAlignment = Alignment.BottomCenter // Align to bottom of this anchor point (effectively top of chart)
+                    // Align to bottom of this anchor point (effectively top of chart)
+                    contentAlignment = Alignment.BottomCenter
                 ) {
                    // We want the tooltip to appear *above* the chart area if possible,
                    // but BoxWithConstraints starts at top of chart area.

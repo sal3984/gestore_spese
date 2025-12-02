@@ -162,7 +162,8 @@ object BackupUtils {
         return try {
             // Prova a parsare come ISO 8601 (yyyy-MM-dd)
             LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
-            dateStr // Se ha successo, è già nel formato corretto
+            // Se ha successo, è già nel formato corretto
+            dateStr
         } catch (e: Exception) {
             try {
                 // Prova a parsare con il vecchio formato dd/MM/yyyy

@@ -84,7 +84,6 @@ import com.expense.management.ui.screens.ReportScreen
 import com.expense.management.ui.screens.SecurityScreen
 import com.expense.management.ui.screens.SettingsScreen
 import com.expense.management.ui.screens.category.CategoryScreen
-import com.expense.management.ui.screens.DeleteType // Import aggiunto
 import com.expense.management.ui.theme.GestoreSpeseTheme
 import com.expense.management.utils.BackupUtils
 import com.expense.management.utils.BiometricUtils
@@ -392,7 +391,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             earliestMonth = earliestMonth,
                             currentDashboardMonth = currentDashboardMonth,
                             onMonthChange = viewModel::updateDashboardMonth,
-                            onDelete = { transactionId, deleteType -> // Modificata la lambda per on Delete
+                            onDelete = { transactionId, deleteType ->
                                 viewModel.deleteTransaction(transactionId, deleteType)
                             },
                             onEdit = { transactionId ->
