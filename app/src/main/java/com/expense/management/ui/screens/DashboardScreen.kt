@@ -419,14 +419,14 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Nessuna transazione\nin questo mese",
+                            text = stringResource(R.string.report_no_transaction_this_month),
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Aggiungi una nuova spesa o entrata\nper iniziare a tracciare i tuoi movimenti.",
+                            text = stringResource(R.string.report_message_add_transaction),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center
