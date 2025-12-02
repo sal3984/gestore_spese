@@ -41,4 +41,5 @@ interface TransactionDao {
     // NUOVO: Ottieni la data di addebito più vecchia
     @Query("SELECT MIN(effectiveDate) FROM transactions")
     suspend fun getMinEffectiveDate(): String?
+
 }

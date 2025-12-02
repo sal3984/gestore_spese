@@ -65,7 +65,7 @@ fun AddTransactionScreen(
     suggestions: List<String>,
     availableCategories: List<CategoryEntity>,
     onSave: (TransactionEntity) -> Unit,
-    onDelete: (String) -> Unit,
+    onDelete: (String, DeleteType) -> Unit, // MODIFICATA LA FIRMA
     onBack: () -> Unit,
     onDescriptionChange: (String) -> Unit
 ) {
@@ -101,17 +101,18 @@ fun AddTransactionScreen(
     var isInstallment by remember { mutableStateOf(false) }
     val isEditing = transactionToEdit != null
 
-    LaunchedEffect(isCreditCard, ccPaymentMode, isEditing, transactionToEdit) {
+    LaunchedEffect(isEditing, transactionToEdit, isCreditCard, ccPaymentMode) {
         if (isEditing) {
             isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1
         } else {
+            // Only set default installment status if not editing
             if (isCreditCard) {
-                when (ccPaymentMode) {
-                    "single" -> isInstallment = false
-                    "installment" -> isInstallment = true
-                    "manual" -> isInstallment = false
+                isInstallment = when (ccPaymentMode) {
+                    "installment" -> true
+                    else -> false
                 }
             } else {
+                // If not credit card, default to false, but allow user to enable it manually
                 isInstallment = false
             }
         }
@@ -145,7 +146,7 @@ fun AddTransactionScreen(
 
     var installmentStartDateStr by remember {
         mutableStateOf(
-            if (transactionToEdit == null && applyCcDelayToInstallments) {
+            if (transactionToEdit == null && applyCcDelayToInstallments && isCreditCard) { // Only apply delay if it's a new CC installment
                 try {
                     val tDate = LocalDate.now()
                     tDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
@@ -611,8 +612,8 @@ fun AddTransactionScreen(
                             }
                         }
 
-                        AnimatedVisibility(visible = !isEditing && (!isCreditCard || ccPaymentMode == "manual")) {
-                            val installmentCheckboxEnabled = !isCreditCard || ccPaymentMode == "manual"
+                        AnimatedVisibility(visible = !isEditing && !isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)) {
+                            val installmentCheckboxEnabled = !isEditing
                             val installmentCheckboxChecked = isInstallment
 
                             Row(
@@ -674,7 +675,7 @@ fun AddTransactionScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        if (!isEditing) {
+                        if (!isEditing || (isEditing && isCreditCard)) { // Show delay option only for new transactions or existing CC installments
                             AnimatedVisibility(visible = isCreditCard) {
                                 Column {
                                     Row(
@@ -721,7 +722,10 @@ fun AddTransactionScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
                             }
+                        }
 
+                        // Only show installment start date for new transactions or non-CC installments when editing
+                        if (!isEditing || (isEditing && !isCreditCard && isInstallment)) {
                             OutlinedTextField(
                                 value = installmentStartDateStr,
                                 onValueChange = { installmentStartDateStr = it },
@@ -843,7 +847,8 @@ fun AddTransactionScreen(
                     datePickerState.selectedDateMillis?.let { millis ->
                         dateStr = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate().format(displayFormatter)
 
-                        if (applyCcDelayToInstallments) {
+                        // Update installment start date only if it's a credit card installment with delay enabled
+                        if (applyCcDelayToInstallments && isCreditCard && isInstallment) {
                             try {
                                 val tDate = LocalDate.parse(dateStr, displayFormatter)
                                 val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
@@ -851,7 +856,7 @@ fun AddTransactionScreen(
                             } catch (e: Exception) {
                                 installmentStartDateStr = dateStr
                             }
-                        } else {
+                        } else if (!isCreditCard && isInstallment) { // For non-CC installments, the start date is the transaction date by default
                             installmentStartDateStr = dateStr
                         }
                     }
@@ -891,29 +896,53 @@ fun AddTransactionScreen(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text(stringResource(R.string.delete_transaction_title)) },
             text = {
-                if (transactionToEdit?.groupId != null) {
+                if (transactionToEdit?.groupId != null && transactionToEdit.totalInstallments != null && transactionToEdit.totalInstallments > 1) {
                      Text(stringResource(R.string.delete_installment_message))
                 } else {
                      Text(stringResource(R.string.delete_transaction_message))
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        transactionToEdit?.let { onDelete(it.id) }
-                        showDeleteDialog = false
-                        onBack()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(R.string.delete_uppercase))
+                if (transactionToEdit?.groupId != null && transactionToEdit.totalInstallments != null && transactionToEdit.totalInstallments > 1) {
+                    Column {
+                        TextButton(
+                            onClick = {
+                                onDelete(transactionToEdit.id, DeleteType.THIS_AND_SUBSEQUENT) // Pass DeleteType
+                                showDeleteDialog = false
+                                //onBack()
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.delete_this_and_subsequent))
+                        }
+                        TextButton(
+                            onClick = {
+                                onDelete(transactionToEdit.id, DeleteType.SINGLE) // Pass DeleteType
+                                showDeleteDialog = false
+                                //onBack()
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.delete_single_installment))
+                        }
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text(stringResource(R.string.cancel).uppercase())
+                        }
+                    }
+                } else {
+                    TextButton(
+                        onClick = {
+                            transactionToEdit?.let { onDelete(it.id, DeleteType.SINGLE) } // Pass DeleteType.SINGLE
+                            showDeleteDialog = false
+                            //onBack()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(R.string.delete_uppercase))
+                    }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.cancel).uppercase())
-                }
-            }
+            dismissButton = { /* Vuoto, il pulsante Annulla è ora nel confirmButton's Column */ }
         )
     }
 }

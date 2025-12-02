@@ -524,8 +524,8 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 onSave = { transaction ->
                                     viewModel.saveTransaction(transaction)
                                 },
-                                onDelete = { id ->
-                                    viewModel.deleteTransaction(id)
+                                onDelete = { id, deleteType ->
+                                    viewModel.deleteTransaction(id, deleteType)
                                     navController.popBackStack()
                                 },
                                 transactionToEdit = transactionToEdit,

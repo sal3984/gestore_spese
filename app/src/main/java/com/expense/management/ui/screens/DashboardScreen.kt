@@ -445,8 +445,9 @@ fun DashboardScreen(
                             if (it == SwipeToDismissBoxValue.EndToStart) {
                                 showDeleteDialog = TransactionToDelete(
                                     transaction = t,
-                                    isInstallment = t.isCreditCard && t.installmentNumber != null && t.totalInstallments != null
+                                    isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1
                                 )
+
                                 false // Mantieni l'elemento in posizione fino alla conferma
                             } else {
                                 false

@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import androidx.core.content.edit
 import com.expense.management.ui.screens.DeleteType
 
@@ -160,33 +161,44 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             repository.insertTransaction(transaction)
         }
     }
-
-    fun deleteTransaction(id: String) {
-
-    }
-
+    
     fun deleteTransaction(transactionId: String, deleteType: DeleteType) {
-        // Implementa la logica per gestire i diversi tipi di cancellazione qui
-        // ad esempio:
         viewModelScope.launch(Dispatchers.IO) {
-            val transaction = repository.getTransactionById(transactionId)
+            val transactionToDelete = repository.getTransactionById(transactionId) ?: return@launch
+
             when (deleteType) {
                 DeleteType.SINGLE -> {
-                        if (transaction?.groupId == null) {
-                            repository.deleteTransaction(transactionId)
-                        }
+                    // Elimina sempre la singola transazione
+                    repository.deleteTransaction(transactionId)
                 }
 
                 DeleteType.THIS_AND_SUBSEQUENT -> {
-                    if (transaction != null) {
-                        if (transaction.groupId != null) {
-                            repository.deleteTransactionGroup(transaction.groupId)
+                    val groupId = transactionToDelete.groupId
+                    if (groupId != null) {
+                        // Recupera tutte le transazioni, filtra per groupId e per data successiva o uguale
+                        val transactionsInGroup = repository.getAllTransactionsList()
+                            .filter { it.groupId == groupId }
+                            .filter {
+                                try {
+                                    LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE) >= LocalDate.parse(transactionToDelete.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)
+                                } catch (e: Exception) {
+                                    false // Ignora se la data non è parsabile
+                                }
+                            }
+
+                        // Elimina singolarmente le transazioni filtrate
+                        transactionsInGroup.forEach { installment ->
+                            repository.deleteTransaction(installment.id)
                         }
+                    } else {
+                        // Se non è un gruppo, elimina la singola transazione (comportamento fallback)
+                        repository.deleteTransaction(transactionId)
                     }
                 }
             }
         }
     }
+
 
 
     suspend fun getTransactionById(id: String): TransactionEntity? {
