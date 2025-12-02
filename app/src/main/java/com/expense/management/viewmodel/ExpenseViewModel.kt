@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 import androidx.core.content.edit
+import com.expense.management.ui.screens.DeleteType
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -161,17 +162,32 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteTransaction(id: String) {
+
+    }
+
+    fun deleteTransaction(transactionId: String, deleteType: DeleteType) {
+        // Implementa la logica per gestire i diversi tipi di cancellazione qui
+        // ad esempio:
         viewModelScope.launch(Dispatchers.IO) {
-            val transaction = repository.getTransactionById(id)
-            if (transaction != null) {
-                if (transaction.groupId != null) {
-                    repository.deleteTransactionGroup(transaction.groupId)
-                } else {
-                    repository.deleteTransaction(id)
+            val transaction = repository.getTransactionById(transactionId)
+            when (deleteType) {
+                DeleteType.SINGLE -> {
+                        if (transaction?.groupId == null) {
+                            repository.deleteTransaction(transactionId)
+                        }
+                }
+
+                DeleteType.THIS_AND_SUBSEQUENT -> {
+                    if (transaction != null) {
+                        if (transaction.groupId != null) {
+                            repository.deleteTransactionGroup(transaction.groupId)
+                        }
+                    }
                 }
             }
         }
     }
+
 
     suspend fun getTransactionById(id: String): TransactionEntity? {
         return withContext(Dispatchers.IO) { repository.getTransactionById(id) }

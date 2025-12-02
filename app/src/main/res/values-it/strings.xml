@@ -151,4 +151,7 @@
     <string name="biometric_title">Accesso Gestore Spese</string>
     <string name="biometric_subtitle">Usa biometria o PIN per accedere</string>
 
+    <string name="delete_this_and_subsequent">Elimina questa e le successive</string>
+    <string name="delete_single_installment">Elimina solo questa rata</string>
+
 </resources>

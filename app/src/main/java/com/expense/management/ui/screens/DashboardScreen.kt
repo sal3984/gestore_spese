@@ -1,5 +1,10 @@
 package com.expense.management.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,9 +15,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
@@ -32,7 +40,19 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@OptIn(ExperimentalFoundationApi::class)
+// Enum per il tipo di cancellazione
+enum class DeleteType {
+    SINGLE,
+    THIS_AND_SUBSEQUENT
+}
+
+// Data class per gestire la transazione da eliminare
+data class TransactionToDelete(
+    val transaction: TransactionEntity,
+    val isInstallment: Boolean
+)
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     transactions: List<TransactionEntity>,
@@ -43,7 +63,7 @@ fun DashboardScreen(
     earliestMonth: YearMonth,
     currentDashboardMonth: YearMonth,
     onMonthChange: (YearMonth) -> Unit,
-    onDelete: (String) -> Unit,
+    onDelete: (String, DeleteType) -> Unit, // Modificata la firma di onDelete
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
 ) {
@@ -82,9 +102,77 @@ fun DashboardScreen(
 
     val ccProgress = if (ccLimit > 0) (creditCardUsed / ccLimit).toFloat() else 0f
 
-    // LIMITI NAVIGAZIONE:
+    // LIMITI NAVIGAZIONE
     val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)
     val maxMonth = today.plusMonths(12)
+
+    // State for entrance animation
+    val visibleState = remember {
+        MutableTransitionState(false).apply { targetState = true }
+    }
+
+    var showDeleteDialog by remember { mutableStateOf<TransactionToDelete?>(null) }
+
+    if (showDeleteDialog != null) {
+        val transactionToDelete = showDeleteDialog!!
+        if (transactionToDelete.isInstallment) {
+            // Dialog per transazione rateale
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = null },
+                title = { Text(stringResource(R.string.delete_transaction_title)) },
+                text = { Text(stringResource(R.string.delete_installment_message)) }, // TODO: Aggiungere questa stringa in strings.xml
+                confirmButton = {
+                    Column {
+                        TextButton(
+                            onClick = {
+                                onDelete(transactionToDelete.transaction.id, DeleteType.THIS_AND_SUBSEQUENT)
+                                showDeleteDialog = null
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.delete_this_and_subsequent)) // TODO: Aggiungere questa stringa in strings.xml
+                        }
+                        TextButton(
+                            onClick = {
+                                onDelete(transactionToDelete.transaction.id, DeleteType.SINGLE)
+                                showDeleteDialog = null
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.delete_single_installment)) // TODO: Aggiungere questa stringa in strings.xml
+                        }
+                        TextButton(onClick = { showDeleteDialog = null }) {
+                            Text(stringResource(R.string.cancel).uppercase())
+                        }
+                    }
+                },
+                dismissButton = { /* Empty, as the cancel button is now in confirmButton's Column */ }
+            )
+        } else {
+            // Dialog per transazione singola (il tuo codice originale)
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = null },
+                title = { Text(stringResource(R.string.delete_transaction_title)) },
+                text = { Text(stringResource(R.string.delete_transaction_message)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onDelete(transactionToDelete.transaction.id, DeleteType.SINGLE)
+                            showDeleteDialog = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(R.string.delete_uppercase))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = null }) {
+                        Text(stringResource(R.string.cancel).uppercase())
+                    }
+                }
+            )
+        }
+    }
 
     // Unica LazyColumn per permettere lo scroll di tutta la pagina (anche header)
     LazyColumn(
@@ -108,7 +196,7 @@ fun DashboardScreen(
                                 )
                             )
                         )
-                        .padding(bottom = 48.dp) // Increased space for overlap
+                        .padding(bottom = 48.dp)
                 ) {
                     // Navigazione Mese
                     Row(
@@ -125,7 +213,7 @@ fun DashboardScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = stringResource(R.string.previous_month),
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = Color.White
                             )
                         }
 
@@ -133,7 +221,7 @@ fun DashboardScreen(
                             currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            color = Color.White
                         )
 
                         IconButton(
@@ -143,7 +231,7 @@ fun DashboardScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = stringResource(R.string.next_month),
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = Color.White
                             )
                         }
                     }
@@ -158,13 +246,13 @@ fun DashboardScreen(
                         Text(
                             stringResource(R.string.monthly_balance),
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                            color = Color.White.copy(alpha = 0.9f)
                         )
                         Text(
                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            color = Color.White
                         )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -174,14 +262,14 @@ fun DashboardScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset(y = (-40).dp) // Adjusted overlap
+                        .offset(y = (-40).dp)
                         .padding(horizontal = 16.dp)
                 ) {
                     // Card Entrate/Uscite
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        shape = RoundedCornerShape(24.dp), // More rounded
+                        shape = RoundedCornerShape(24.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -221,11 +309,8 @@ fun DashboardScreen(
                                 }
                             }
 
-                            // Vertical Divider logic could go here if needed, but space is cleaner
-
                             // Uscite
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Align amounts to the end
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
                                         stringResource(R.string.expenses),
@@ -322,17 +407,37 @@ fun DashboardScreen(
         // Lista Transazioni
         if (groupedTransactions.isEmpty()) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 40.dp),
-                    contentAlignment = Alignment.Center
+                AnimatedVisibility(
+                    visibleState = visibleState,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 600)) + slideInVertically(initialOffsetY = { it / 2 })
                 ) {
-                    Text(
-                        text = "Nessuna transazione in questo mese.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 40.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Nessuna transazione\nin questo mese",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Aggiungi una nuova spesa o entrata\nper iniziare a tracciare i tuoi movimenti.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         } else {
@@ -341,15 +446,63 @@ fun DashboardScreen(
                     DateHeader(dateString)
                 }
                 items(transactions, key = { it.id }) { t ->
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        TransactionItem(
-                            transaction = t,
-                            categories = categories,
-                            currencySymbol = currencySymbol,
-                            dateFormat = dateFormat,
-                            isAmountHidden = isAmountHidden,
-                            onDelete = onDelete,
-                            onEdit = onEdit
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = {
+                            if (it == SwipeToDismissBoxValue.EndToStart) {
+                                showDeleteDialog = TransactionToDelete(
+                                    transaction = t,
+                                    isInstallment = t.isCreditCard && t.installmentNumber != null && t.totalInstallments != null
+                                )
+                                false // Mantieni l'elemento in posizione fino alla conferma
+                            } else {
+                                false
+                            }
+                        }
+                    )
+
+                    // Wrapper per animazione di entrata semplice
+                    AnimatedVisibility(
+                        visibleState = visibleState,
+                        enter = fadeIn(animationSpec = tween(500)) + slideInVertically(initialOffsetY = { 50 }),
+                        modifier = Modifier.animateItem()
+                    ) {
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            modifier = Modifier.padding(vertical = 1.dp),
+                            enableDismissFromStartToEnd = false, // Disabilita swipe da inizio a fine
+                            enableDismissFromEndToStart = true, // Abilita swipe da fine a inizio
+                            backgroundContent = {
+                                val color = when (dismissState.targetValue) {
+                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
+                                    else -> Color.Transparent
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(color)
+                                        .padding(horizontal = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = stringResource(R.string.delete),
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            content = {
+                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    TransactionItem(
+                                        transaction = t,
+                                        categories = categories,
+                                        currencySymbol = currencySymbol,
+                                        dateFormat = dateFormat,
+                                        isAmountHidden = isAmountHidden,
+                                        onDelete = { /* La cancellazione è gestita dallo SwipeToDismissBox */ },
+                                        onEdit = onEdit
+                                    )
+                                }
+                            }
                         )
                     }
                 }
@@ -383,7 +536,7 @@ fun DateHeader(dateString: String) {
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp) // Added horizontal padding
+            .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
         Text(
             text = label.uppercase(),
