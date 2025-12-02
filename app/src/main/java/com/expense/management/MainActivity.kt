@@ -3,7 +3,6 @@ package com.expense.management
 import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -62,7 +60,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,10 +78,10 @@ import com.expense.management.ui.screens.AddTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
 import com.expense.management.ui.screens.ReportScreen
-import com.expense.management.ui.screens.SecurityScreen
-import com.expense.management.ui.screens.SettingsScreen
 import com.expense.management.ui.screens.category.CategoryScreen
-import com.expense.management.ui.theme.GestoreSpeseTheme
+import com.expense.management.ui.screens.securityScreen
+import com.expense.management.ui.screens.settingsScreen
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.BackupUtils
 import com.expense.management.utils.BiometricUtils
 import com.expense.management.viewmodel.ExpenseViewModel
@@ -96,8 +93,8 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GestoreSpeseTheme {
-                MainApp()
+            gestoreSpeseTheme {
+                mainApp()
             }
         }
     }
@@ -105,7 +102,7 @@ class MainActivity : FragmentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
+fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -129,10 +126,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     LaunchedEffect(isBiometricEnabled) {
         if (isBiometricEnabled && !isAuthenticated) {
-             BiometricUtils.authenticateUser(context,
-                 onSuccess = { viewModel.isAppUnlocked.value = true },
-                 onError = { /* Handle error */ }
-             )
+            BiometricUtils.authenticateUser(
+                context,
+                onSuccess = { viewModel.isAppUnlocked.value = true },
+                onError = { /* Handle error */ },
+            )
         } else {
             viewModel.isAppUnlocked.value = true
         }
@@ -146,10 +144,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 Text("Autenticati per accedere ai tuoi dati", style = MaterialTheme.typography.bodyLarge)
 
                 Button(onClick = {
-                     BiometricUtils.authenticateUser(context,
-                         onSuccess = { viewModel.isAppUnlocked.value = true},
-                         onError = { }
-                     )
+                    BiometricUtils.authenticateUser(
+                        context,
+                        onSuccess = { viewModel.isAppUnlocked.value = true },
+                        onError = { },
+                    )
                 }, modifier = Modifier.padding(top = 24.dp)) {
                     Text(stringResource(R.string.unlock))
                 }
@@ -158,33 +157,36 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
         return
     }
 
-    val restoreLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let { BackupUtils.performRestore(context, viewModel, it) }
-    }
+    val restoreLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) { uri: Uri? ->
+            uri?.let { BackupUtils.performRestore(context, viewModel, it) }
+        }
 
-    val backupLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri: Uri? ->
-        uri?.let { BackupUtils.performBackup(context, viewModel, it) }
-    }
+    val backupLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json"),
+        ) { uri: Uri? ->
+            uri?.let { BackupUtils.performBackup(context, viewModel, it) }
+        }
 
-    val exportCsvLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri: Uri? ->
-        uri?.let {
-            coroutineScope.launch {
-                BackupUtils.performCsvExport(
-                    context = context,
-                    viewModel = viewModel,
-                    uri = it,
-                    currencySymbol = currentCurrency,
-                    dateFormat = currentDateFormat
-                )
+    val exportCsvLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/csv"),
+        ) { uri: Uri? ->
+            uri?.let {
+                coroutineScope.launch {
+                    BackupUtils.performCsvExport(
+                        context = context,
+                        viewModel = viewModel,
+                        uri = it,
+                        currencySymbol = currentCurrency,
+                        dateFormat = currentDateFormat,
+                    )
+                }
             }
         }
-    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -206,11 +208,11 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     text = stringResource(R.string.app_name),
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                 )
 
                 // Dashboard mantenuta nel Drawer come "Home"
@@ -224,7 +226,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         coroutineScope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
 
                 // Categorie rimosse dal Drawer (ora sono nella BottomBar)
@@ -237,7 +239,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         coroutineScope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Backup, contentDescription = null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
 
                 NavigationDrawerItem(
@@ -248,7 +250,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         coroutineScope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Security, contentDescription = null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
 
                 NavigationDrawerItem(
@@ -259,7 +261,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         coroutineScope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -274,44 +276,46 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         (context as? Activity)?.finish()
                     },
                     icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Esci") },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
-        }
+        },
     ) {
         Scaffold(
             topBar = {
                 if (isTopBarVisible) {
                     CenterAlignedTopAppBar(
                         title = {
-                            val title = when (currentRoute) {
-                                "dashboard" -> "Dashboard"
-                                "report" -> "Report"
-                                "categories" -> stringResource(R.string.categories_title)
-                                "settings" -> stringResource(R.string.settings)
-                                "data_management" -> stringResource(R.string.data_management)
-                                "security" -> stringResource(R.string.security_usability)
-                                else -> stringResource(R.string.app_name)
-                            }
+                            val title =
+                                when (currentRoute) {
+                                    "dashboard" -> "Dashboard"
+                                    "report" -> "Report"
+                                    "categories" -> stringResource(R.string.categories_title)
+                                    "settings" -> stringResource(R.string.settings)
+                                    "data_management" -> stringResource(R.string.data_management)
+                                    "security" -> stringResource(R.string.security_usability)
+                                    else -> stringResource(R.string.app_name)
+                                }
                             Text(
                                 text = title,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
                             )
                         },
                         navigationIcon = {
                             IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
                                 Icon(
                                     imageVector = Icons.Default.Menu,
-                                    contentDescription = "Menu"
+                                    contentDescription = "Menu",
                                 )
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background,
-                            titleContentColor = MaterialTheme.colorScheme.onBackground,
-                            navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                        )
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.background,
+                                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                            ),
                     )
                 }
             },
@@ -319,7 +323,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                 if (isBottomBarVisible) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 8.dp
+                        tonalElevation = 8.dp,
                     ) {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.DateRange, contentDescription = "Dashboard") },
@@ -329,7 +333,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 navController.navigate("dashboard") {
                                     popUpTo("dashboard") { inclusive = true }
                                 }
-                            }
+                            },
                         )
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Download, contentDescription = "Report") },
@@ -341,7 +345,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                     restoreState = true
                                     launchSingleTop = true
                                 }
-                            }
+                            },
                         )
                         // Aggiunto Categorie alla BottomBar
                         NavigationBarItem(
@@ -354,7 +358,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                     restoreState = true
                                     launchSingleTop = true
                                 }
-                            }
+                            },
                         )
                     }
                 }
@@ -366,21 +370,24 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                         shape = RoundedCornerShape(16.dp),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                        elevation = FloatingActionButtonDefaults.elevation(8.dp),
                     ) {
                         Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
                     }
                 }
-            }
+            },
         ) { innerPadding ->
-            Box(modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()) {
+            Box(
+                modifier =
+                    Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize(),
+            ) {
                 NavHost(navController, startDestination = "dashboard") {
                     composable(
                         "dashboard",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                        exitTransition = { fadeOut(animationSpec = tween(300)) },
                     ) {
                         DashboardScreen(
                             transactions = allTransactions,
@@ -397,28 +404,28 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             onEdit = { transactionId ->
                                 navController.navigate("add_transaction/$transactionId")
                             },
-                            isAmountHidden = isAmountHidden
+                            isAmountHidden = isAmountHidden,
                         )
                     }
 
                     composable(
                         "report",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                        exitTransition = { fadeOut(animationSpec = tween(300)) },
                     ) {
                         ReportScreen(
                             transactions = allTransactions,
                             categories = allCategories,
                             currencySymbol = currentCurrency,
                             dateFormat = currentDateFormat,
-                            isAmountHidden = isAmountHidden
+                            isAmountHidden = isAmountHidden,
                         )
                     }
 
                     composable(
                         "categories",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                        exitTransition = { fadeOut(animationSpec = tween(300)) },
                     ) {
                         CategoryScreen(
                             categories = allCategories,
@@ -430,43 +437,44 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                     composable(
                         "data_management",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                        exitTransition = { fadeOut(animationSpec = tween(300)) },
                     ) {
                         DataManagementScreen(
                             onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                             onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
-                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") }
+                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
                         )
                     }
 
                     composable(
                         "security",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                        exitTransition = { fadeOut(animationSpec = tween(300)) },
                     ) {
-                        SecurityScreen(
+                        securityScreen(
                             isAmountHidden = isAmountHidden,
                             isBiometricEnabled = isBiometricEnabled,
                             onAmountHiddenChange = viewModel::updateIsAmountHidden,
                             onBiometricEnabledChange = { isEnabled ->
                                 if (isEnabled) {
-                                    BiometricUtils.authenticateUser(context,
+                                    BiometricUtils.authenticateUser(
+                                        context,
                                         onSuccess = { viewModel.updateBiometricEnabled(true) },
-                                        onError = { }
+                                        onError = { },
                                     )
                                 } else {
                                     viewModel.updateBiometricEnabled(false)
                                 }
-                            }
+                            },
                         )
                     }
 
                     composable(
                         "settings",
                         enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) }
+                        exitTransition = { fadeOut(animationSpec = tween(300)) },
                     ) {
-                        SettingsScreen(
+                        settingsScreen(
                             currentCurrency = currentCurrency,
                             currentDateFormat = currentDateFormat,
                             ccDelay = currentCcDelay,
@@ -476,25 +484,31 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                             onDateFormatChange = viewModel::updateDateFormat,
                             onDelayChange = viewModel::updateCcDelay,
                             onLimitChange = viewModel::updateCcLimit,
-                            onCcPaymentModeChange = viewModel::updateCcPaymentMode
+                            onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                         )
                     }
 
                     composable(
                         route = "add_transaction/{transactionId}",
-                        arguments = listOf(navArgument("transactionId") { type = NavType.StringType; defaultValue = "0" }),
+                        arguments =
+                            listOf(
+                                navArgument("transactionId") {
+                                    type = NavType.StringType
+                                    defaultValue = "0"
+                                },
+                            ),
                         enterTransition = {
                             slideIntoContainer(
                                 AnimatedContentTransitionScope.SlideDirection.Up,
-                                animationSpec = tween(300)
+                                animationSpec = tween(300),
                             )
                         },
                         exitTransition = {
                             slideOutOfContainer(
                                 AnimatedContentTransitionScope.SlideDirection.Down,
-                                animationSpec = tween(300)
+                                animationSpec = tween(300),
                             )
-                        }
+                        },
                     ) { backStackEntry ->
                         val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
                         var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
@@ -532,7 +546,7 @@ fun MainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 availableCategories = allCategories,
                                 onDescriptionChange = { query ->
                                     viewModel.searchDescriptionSuggestions(query)
-                                }
+                                },
                             )
                         }
                     }

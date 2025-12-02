@@ -34,5 +34,4 @@ interface TransactionDao {
 
     @Query("SELECT MIN(effectiveDate) FROM transactions")
     suspend fun getMinEffectiveDate(): String?
-
 }

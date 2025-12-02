@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
+import com.expense.management.utils.TransactionItem
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter

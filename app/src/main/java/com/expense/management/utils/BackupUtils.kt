@@ -22,27 +22,34 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object BackupUtils {
-
-    fun performCsvExport(context: Context, viewModel: ExpenseViewModel, uri: Uri, currencySymbol: String, dateFormat: String) {
+    fun performCsvExport(
+        context: Context,
+        viewModel: ExpenseViewModel,
+        uri: Uri,
+        currencySymbol: String,
+        dateFormat: String,
+    ) {
         val formatter = DateTimeFormatter.ofPattern(dateFormat)
         val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
             try {
                 val expenses = viewModel.getExpensesForExport()
                 // Note: Header columns could also be localized if needed, but CSV headers are often technical/fixed.
-                val csvHeader = "ID,Data,Descrizione,Importo (${currencySymbol} - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
+                val csvHeader = "ID,Data,Descrizione,Importo ($currencySymbol - Convertito),Importo Originale,Valuta Originale,Categoria,Tipo,Carta di Credito,Data Addebito\n"
                 val csvContent = StringBuilder(csvHeader)
                 expenses.forEach { t ->
-                    val dateStr = try {
-                        LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                    } catch (_: Exception) {
-                        t.date
-                    }
-                    val effectiveDateStr = try {
-                        LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
-                    } catch (_: Exception) {
-                        t.effectiveDate
-                    }
+                    val dateStr =
+                        try {
+                            LocalDate.parse(t.date, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
+                        } catch (_: Exception) {
+                            t.date
+                        }
+                    val effectiveDateStr =
+                        try {
+                            LocalDate.parse(t.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(formatter)
+                        } catch (_: Exception) {
+                            t.effectiveDate
+                        }
 
                     csvContent.append(
                         "${t.id}," +
@@ -54,7 +61,7 @@ object BackupUtils {
                             "${t.categoryId}," +
                             "${t.type}," +
                             "${if (t.isCreditCard) "Sì" else "No"}," +
-                            "\"$effectiveDateStr\"\n"
+                            "\"$effectiveDateStr\"\n",
                     )
                 }
 
@@ -75,7 +82,11 @@ object BackupUtils {
         }
     }
 
-    fun performBackup(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
+    fun performBackup(
+        context: Context,
+        viewModel: ExpenseViewModel,
+        uri: Uri,
+    ) {
         val coroutineScope = CoroutineScope(Dispatchers.IO)
         coroutineScope.launch {
             try {
@@ -99,7 +110,11 @@ object BackupUtils {
         }
     }
 
-    fun performRestore(context: Context, viewModel: ExpenseViewModel, uri: Uri) {
+    fun performRestore(
+        context: Context,
+        viewModel: ExpenseViewModel,
+        uri: Uri,
+    ) {
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch {
             try {
@@ -115,17 +130,18 @@ object BackupUtils {
                     val backupData = Gson().fromJson(jsonString, BackupData::class.java)
 
                     // Normalizzazione date (da dd/MM/yyyy a ISO yyyy-MM-dd se necessario)
-                    val normalizedTransactions = backupData.transactions.map { t ->
-                        t.copy(
-                            date = normalizeDate(t.date),
-                            effectiveDate = normalizeDate(t.effectiveDate)
-                        )
-                    }
+                    val normalizedTransactions =
+                        backupData.transactions.map { t ->
+                            t.copy(
+                                date = normalizeDate(t.date),
+                                effectiveDate = normalizeDate(t.effectiveDate),
+                            )
+                        }
                     val normalizedBackupData = backupData.copy(transactions = normalizedTransactions)
 
                     viewModel.restoreData(normalizedBackupData)
                     withContext(Dispatchers.Main) {
-                       Toast.makeText(context, context.getString(R.string.restore_success, normalizedBackupData.transactions.size, normalizedBackupData.categories.size), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.restore_success, normalizedBackupData.transactions.size, normalizedBackupData.categories.size), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {
@@ -137,12 +153,13 @@ object BackupUtils {
                 val list: List<TransactionEntity> = Gson().fromJson(jsonString, type)
 
                 // Normalizzazione date anche per backup legacy
-                val normalizedList = list.map { t ->
-                    t.copy(
-                        date = normalizeDate(t.date),
-                        effectiveDate = normalizeDate(t.effectiveDate)
-                    )
-                }
+                val normalizedList =
+                    list.map { t ->
+                        t.copy(
+                            date = normalizeDate(t.date),
+                            effectiveDate = normalizeDate(t.effectiveDate),
+                        )
+                    }
 
                 viewModel.restoreLegacyData(normalizedList)
 
@@ -158,8 +175,8 @@ object BackupUtils {
         }
     }
 
-    private fun normalizeDate(dateStr: String): String {
-        return try {
+    private fun normalizeDate(dateStr: String): String =
+        try {
             // Prova a parsare come ISO 8601 (yyyy-MM-dd)
             LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
             // Se ha successo, è già nel formato corretto
@@ -174,5 +191,4 @@ object BackupUtils {
                 dateStr
             }
         }
-    }
 }

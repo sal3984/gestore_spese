@@ -32,43 +32,44 @@ import androidx.compose.ui.unit.dp
 import com.expense.management.R
 
 @Composable
-fun SecurityScreen(
+fun securityScreen(
     isAmountHidden: Boolean,
     isBiometricEnabled: Boolean,
     onAmountHiddenChange: (Boolean) -> Unit,
-    onBiometricEnabledChange: (Boolean) -> Unit
+    onBiometricEnabledChange: (Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        SettingsSectionHeader(stringResource(R.string.security_usability))
+        settingsSectionHeader(stringResource(R.string.security_usability))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
             Column {
-                SettingsSwitchItem(
+                settingsSwitchItem(
                     icon = Icons.Default.VisibilityOff,
                     title = stringResource(R.string.hide_amounts),
                     subtitle = stringResource(R.string.hide_amounts_desc),
                     checked = isAmountHidden,
-                    onCheckedChange = onAmountHiddenChange
+                    onCheckedChange = onAmountHiddenChange,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                SettingsSwitchItem(
+                settingsSwitchItem(
                     icon = Icons.Default.Security,
                     title = stringResource(R.string.app_lock),
                     subtitle = stringResource(R.string.app_lock_desc),
                     checked = isBiometricEnabled,
-                    onCheckedChange = onBiometricEnabledChange
+                    onCheckedChange = onBiometricEnabledChange,
                 )
             }
         }
@@ -76,12 +77,12 @@ fun SecurityScreen(
 }
 
 @Composable
-fun SettingsSwitchItem(
+fun settingsSwitchItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
@@ -91,23 +92,26 @@ fun SettingsSwitchItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                    .padding(10.dp)
+                modifier =
+                    Modifier
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                        .padding(10.dp),
             )
         },
         trailingContent = {
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                )
+                colors =
+                    SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    ),
             )
         },
-        modifier = Modifier
-            .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 4.dp)
+        modifier =
+            Modifier
+                .clickable { onCheckedChange(!checked) }
+                .padding(vertical = 4.dp),
     )
 }
