@@ -78,6 +78,10 @@
     <string name="select_columns_to_export">Seleziona colonne da esportare</string>
     <string name="save">Salva</string>
 
+    <string name="filter_report_by_month">Filtra report per mese</string>
+    <string name="start_month">Mese Iniziale</string>
+    <string name="end_month">Mese Finale</string>
+    <string name="balance_report">Bilancio Report</string>
     <!-- GESTIONE DATI -->
 
     <string name="data_management_subtitle">Gestisci i tuoi dati, backup e esportazioni</string>

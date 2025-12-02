@@ -44,6 +44,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportScreen(
     transactions: List<TransactionEntity>,
@@ -54,6 +55,17 @@ fun ReportScreen(
 ) {
     // --- 1. STATO DEL MESE SELEZIONATO ---
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
+    var reportStartMonth by remember { mutableStateOf(YearMonth.now().minusMonths(11)) }
+    var reportEndMonth by remember { mutableStateOf(YearMonth.now()) }
+
+    LaunchedEffect(reportStartMonth, reportEndMonth) {
+        selectedReportMonth = when {
+            selectedReportMonth == null -> reportEndMonth
+            selectedReportMonth!!.isBefore(reportStartMonth) -> reportStartMonth
+            selectedReportMonth!!.isAfter(reportEndMonth) -> reportEndMonth
+            else -> selectedReportMonth // Already valid
+        }
+    }
 
     // Helper per parsing sicuro delle date (ISO o fallback)
     fun parseDateSafe(dateString: String): LocalDate {
@@ -71,19 +83,21 @@ fun ReportScreen(
     }
 
     // Calcolo Risparmio Anno Corrente
-    val currentYear = LocalDate.now().year
-    val savings = transactions
-        .filter {
-             try {
-                 parseDateSafe(it.effectiveDate).year == currentYear
-             } catch (e: Exception) {
-                 false
-             }
-        }
-        .sumOf { if(it.type == "income") it.amount else -it.amount }
+    val savings = remember(transactions, reportStartMonth, reportEndMonth) {
+        transactions
+            .filter { transaction ->
+                try {
+                    val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate))
+                    !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            .sumOf { if(it.type == "income") it.amount else -it.amount }
+    }
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
-    val monthToShow = selectedReportMonth ?: YearMonth.now()
+    val monthToShow = selectedReportMonth ?: reportEndMonth
 
     val expenseByCategory = remember(transactions, monthToShow) {
         transactions
@@ -102,21 +116,24 @@ fun ReportScreen(
 
     val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
 
-    // Calcolo Bilancio Mensile (Anno Corrente)
-    val monthlyBalances = remember(transactions, currentYear) {
-        (1..12).map { month ->
-            val targetMonth = YearMonth.of(currentYear, month)
-            val monthlyTransactions = transactions.filter {
+    // Calcolo Bilancio Mensile (Range Selezionato)
+    val monthlyBalances = remember(transactions, reportStartMonth, reportEndMonth) {
+        val balances = mutableListOf<Pair<YearMonth, Double>>()
+        var current = reportStartMonth
+        while (!current.isAfter(reportEndMonth)) {
+            val monthlyTransactions = transactions.filter { transaction ->
                 try {
-                    YearMonth.from(parseDateSafe(it.effectiveDate)) == targetMonth
+                    YearMonth.from(parseDateSafe(transaction.effectiveDate)) == current
                 } catch (e: Exception) {
                     false
                 }
             }
             val income = monthlyTransactions.filter { it.type == "income" }.sumOf { it.amount }
             val expense = monthlyTransactions.filter { it.type == "expense" }.sumOf { it.amount }
-            targetMonth to (income - expense)
+            balances.add(current to (income - expense))
+            current = current.plusMonths(1)
         }
+        balances
     }
 
     val scrollState = rememberScrollState()
@@ -129,7 +146,7 @@ fun ReportScreen(
     Column(modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        .verticalScroll(scrollState)
+        // Removed verticalScroll from here
     ) {
         // --- HEADER ---
         Column(
@@ -148,7 +165,7 @@ fun ReportScreen(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                stringResource(R.string.report_year, currentYear),
+                stringResource(R.string.report_year, reportEndMonth.year),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -182,14 +199,72 @@ fun ReportScreen(
             }
         }
 
-        // --- CONTENUTO ---
+        // --- MONTH FILTERS CARD ---
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .offset(y = (-48).dp) // Overlap the header
+                .zIndex(2f)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    stringResource(R.string.filter_report_by_month),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MonthSelector(
+                        selectedMonth = reportStartMonth,
+                        onMonthSelected = { newStartMonth ->
+                            if (newStartMonth.isAfter(reportEndMonth)) {
+                                reportEndMonth = newStartMonth
+                            }
+                            if (newStartMonth.plusMonths(11).isBefore(reportEndMonth)) {
+                                reportEndMonth = newStartMonth.plusMonths(11)
+                            }
+                            reportStartMonth = newStartMonth
+                        },
+                        label = stringResource(R.string.start_month),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    MonthSelector(
+                        selectedMonth = reportEndMonth,
+                        onMonthSelected = { newEndMonth ->
+                            if (newEndMonth.isBefore(reportStartMonth)) {
+                                reportStartMonth = newEndMonth
+                            }
+                            if (newEndMonth.minusMonths(11).isAfter(reportStartMonth)) {
+                                reportStartMonth = newEndMonth.minusMonths(11)
+                            }
+                            reportEndMonth = newEndMonth
+                        },
+                        label = stringResource(R.string.end_month),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // --- SCROLLABLE CONTENT ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Slight overlap for better UI depth
-                .offset(y = (-24).dp)
-                .padding(horizontal = 16.dp)
+                .offset(y = (-48).dp) // Adjust offset to account for the new card and previous offset
+                .verticalScroll(scrollState) // Moved here
+                .padding(horizontal = 16.dp) // Apply horizontal padding here
         ) {
+            Spacer(modifier = Modifier.height(24.dp)) // Spacer to visually separate the filter card from the chart card
+
             // Grafico a Barre Mensili
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -204,7 +279,7 @@ fun ReportScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            stringResource(R.string.balance_12_months),
+                            stringResource(R.string.balance_report),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -350,6 +425,54 @@ fun ReportScreen(
             }
             // Bottom padding for FAB or Nav
             Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MonthSelector(
+    selectedMonth: YearMonth,
+    onMonthSelected: (YearMonth) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val months = remember {
+        (-24..0).map { YearMonth.now().plusMonths(it.toLong()) }.sortedByDescending { it }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+            onValueChange = { /* Read Only */ },
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            months.forEach { month ->
+                DropdownMenuItem(
+                    text = { Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }) },
+                    onClick = {
+                        onMonthSelected(month)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }
@@ -524,7 +647,7 @@ fun MonthlyBarChart(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.0f", balance)} $currencySymbol",
+                                        text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.2f", balance)} $currencySymbol",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
