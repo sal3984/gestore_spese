@@ -476,8 +476,8 @@ fun MonthlyBarChart(
 
                 // Applica un offset correttivo per mantenerlo nei limiti
                 val extraOffset = when {
-                    currentX < minX -> minX - currentX // Sposta a destra
-                    currentX > maxX -> maxX - currentX // Sposta a sinistra
+                    index <= 9 -> (-16).dp
+                    index >= 10 -> (-40).dp
                     else -> 0.dp
                 }
 
