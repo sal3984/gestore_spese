@@ -5,7 +5,7 @@ data class Category(
     val label: String,
     val icon: String,
     val type: String,
-) // AGGIUNTO: type
+)
 
 val CATEGORIES =
     listOf(
