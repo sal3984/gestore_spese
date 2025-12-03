@@ -89,4 +89,4 @@ The project follows modern Android development best practices:
 *   **Navigation**: Jetpack Navigation
 
 ---
-*Generated for the Expense Manager project.*
+[Licence MIT ](LICENCE.md)
