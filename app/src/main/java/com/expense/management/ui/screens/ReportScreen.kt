@@ -177,7 +177,7 @@ fun ReportScreen(
     Column(modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        // Removed verticalScroll from here
+        .verticalScroll(scrollState) // AGGIUNTO QUI: Rende l'intera schermata scrollabile
     ) {
         // --- HEADER ---
         Column(
@@ -289,9 +289,9 @@ fun ReportScreen(
         // --- SCROLLABLE CONTENT ---
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth() // CAMBIATO: da fillMaxSize a fillMaxWidth
                 .offset(y = (-48).dp) // Adjust offset to account for the new card and previous offset
-                .verticalScroll(scrollState) // Moved here
+                // RIMOSSO: .verticalScroll(scrollState) da qui
                 .padding(horizontal = 16.dp) // Apply horizontal padding here
         ) {
             Spacer(modifier = Modifier.height(24.dp)) // Spacer to visually separate the filter card from the chart card
