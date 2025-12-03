@@ -9,7 +9,7 @@ data class CategoryEntity(
     val label: String,
     val icon: String,
     // "expense" o "income"
-    val type: String,
+    val type: TransactionType, // Modificato da String a TransactionType
     // Per distinguere quelle default da quelle utente
     val isCustom: Boolean = false,
 )

@@ -67,6 +67,7 @@ import androidx.compose.ui.zIndex
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import com.expense.management.utils.getLocalizedCategoryLabel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -123,7 +124,7 @@ fun ReportScreen(
                     false
                 }
             }
-            .sumOf { if(it.type == "income") it.amount else -it.amount }
+            .sumOf { if(it.type == TransactionType.INCOME) it.amount else -it.amount }
     }
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
@@ -132,7 +133,7 @@ fun ReportScreen(
     val expenseByCategory = remember(transactions, monthToShow) {
         transactions
             .filter {
-                it.type == "expense" && try {
+                it.type == TransactionType.EXPENSE && try {
                     YearMonth.from(parseDateSafe(it.effectiveDate)) == monthToShow
                 } catch (e: Exception) {
                     false
@@ -158,8 +159,8 @@ fun ReportScreen(
                     false
                 }
             }
-            val income = monthlyTransactions.filter { it.type == "income" }.sumOf { it.amount }
-            val expense = monthlyTransactions.filter { it.type == "expense" }.sumOf { it.amount }
+            val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+            val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
             balances.add(current to (income - expense))
             current = current.plusMonths(1)
         }

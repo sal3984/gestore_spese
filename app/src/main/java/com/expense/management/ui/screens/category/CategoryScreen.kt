@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.TransactionType
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,8 +72,9 @@ fun CategoryScreen(
     onDeleteCategory: (String) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf("expense") }
-    val selectedTabIndex = if (selectedTab == "expense") 0 else 1
+    // CAMBIATO: selectedTab ora è un TransactionType
+    var selectedTab by remember { mutableStateOf(TransactionType.EXPENSE) }
+    val selectedTabIndex = if (selectedTab == TransactionType.EXPENSE) 0 else 1
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -110,16 +112,16 @@ fun CategoryScreen(
                 divider = {}
             ) {
                 Tab(
-                    selected = selectedTab == "expense",
-                    onClick = { selectedTab = "expense" },
-                    text = { Text(stringResource(R.string.expenses_tab), fontWeight = if(selectedTab == "expense") FontWeight.Bold else FontWeight.Normal) },
+                    selected = selectedTab == TransactionType.EXPENSE,
+                    onClick = { selectedTab = TransactionType.EXPENSE },
+                    text = { Text(stringResource(R.string.expenses_tab), fontWeight = if(selectedTab == TransactionType.EXPENSE) FontWeight.Bold else FontWeight.Normal) },
                     selectedContentColor = MaterialTheme.colorScheme.primary,
                     unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Tab(
-                    selected = selectedTab == "income",
-                    onClick = { selectedTab = "income" },
-                    text = { Text(stringResource(R.string.income_tab), fontWeight = if(selectedTab == "income") FontWeight.Bold else FontWeight.Normal) },
+                    selected = selectedTab == TransactionType.INCOME,
+                    onClick = { selectedTab = TransactionType.INCOME },
+                    text = { Text(stringResource(R.string.income_tab), fontWeight = if(selectedTab == TransactionType.INCOME) FontWeight.Bold else FontWeight.Normal) },
                     selectedContentColor = MaterialTheme.colorScheme.primary,
                     unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -168,11 +170,11 @@ fun CategoryScreen(
 
     if (showAddDialog) {
         AddCategoryDialog(
-            type = selectedTab,
+            type = selectedTab, // Passiamo direttamente l'enum
             existingCategories = categories,
             onDismiss = { showAddDialog = false },
             onConfirm = { label, icon ->
-                // Controllo duplicati per nome (case insensitive) - ridondante con UI del dialog ma safe
+                // Controllo duplicati per nome (case insensitive)
                 val exists = categories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == selectedTab }
 
                 if (!exists) {
@@ -243,7 +245,7 @@ fun CategoryCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddCategoryDialog(
-    type: String,
+    type: TransactionType, // CAMBIATO: ora accetta TransactionType
     existingCategories: List<CategoryEntity>,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
@@ -263,7 +265,7 @@ fun AddCategoryDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                if(type=="expense") stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog),
+                if(type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog),
                 style = MaterialTheme.typography.headlineSmall
             )
         },
@@ -287,45 +289,45 @@ fun AddCategoryDialog(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     stringResource(R.string.choose_icon_label),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
 
-                // Griglia di icone
-                Box(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(12.dp))
+                        .height(200.dp)
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                 ) {
                     LazyColumn(
-                        contentPadding = PaddingValues(12.dp)
+                        contentPadding = PaddingValues(8.dp)
                     ) {
                         item {
                             FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                maxItemsInEachRow = 6
                             ) {
                                 availableIcons.forEach { icon ->
-                                    val isSelected = selectedIcon == icon
                                     Box(
                                         modifier = Modifier
-                                            .size(44.dp)
+                                            .padding(4.dp)
+                                            .size(40.dp)
                                             .clip(CircleShape)
                                             .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary
+                                                if (selectedIcon == icon) MaterialTheme.colorScheme.primaryContainer
                                                 else MaterialTheme.colorScheme.surface
                                             )
                                             .clickable { selectedIcon = icon }
-                                            .then(
-                                                if (!isSelected) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape) else Modifier
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                                shape = CircleShape
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -336,65 +338,26 @@ fun AddCategoryDialog(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Anteprima
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        stringResource(R.string.preview_label),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(selectedIcon)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                label.ifBlank { stringResource(R.string.category_name_placeholder) },
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
-            val errorText = stringResource(R.string.error_category_already_exists)
             Button(
                 onClick = {
-                    if (label.isNotBlank()) {
-                        // Controllo duplicato
-                        val exists = existingCategories.any {
-                            it.label.equals(label.trim(), ignoreCase = true) && it.type == type
-                        }
-                        if (exists) {
-                            errorMessage = errorText
-                        } else {
-                            onConfirm(label, selectedIcon)
-                        }
+                    if (label.isBlank()) {
+                        errorMessage = "Il nome è obbligatorio" // Hardcoded per semplicità, idealmente usa string resource
+                    } else if (existingCategories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == type }) {
+                        errorMessage = "Categoria già esistente"
+                    } else {
+                        onConfirm(label, selectedIcon)
                     }
-                },
-                enabled = label.isNotBlank()
+                }
             ) {
-                Text(stringResource(R.string.save_button))
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel).uppercase())
+                Text(stringResource(R.string.cancel))
             }
         }
     )

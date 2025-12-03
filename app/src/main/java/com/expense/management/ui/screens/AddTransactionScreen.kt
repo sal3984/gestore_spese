@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -111,7 +112,7 @@ fun AddTransactionScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var type by remember { mutableStateOf(transactionToEdit?.type ?: "expense") }
+    var type by remember { mutableStateOf(transactionToEdit?.type ?: TransactionType.EXPENSE) }
     var amountText by remember { mutableStateOf(transactionToEdit?.amount?.toString() ?: "") }
     var description by remember { mutableStateOf(transactionToEdit?.description ?: "") }
     var isDescriptionExpanded by remember { mutableStateOf(false) }
@@ -125,7 +126,7 @@ fun AddTransactionScreen(
             transactionToEdit?.categoryId.takeIf { id -> availableCategories.any { it.id == id } }
                 ?: transactionToEdit?.categoryId.takeIf { transactionToEdit != null }
                 ?: currentTypeCategories.firstOrNull()?.id
-                ?: if (type == "expense") "food" else "salary"
+                ?: if (type == TransactionType.EXPENSE) "food" else "salary"
         )
     }
 
@@ -383,13 +384,13 @@ fun AddTransactionScreen(
                     .fillMaxWidth()
                     .padding(vertical = 12.dp)
             ) {
-                val expenseSelected = type == "expense"
+                val expenseSelected = type == TransactionType.EXPENSE
                 SegmentedButton(
                     selected = expenseSelected,
                     onClick = {
-                        if (type != "expense") {
-                            type = "expense"
-                            val newCategory = availableCategories.firstOrNull { it.type == "expense" }
+                        if (type != TransactionType.EXPENSE) {
+                            type = TransactionType.EXPENSE
+                            val newCategory = availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }
                             if (newCategory != null) selectedCategory = newCategory.id
                         }
                     },
@@ -403,13 +404,13 @@ fun AddTransactionScreen(
                     Text(stringResource(R.string.expense_type), fontWeight = FontWeight.Bold)
                 }
 
-                val incomeSelected = type == "income"
+                val incomeSelected = type == TransactionType.INCOME
                 SegmentedButton(
                     selected = incomeSelected,
                     onClick = {
-                        if (type != "income") {
-                            type = "income"
-                            val newCategory = availableCategories.firstOrNull { it.type == "income" }
+                        if (type != TransactionType.INCOME) {
+                            type = TransactionType.INCOME
+                            val newCategory = availableCategories.firstOrNull { it.type == TransactionType.INCOME }
                             if (newCategory != null) selectedCategory = newCategory.id
                         }
                     },
@@ -584,7 +585,7 @@ fun AddTransactionScreen(
                 } else {
                     currentTypeCategories.forEach { category ->
                         val isSelected = selectedCategory == category.id
-                        val color = if (type == "expense") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        val color = if (type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -619,7 +620,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AnimatedVisibility(visible = type == "expense") {
+            AnimatedVisibility(visible = type == TransactionType.EXPENSE) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
@@ -683,7 +684,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            AnimatedVisibility(visible = (isCreditCard || isInstallment) && type == "expense") {
+            AnimatedVisibility(visible = (isCreditCard || isInstallment) && type == TransactionType.EXPENSE) {
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp)

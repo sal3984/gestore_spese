@@ -10,6 +10,7 @@ import com.expense.management.data.AppDatabase
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import com.expense.management.ui.screens.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
 import kotlinx.coroutines.Dispatchers
@@ -310,7 +311,7 @@ class ExpenseViewModel(
         viewModelScope.launch(Dispatchers.IO) { repository.insertAllTransactions(list) }
     }
 
-    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == "expense" }
+    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE }
 }
 
 data class BackupData(

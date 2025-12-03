@@ -96,7 +96,7 @@ object BackupUtils {
                                 row.add(code)
                             }
                             "Categoria" -> row.add(t.categoryId)
-                            "Tipo" -> row.add(t.type)
+                            "Tipo" -> row.add(t.type.name)
                             "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
                             "DataAddebito" -> row.add("\"$effectiveDateStr\"")
                         }

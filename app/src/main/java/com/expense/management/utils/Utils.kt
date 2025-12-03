@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import com.expense.management.ui.theme.ExpenseRed
 import com.expense.management.ui.theme.IncomeGreen
 import java.text.NumberFormat
@@ -56,7 +57,7 @@ fun TransactionItem(
 ) {
     val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
-    val isIncome = transaction.type == "income"
+    val isIncome = transaction.type == TransactionType.INCOME
 
     // Use theme colors if possible, otherwise fallback
     val amountColor = if (isIncome) IncomeGreen else ExpenseRed
@@ -236,5 +237,5 @@ fun formatMoney(amount: Double): String = NumberFormat.getCurrencyInstance(Local
 fun getCategory(id: String, categories: List<CategoryEntity>): CategoryEntity {
     return categories.firstOrNull { it.id == id }
         ?: categories.firstOrNull { it.id == "other" }
-        ?: CategoryEntity("other", "Altro", "❓", "expense", false)
+        ?: CategoryEntity("other", "Altro", "❓", TransactionType.EXPENSE, false)
 }

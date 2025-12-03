@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import com.expense.management.utils.TransactionItem
 import java.time.LocalDate
 import java.time.YearMonth
@@ -115,13 +116,13 @@ fun DashboardScreen(
         currentTrans.groupBy { it.effectiveDate }
     }
 
-    val totalIncome = currentTrans.filter { it.type == "income" }.sumOf { it.amount }
-    val totalExpense = currentTrans.filter { it.type == "expense" }.sumOf { it.amount }
+    val totalIncome = currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+    val totalExpense = currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
     val netBalance = totalIncome - totalExpense
 
     val isViewingCurrentMonth = currentDashboardMonth == today
     val creditCardUsed = transactions
-        .filter { it.isCreditCard && it.type == "expense" }
+        .filter { it.isCreditCard && it.type == TransactionType.EXPENSE }
         .filter {
             try {
                 YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) > today
