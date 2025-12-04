@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [TransactionEntity::class, CategoryEntity::class], version = 5, exportSchema = false) // Versione aggiornata per migrazione schema
+@Database(entities = [TransactionEntity::class, CategoryEntity::class], version = 5, exportSchema = false)
 @TypeConverters(TransactionTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
@@ -24,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                         context.applicationContext,
                         AppDatabase::class.java,
                         "spese_db_v5",
-                    ).fallbackToDestructiveMigration()
+                    )
                     .build()
                     .also { instance = it }
             }
