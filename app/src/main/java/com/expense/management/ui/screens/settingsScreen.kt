@@ -1,6 +1,7 @@
 package com.expense.management.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
@@ -302,23 +304,34 @@ fun settingsScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
             val context = LocalContext.current
-            val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A" // Or an empty string, or another suitable placeholder
+            val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A"
 
             Column {
                 settingsListItem(
-                    icon = Icons.Default.Description, // Using Description icon, consider finding a more suitable one if available
+                    icon = Icons.Default.Description,
                     title = stringResource(R.string.privacy_policy),
                     value = stringResource(R.string.privacy_policy_desc),
                     onClick = {
                         val privacyPolicyUrl = "https://gist.github.com/sal3984/adc05b7037705f169aa6682b877ef581" // !!! REPLACE THIS WITH YOUR GIST URL !!!
-                        val intent = Intent(Intent.ACTION_VIEW, privacyPolicyUrl.toUri())
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(privacyPolicyUrl))
+                        context.startActivity(intent)
+                    },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                settingsListItem(
+                    icon = Icons.Default.Code,
+                    title = stringResource(R.string.github_repo),
+                    value = stringResource(R.string.github_repo_desc),
+                    onClick = {
+                        val githubRepoUrl = "https://github.com/sal3984/gestore_spese" // !!! REPLACE THIS WITH YOUR GITHUB REPO URL !!!
+                        val intent = Intent(Intent.ACTION_VIEW, githubRepoUrl.toUri())
                         context.startActivity(intent)
                     },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 settingsListItem(
                     icon = Icons.Default.Info,
-                    title = stringResource(R.string.app_name), // Using app name as title for version
+                    title = stringResource(R.string.app_name),
                     value = stringResource(R.string.app_version, appVersion),
                     onClick = { /* No action for clicking version */ },
                 )

@@ -174,6 +174,8 @@
     <string name="about">About</string>
     <string name="privacy_policy">Privacy Policy</string>
     <string name="privacy_policy_desc">Read how we handle your data</string>
+    <string name="github_repo">GitHub Repository</string>
+    <string name="github_repo_desc">Contribute or request access</string>
     <string name="app_version">Version: %1$s</string>
 
 </resources>
