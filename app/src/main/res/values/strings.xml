@@ -170,4 +170,10 @@
     <string name="credit_card_payment_hint">The behavior of credit card payments (single, installment, manual) can be configured in the settings.</string>
     <string name="installment_payment_hint">This refers to installment payments managed by external services (e.g., Klarna, PayPal, Satispay).</string>
 
+    <!-- About -->
+    <string name="about">About</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="privacy_policy_desc">Read how we handle your data</string>
+    <string name="app_version">Version: %1$s</string>
+
 </resources>

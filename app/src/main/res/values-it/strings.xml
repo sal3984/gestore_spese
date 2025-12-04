@@ -169,4 +169,10 @@
     <string name="credit_card_payment_hint">Il comportamento del pagamento con carta di credito (singolo, rateale, manuale) è configurabile nelle impostazioni.</string>
     <string name="installment_payment_hint">Si riferisce a pagamenti rateali gestiti da servizi esterni (es. Klarna, PayPal, Satispay).</string>
 
+    <!-- About -->
+    <string name="about">Info</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="privacy_policy_desc">Leggi come gestiamo i tuoi dati</string>
+    <string name="app_version">Versione: %1$s</string>
+
 </resources>

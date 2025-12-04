@@ -1,5 +1,6 @@
 package com.expense.management.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,11 +54,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.expense.management.R
 import java.util.Locale
 
@@ -287,6 +291,40 @@ fun settingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- ABOUT SECTION ---
+        settingsSectionHeader(stringResource(R.string.about))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            val context = LocalContext.current
+            val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A" // Or an empty string, or another suitable placeholder
+
+            Column {
+                settingsListItem(
+                    icon = Icons.Default.Description, // Using Description icon, consider finding a more suitable one if available
+                    title = stringResource(R.string.privacy_policy),
+                    value = stringResource(R.string.privacy_policy_desc),
+                    onClick = {
+                        val privacyPolicyUrl = "https://gist.github.com/sal3984/adc05b7037705f169aa6682b877ef581" // !!! REPLACE THIS WITH YOUR GIST URL !!!
+                        val intent = Intent(Intent.ACTION_VIEW, privacyPolicyUrl.toUri())
+                        context.startActivity(intent)
+                    },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                settingsListItem(
+                    icon = Icons.Default.Info,
+                    title = stringResource(R.string.app_name), // Using app name as title for version
+                    value = stringResource(R.string.app_version, appVersion),
+                    onClick = { /* No action for clicking version */ },
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(80.dp))
     }
 
@@ -297,7 +335,7 @@ fun settingsScreen(
             title = { Text(stringResource(R.string.choose_currency_symbol)) },
             text = {
                 Column {
-                    listOf("€", "$", "£", "CHF", "¥", "zł").forEach { symbol ->
+                    listOf("€", "\$", "£", "CHF", "¥", "zł").forEach { symbol ->
                         Row(
                             modifier =
                                 Modifier
