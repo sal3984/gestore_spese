@@ -67,6 +67,7 @@
     <string name="data_management">Data Management</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_csv_desc">Save an expense report</string>
+    <string name="backup_restore">Backup and Restore</string>
     <string name="backup">Backup</string>
     <string name="restore">Restore</string>
     <string name="choose_currency_symbol">Choose Currency Symbol</string>

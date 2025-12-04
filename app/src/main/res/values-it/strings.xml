@@ -68,6 +68,7 @@
     <string name="data_management">Gestione Dati</string>
     <string name="export_csv">Esporta CSV</string>
     <string name="export_csv_desc">Salva un report delle spese</string>
+    <string name="backup_restore">Backup e Ripristino</string>
     <string name="backup">Backup</string>
     <string name="restore">Ripristina</string>
     <string name="choose_currency_symbol">Scegli Simbolo Valuta</string>
