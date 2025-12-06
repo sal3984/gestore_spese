@@ -178,4 +178,10 @@
     <string name="github_repo_desc">Contribuisci o richiedi accesso</string>
     <string name="app_version">Versione: %1$s</string>
 
+    <!-- New Strings -->
+    <string name="calc_mode_installments">N. Rate</string>
+    <string name="calc_mode_amount">Importo</string>
+    <string name="installment_amount_label">Importo Rata</string>
+    <string name="calc_amount_per_installment">Importo per rata: %1$s</string>
+
 </resources>
