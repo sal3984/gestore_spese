@@ -473,6 +473,12 @@ fun MonthSelector(
         (-24..0).map { YearMonth.now().plusMonths(it.toLong()) }.sortedByDescending { it }
     }
 
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val responsiveFontSize = (screenWidth * 0.032f).sp
+
+
+
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -483,7 +489,10 @@ fun MonthSelector(
                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
             onValueChange = { /* Read Only */ },
             readOnly = true,
-            label = { Text(label) },
+            maxLines = 1,
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = responsiveFontSize),
+
+            label = { Text(text = label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
@@ -496,8 +505,22 @@ fun MonthSelector(
         ) {
             months.forEach { month ->
                 DropdownMenuItem(
-                    text = { Text(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
-                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }) },
+                    text = {
+                        Text(
+                            month.format(
+                                DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+                            ).replaceFirstChar {
+                                if (it.isLowerCase())
+                                    it.titlecase(Locale.getDefault())
+                                else
+                                    it.toString()
+                                },
+                            fontSize = responsiveFontSize,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                            )
+                           },
                     onClick = {
                         onMonthSelected(month)
                         expanded = false
