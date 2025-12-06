@@ -178,10 +178,20 @@
     <string name="github_repo_desc">Contribuisci o richiedi accesso</string>
     <string name="app_version">Versione: %1$s</string>
 
-    <!-- New Strings -->
+    <!-- Installments Calculation -->
     <string name="calc_mode_installments">N. Rate</string>
     <string name="calc_mode_amount">Importo</string>
     <string name="installment_amount_label">Importo Rata</string>
     <string name="calc_amount_per_installment">Importo per rata: %1$s</string>
+
+    <!-- Donations -->
+    <string name="support_us">Supportaci</string>
+    <string name="donate">Fai una donazione</string>
+    <string name="donate_desc">Aiuta a mantenere l\'app gratuita e senza pubblicità</string>
+    <string name="donation_dialog_title">Scegli un importo</string>
+    <string name="donation_coffee">Un caffè ☕</string>
+    <string name="donation_pizza">Una pizza 🍕</string>
+    <string name="donation_supporter">Grande Sostenitore ❤️</string>
+    <string name="thank_you_for_support">Grazie per il tuo supporto!</string>
 
 </resources>

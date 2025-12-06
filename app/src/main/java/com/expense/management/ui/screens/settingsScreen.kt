@@ -99,6 +99,7 @@ fun settingsScreen(
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showExportColumnsDialog by remember { mutableStateOf(false) }
     var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
+    val context = LocalContext.current
 
     LaunchedEffect(ccLimit) {
         limitStr = String.format(Locale.US, "%.0f", ccLimit)
@@ -106,11 +107,11 @@ fun settingsScreen(
 
     Column(
         modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -164,10 +165,10 @@ fun settingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors =
-                        OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                        ),
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    ),
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -258,10 +259,10 @@ fun settingsScreen(
                             valueRange = 0f..3f,
                             steps = 2,
                             colors =
-                                SliderDefaults.colors(
-                                    thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                                ),
+                            SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
                         )
                         Text(
                             stringResource(R.string.cc_delay_desc),
@@ -293,8 +294,6 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
         // --- ABOUT SECTION ---
         settingsSectionHeader(stringResource(R.string.about))
 
@@ -303,7 +302,6 @@ fun settingsScreen(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
-            val context = LocalContext.current
             val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A"
 
             Column {
@@ -338,6 +336,28 @@ fun settingsScreen(
             }
         }
 
+       /*Spacer(modifier = Modifier.height(32.dp))
+
+       // --- SUPPORT US SECTION ---
+       settingsSectionHeader(stringResource(R.string.support_us))
+
+       Card(
+           colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+           shape = RoundedCornerShape(16.dp),
+           elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+       ) {
+           settingsListItem(
+               icon = Icons.Default.Favorite,
+               title = stringResource(R.string.donate),
+               value = stringResource(R.string.donate_desc),
+               onClick = {
+                   val paypalUrl = "https://paypal.me/YOUR_PAYPAL_USERNAME" // !!! REPLACE THIS WITH YOUR PAYPAL.ME LINK !!!
+                   val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl))
+                   context.startActivity(intent)
+               },
+           )
+       }*/
+        
         Spacer(modifier = Modifier.height(80.dp))
     }
 
@@ -351,12 +371,13 @@ fun settingsScreen(
                     listOf("€", "\$", "£", "CHF", "¥", "zł").forEach { symbol ->
                         Row(
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onCurrencyChange(symbol)
-                                        showCurrencyDialog = false
-                                    }.padding(12.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onCurrencyChange(symbol)
+                                    showCurrencyDialog = false
+                                }
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = (symbol == currentCurrency), onClick = null)
@@ -381,12 +402,13 @@ fun settingsScreen(
                     dateFormats.forEach { format ->
                         Row(
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onDateFormatChange(format)
-                                        showDateFormatDialog = false
-                                    }.padding(12.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDateFormatChange(format)
+                                    showDateFormatDialog = false
+                                }
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = (format == currentDateFormat), onClick = null)
@@ -478,9 +500,9 @@ fun settingsListItem(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier =
-                    Modifier
-                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                        .padding(10.dp),
+                Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .padding(10.dp),
             )
         },
         trailingContent = {
@@ -491,8 +513,8 @@ fun settingsListItem(
             )
         },
         modifier =
-            Modifier
-                .clickable(onClick = onClick)
-                .padding(vertical = 4.dp),
+        Modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
     )
 }

@@ -179,10 +179,21 @@
     <string name="github_repo_desc">Contribute or request access</string>
     <string name="app_version">Version: %1$s</string>
 
-    <!-- New Strings -->
+    <!-- Installments Calculation -->
     <string name="calc_mode_installments">No. Installments</string>
     <string name="calc_mode_amount">Amount</string>
     <string name="installment_amount_label">Installment Amount</string>
     <string name="calc_amount_per_installment">Amount per installment: %1$s</string>
+
+
+    <!-- Donations -->
+    <string name="support_us">Support Us</string>
+    <string name="donate">Donate</string>
+    <string name="donate_desc">Help keep the app free and ad-free</string>
+    <string name="donation_dialog_title">Choose an amount</string>
+    <string name="donation_coffee">A coffee ☕</string>
+    <string name="donation_pizza">A pizza 🍕</string>
+    <string name="donation_supporter">Big Supporter ❤️</string>
+    <string name="thank_you_for_support">Thank you for your support!</string>
 
 </resources>
