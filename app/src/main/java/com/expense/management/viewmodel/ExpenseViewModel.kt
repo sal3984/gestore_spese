@@ -315,6 +315,12 @@ class ExpenseViewModel(
 
     suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id,it.label,it.icon,it.type) }
 
+    fun updateCategory(category: CategoryEntity){
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateCategory(category)
+        }
+    }
+
 }
 
 data class BackupData(

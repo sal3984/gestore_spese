@@ -196,4 +196,11 @@
     <string name="donation_supporter">Big Supporter ❤️</string>
     <string name="thank_you_for_support">Thank you for your support!</string>
 
+    <string name="insert_emoji">Insert category name and choose icon or emoji </string>
+    <string name="edit_category">Update Category</string>
+    <string name="suggest">Suggest:</string>
+
+    <string name="error_msg_name">Name is required</string>
+    <string name="error_msg_icon">Icon is required</string>
+
 </resources>

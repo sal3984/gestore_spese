@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -68,21 +69,28 @@ import java.util.UUID
 fun CategoryScreen(
     categories: List<CategoryEntity>,
     onAddCategory: (CategoryEntity) -> Unit,
+    onUpdateCategory: (CategoryEntity) -> Unit,
     onDeleteCategory: (String) -> Unit
 ) {
-    var showAddDialog by remember { mutableStateOf(false) }
     // CAMBIATO: selectedTab ora è un TransactionType
     var selectedTab by remember { mutableStateOf(TransactionType.EXPENSE) }
     val selectedTabIndex = if (selectedTab == TransactionType.EXPENSE) 0 else 1
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // STATO PER IL DIALOG
+    var showDialog by remember { mutableStateOf(false) } // Rinominato da showDialog per chiarezza
+    var categoryToEdit by remember { mutableStateOf<CategoryEntity?>(null) } // Tiene traccia di chi stiamo modificando
+
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = { categoryToEdit = null
+                            showDialog = true
+                          },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 text = { Text(stringResource(R.string.new_category)) },
@@ -159,6 +167,10 @@ fun CategoryScreen(
                     items(filteredCategories, key = { it.id }) { category ->
                         CategoryCard(
                             category = category,
+                            onEdit = {
+                                categoryToEdit = category
+                                showDialog= true
+                            },
                             onDelete = { onDeleteCategory(category.id) }
                         )
                     }
@@ -167,26 +179,43 @@ fun CategoryScreen(
         }
     }
 
-    if (showAddDialog) {
-        AddCategoryDialog(
+    if (showDialog) {
+        CategoryDialog(
             type = selectedTab, // Passiamo direttamente l'enum
             existingCategories = categories,
-            onDismiss = { showAddDialog = false },
+            categoryToEdit= categoryToEdit,
+            onDismiss = { showDialog = false },
             onConfirm = { label, icon ->
                 // Controllo duplicati per nome (case insensitive)
-                val exists = categories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == selectedTab }
+                if(categoryToEdit == null) {
+                    val exists = categories.any {
+                        it.label.equals(
+                            label.trim(),
+                            ignoreCase = true
+                        ) && it.type == selectedTab
+                    }
 
-                if (!exists) {
-                    val newCategory = CategoryEntity(
-                        id = UUID.randomUUID().toString(),
+                    if (!exists) {
+                        val newCategory = CategoryEntity(
+                            id = UUID.randomUUID().toString(),
+                            label = label.trim(),
+                            icon = icon,
+                            type = selectedTab,
+                            isCustom = true
+                        )
+                        onAddCategory(newCategory)
+
+                    }
+                }else{
+                    // MODIFICA
+                    val updatedCategory = categoryToEdit!!.copy(
                         label = label.trim(),
-                        icon = icon,
-                        type = selectedTab,
-                        isCustom = true
+                        icon = icon
+                        // Manteniamo ID e Type originali
                     )
-                    onAddCategory(newCategory)
-                    showAddDialog = false
+                    onUpdateCategory(updatedCategory)
                 }
+                showDialog = false
             }
         )
     }
@@ -195,6 +224,7 @@ fun CategoryScreen(
 @Composable
 fun CategoryCard(
     category: CategoryEntity,
+    onEdit: () -> Unit, // <--- NUOVO PARAMETRO
     onDelete: () -> Unit
 ) {
     Card(
@@ -230,27 +260,39 @@ fun CategoryCard(
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete),
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                )
+            // <--- NUOVA ROW PER I PULSANTI
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.edit_category), // Assicurati di avere questa stringa o usa "Modifica"
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.delete),
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    )
+                }
             }
         }
     }
 }
 
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AddCategoryDialog(
+fun CategoryDialog(
     type: TransactionType,
     existingCategories: List<CategoryEntity>,
+    categoryToEdit: CategoryEntity? = null,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
-    var label by remember { mutableStateOf("") }
-    var selectedIcon by remember { mutableStateOf("🏷️") } // Icona di default
+    var label by remember { mutableStateOf(categoryToEdit?.label ?: "") }
+    var selectedIcon by remember { mutableStateOf(categoryToEdit?.icon ?: "🏷️") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val availableIcons = listOf(
@@ -259,18 +301,26 @@ fun AddCategoryDialog(
         "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨"
     )
 
+    val isEditing = categoryToEdit != null
+    val dialogTitle = if (isEditing) stringResource(R.string.edit_category) else if(type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog)
+
+    val msg = stringResource(R.string.error_msg_name)
+    val msgIcon = stringResource(R.string.error_msg_icon)
+    val msgDuplicate = stringResource(R.string.error_category_already_exists)
+
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                if(type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog),
+                text = dialogTitle,
                 style = MaterialTheme.typography.headlineSmall
             )
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Inserisci il nome e scegli un'icona o un'emoji.",
+                    stringResource(R.string.insert_emoji),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -323,7 +373,7 @@ fun AddCategoryDialog(
 
                 // Sezione Icone suggerite
                 Text(
-                    text = "Suggerite:",
+                    text = stringResource(R.string.suggest),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -362,13 +412,23 @@ fun AddCategoryDialog(
             Button(
                 onClick = {
                     if (label.isBlank()) {
-                        errorMessage = "Il nome è obbligatorio"
+                        errorMessage = msg
                     } else if (selectedIcon.isBlank()) {
-                        errorMessage = "L'icona è obbligatoria"
-                    } else if (existingCategories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == type }) {
-                        errorMessage = "Categoria già esistente"
+                        errorMessage = msgIcon
                     } else {
-                        onConfirm(label, selectedIcon)
+                        // LOGICA DUPLICATI AGGIORNATA
+                        // Se stiamo modificando, ignoriamo la categoria stessa nel controllo duplicati
+                        val isDuplicate = existingCategories.any {
+                            it.label.equals(label.trim(), ignoreCase = true) &&
+                                it.type == type &&
+                                it.id != categoryToEdit?.id // Ignora se stesso se in edit
+                        }
+
+                        if (isDuplicate) {
+                            errorMessage = msgDuplicate
+                        } else {
+                            onConfirm(label, selectedIcon)
+                        }
                     }
                 }
             ) {

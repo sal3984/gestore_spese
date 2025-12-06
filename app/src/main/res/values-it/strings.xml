@@ -194,4 +194,9 @@
     <string name="donation_supporter">Grande Sostenitore ❤️</string>
     <string name="thank_you_for_support">Grazie per il tuo supporto!</string>
 
+    <string name="insert_emoji">Inserisci il nome e scegli un\'icona o un \'emoji.</string>
+    <string name="edit_category">Aggiorna Categoria</string>
+    <string name="suggest">Suggerite:</string>
+    <string name="error_msg_name">Il nome è obbligatorio</string>
+    <string name="error_msg_icon">L\'icona è obbligatoria</string>
 </resources>
