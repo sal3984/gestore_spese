@@ -94,7 +94,7 @@ fun ReportScreen(
             selectedReportMonth == null -> reportEndMonth
             selectedReportMonth!!.isBefore(reportStartMonth) -> reportStartMonth
             selectedReportMonth!!.isAfter(reportEndMonth) -> reportEndMonth
-            else -> selectedReportMonth // Already valid
+            else -> selectedReportMonth
         }
     }
 
@@ -124,7 +124,7 @@ fun ReportScreen(
                     false
                 }
             }
-            .sumOf { if(it.type == TransactionType.INCOME) it.amount else -it.amount }
+            .sumOf { if (it.type == TransactionType.INCOME) it.amount else -it.amount }
     }
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
@@ -174,10 +174,12 @@ fun ReportScreen(
         MutableTransitionState(false).apply { targetState = true }
     }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .background(MaterialTheme.colorScheme.background)
-        .verticalScroll(scrollState) // AGGIUNTO QUI: Rende l'intera schermata scrollabile
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            // AGGIUNTO QUI: Rende l'intera schermata scrollabile
+            .verticalScroll(scrollState),
     ) {
         // --- HEADER ---
         Column(
@@ -187,19 +189,19 @@ fun ReportScreen(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primaryContainer
-                        )
-                    )
+                            MaterialTheme.colorScheme.primaryContainer,
+                        ),
+                    ),
                 )
                 .padding(24.dp)
                 // More space for the card overlap
-                .padding(bottom = 32.dp)
+                .padding(bottom = 32.dp),
         ) {
             Text(
                 stringResource(R.string.report_year, reportEndMonth.year),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
             )
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -208,13 +210,13 @@ fun ReportScreen(
                     Text(
                         stringResource(R.string.total_savings),
                         style = MaterialTheme.typography.titleSmall,
-                        color = Color.White.copy(alpha = 0.9f)
+                        color = Color.White.copy(alpha = 0.9f),
                     )
                     Text(
                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", savings)}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        color = Color.White,
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -225,7 +227,7 @@ fun ReportScreen(
                         .size(56.dp)
                         .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
                         .padding(12.dp),
-                    tint = Color.White
+                    tint = Color.White,
                 )
             }
         }
@@ -238,20 +240,20 @@ fun ReportScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .offset(y = (-48).dp) // Overlap the header
-                .zIndex(2f)
+                .offset(y = (-48).dp)
+                .zIndex(2f),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     stringResource(R.string.filter_report_by_month),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     MonthSelector(
                         selectedMonth = reportStartMonth,
@@ -265,7 +267,7 @@ fun ReportScreen(
                             reportStartMonth = newStartMonth
                         },
                         label = stringResource(R.string.start_month),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     MonthSelector(
@@ -280,7 +282,7 @@ fun ReportScreen(
                             reportEndMonth = newEndMonth
                         },
                         label = stringResource(R.string.end_month),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -289,35 +291,39 @@ fun ReportScreen(
         // --- SCROLLABLE CONTENT ---
         Column(
             modifier = Modifier
-                .fillMaxWidth() // CAMBIATO: da fillMaxSize a fillMaxWidth
-                .offset(y = (-48).dp) // Adjust offset to account for the new card and previous offset
+                // CAMBIATO: da fillMaxSize a fillMaxWidth
+                .fillMaxWidth()
+                // Adjust offset to account for the new card and previous offset
+                .offset(y = (-48).dp)
                 // RIMOSSO: .verticalScroll(scrollState) da qui
-                .padding(horizontal = 16.dp) // Apply horizontal padding here
+                // Apply horizontal padding here
+                .padding(horizontal = 16.dp),
         ) {
-            Spacer(modifier = Modifier.height(24.dp)) // Spacer to visually separate the filter card from the chart card
+            // Spacer to visually separate the filter card from the chart card
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Grafico a Barre Mensili
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             stringResource(R.string.balance_report),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                         Icon(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
 
@@ -329,7 +335,7 @@ fun ReportScreen(
                         currencySymbol = currencySymbol,
                         isAmountHidden = isAmountHidden,
                         selectedMonth = selectedReportMonth,
-                        onMonthSelected = { selectedReportMonth = it }
+                        onMonthSelected = { selectedReportMonth = it },
                     )
                 }
             }
@@ -345,33 +351,33 @@ fun ReportScreen(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
+                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp),
             )
 
             // Lista Spese per Categoria
             if (expenseByCategory.isEmpty()) {
                 AnimatedVisibility(
                     visibleState = visibleState,
-                    enter = fadeIn(animationSpec = tween(600)) + slideInVertically(initialOffsetY = { it / 2 })
+                    enter = fadeIn(animationSpec = tween(600)) + slideInVertically(initialOffsetY = { it / 2 }),
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(
                             imageVector = Icons.Default.PieChart,
                             contentDescription = null,
                             modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.surfaceVariant
+                            tint = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "Nessuna spesa\nregistrata per questo mese",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -384,7 +390,7 @@ fun ReportScreen(
                         AnimatedVisibility(
                             visibleState = visibleState,
                             enter = fadeIn(animationSpec = tween(durationMillis = 500, delayMillis = index * 50)) +
-                                    slideInVertically(animationSpec = tween(durationMillis = 500, delayMillis = index * 50)) { 50 }
+                                slideInVertically(animationSpec = tween(durationMillis = 500, delayMillis = index * 50)) { 50 },
                         ) {
                             val category = categories.firstOrNull { it.id == categoryId }
                                 ?: categories.firstOrNull { it.id == "other" }
@@ -393,18 +399,18 @@ fun ReportScreen(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
                                         text = category?.icon ?: "🏷️",
-                                        style = MaterialTheme.typography.titleMedium
+                                        style = MaterialTheme.typography.titleMedium,
                                     )
                                 }
 
@@ -413,19 +419,19 @@ fun ReportScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.SpaceBetween,
                                     ) {
                                         Text(
                                             category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other),
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = MaterialTheme.colorScheme.onSurface,
                                         )
                                         Text(
                                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", amount)}",
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = MaterialTheme.colorScheme.onSurface,
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -445,7 +451,7 @@ fun ReportScreen(
                                             text = String.format(Locale.getDefault(), "%.0f%%", percentage * 100),
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
@@ -466,7 +472,7 @@ fun MonthSelector(
     selectedMonth: YearMonth,
     onMonthSelected: (YearMonth) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val months = remember {
@@ -477,12 +483,10 @@ fun MonthSelector(
     val screenWidth = configuration.screenWidthDp
     val responsiveFontSize = (screenWidth * 0.032f).sp
 
-
-
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
-        modifier = modifier
+        modifier = modifier,
     ) {
         OutlinedTextField(
             value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
@@ -496,35 +500,36 @@ fun MonthSelector(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
-                .fillMaxWidth()
+                .fillMaxWidth(),
         )
 
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
         ) {
             months.forEach { month ->
                 DropdownMenuItem(
                     text = {
                         Text(
                             month.format(
-                                DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+                                DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()),
                             ).replaceFirstChar {
-                                if (it.isLowerCase())
+                                if (it.isLowerCase()) {
                                     it.titlecase(Locale.getDefault())
-                                else
+                                } else {
                                     it.toString()
-                                },
+                                }
+                            },
                             fontSize = responsiveFontSize,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
-                            softWrap = false
-                            )
-                           },
+                            softWrap = false,
+                        )
+                    },
                     onClick = {
                         onMonthSelected(month)
                         expanded = false
-                    }
+                    },
                 )
             }
         }
@@ -537,7 +542,7 @@ fun MonthlyBarChart(
     currencySymbol: String,
     isAmountHidden: Boolean,
     selectedMonth: YearMonth?,
-    onMonthSelected: (YearMonth) -> Unit
+    onMonthSelected: (YearMonth) -> Unit,
 ) {
     if (data.isEmpty()) return
 
@@ -555,7 +560,7 @@ fun MonthlyBarChart(
                 .fillMaxWidth()
                 .height(200.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.Bottom,
         ) {
             data.forEach { (month, balance) ->
                 val isSelected = selectedMonth == month
@@ -565,15 +570,15 @@ fun MonthlyBarChart(
                         .weight(1f)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null
+                            indication = null,
                         ) { onMonthSelected(month) },
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         // PARTE POSITIVA
                         Box(
@@ -582,7 +587,7 @@ fun MonthlyBarChart(
                                 .fillMaxWidth()
                                 // Slightly thinner bars
                                 .padding(horizontal = 3.dp),
-                            contentAlignment = Alignment.BottomCenter
+                            contentAlignment = Alignment.BottomCenter,
                         ) {
                             if (balance > 0) {
                                 val heightFraction = (balance.toFloat() / maxAbs).coerceIn(0f, 1f)
@@ -592,16 +597,19 @@ fun MonthlyBarChart(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
                                         .background(
-                                            if (isSelected) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                                        )
+                                            if (isSelected) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                                            },
+                                        ),
                                 )
                             }
                         }
 
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            thickness = 1.dp
+                            thickness = 1.dp,
                         )
 
                         // PARTE NEGATIVA
@@ -610,7 +618,7 @@ fun MonthlyBarChart(
                                 .weight(1f)
                                 .fillMaxWidth()
                                 .padding(horizontal = 3.dp),
-                            contentAlignment = Alignment.TopCenter
+                            contentAlignment = Alignment.TopCenter,
                         ) {
                             if (balance < 0) {
                                 val heightFraction = (kotlin.math.abs(balance).toFloat() / maxAbs).coerceIn(0f, 1f)
@@ -620,9 +628,12 @@ fun MonthlyBarChart(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp))
                                         .background(
-                                            if (isSelected) MaterialTheme.colorScheme.error
-                                            else MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
-                                        )
+                                            if (isSelected) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+                                            },
+                                        ),
                                 )
                             }
                         }
@@ -637,7 +648,7 @@ fun MonthlyBarChart(
                         fontSize = 11.sp,
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        maxLines = 1
+                        maxLines = 1,
                     )
                 }
             }
@@ -665,17 +676,17 @@ fun MonthlyBarChart(
 
                 Box(
                     modifier = Modifier
-                        .absoluteOffset(x = xOffset + extraOffset, y = 0.dp) // y=0 is top of BoxWithConstraints
+                        .absoluteOffset(x = xOffset + extraOffset, y = 0.dp)
                         .zIndex(1f),
                     // Align to bottom of this anchor point (effectively top of chart)
-                    contentAlignment = Alignment.BottomCenter
+                    contentAlignment = Alignment.BottomCenter,
                 ) {
-                   // We want the tooltip to appear *above* the chart area if possible,
-                   // but BoxWithConstraints starts at top of chart area.
-                   // So y=0 is the top line of the 200dp chart.
+                    // We want the tooltip to appear *above* the chart area if possible,
+                    // but BoxWithConstraints starts at top of chart area.
+                    // So y=0 is the top line of the 200dp chart.
 
-                   // Use a negative offset to push it up.
-                   Box(modifier = Modifier.offset(y = (-48).dp)) {
+                    // Use a negative offset to push it up.
+                    Box(modifier = Modifier.offset(y = (-48).dp)) {
                         AnimatedVisibility(
                             visible = true,
                             enter = fadeIn(),
@@ -686,30 +697,30 @@ fun MonthlyBarChart(
 
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                 ),
                                 shape = RoundedCornerShape(8.dp),
-                                elevation = CardDefaults.cardElevation(6.dp)
+                                elevation = CardDefaults.cardElevation(6.dp),
                             ) {
                                 Column(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                    horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Text(
                                         text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.2f", balance)} $currencySymbol",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                                     )
                                 }
                             }
                         }
-                   }
+                    }
                 }
             }
         }

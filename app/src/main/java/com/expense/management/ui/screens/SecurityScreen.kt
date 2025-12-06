@@ -40,11 +40,11 @@ fun securityScreen(
 ) {
     Column(
         modifier =
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -93,9 +93,9 @@ fun settingsSwitchItem(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier =
-                    Modifier
-                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                        .padding(10.dp),
+                Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .padding(10.dp),
             )
         },
         trailingContent = {
@@ -103,15 +103,15 @@ fun settingsSwitchItem(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors =
-                    SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    ),
+                SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                ),
             )
         },
         modifier =
-            Modifier
-                .clickable { onCheckedChange(!checked) }
-                .padding(vertical = 4.dp),
+        Modifier
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp),
     )
 }

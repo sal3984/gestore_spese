@@ -94,16 +94,15 @@ class ExpenseViewModel(
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
 
-    val DEFAULT_EXPORT_COLUMNS = setOf(
+    val defaultExportColumns = setOf(
         "ID", "Data", "Descrizione", "ImportoConvertito", "ImportoOriginale",
-        "ValutaOriginale", "Categoria", "Tipo", "CartaDiCredito", "DataAddebito"
+        "ValutaOriginale", "Categoria", "Tipo", "CartaDiCredito", "DataAddebito",
     )
 
     private val _csvExportColumns = MutableStateFlow(
-        prefs.getStringSet("csv_export_columns", DEFAULT_EXPORT_COLUMNS) ?: DEFAULT_EXPORT_COLUMNS
+        prefs.getStringSet("csv_export_columns", defaultExportColumns) ?: defaultExportColumns,
     )
     val csvExportColumns = _csvExportColumns.asStateFlow()
-
 
     init {
         viewModelScope.launch {
@@ -313,14 +312,13 @@ class ExpenseViewModel(
 
     suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE }
 
-    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id,it.label,it.icon,it.type) }
+    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id, it.label, it.icon, it.type) }
 
-    fun updateCategory(category: CategoryEntity){
+    fun updateCategory(category: CategoryEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateCategory(category)
         }
     }
-
 }
 
 data class BackupData(

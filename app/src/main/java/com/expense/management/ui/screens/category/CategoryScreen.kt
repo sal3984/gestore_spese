@@ -70,7 +70,7 @@ fun CategoryScreen(
     categories: List<CategoryEntity>,
     onAddCategory: (CategoryEntity) -> Unit,
     onUpdateCategory: (CategoryEntity) -> Unit,
-    onDeleteCategory: (String) -> Unit
+    onDeleteCategory: (String) -> Unit,
 ) {
     // CAMBIATO: selectedTab ora è un TransactionType
     var selectedTab by remember { mutableStateOf(TransactionType.EXPENSE) }
@@ -79,30 +79,30 @@ fun CategoryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // STATO PER IL DIALOG
-    var showDialog by remember { mutableStateOf(false) } // Rinominato da showDialog per chiarezza
-    var categoryToEdit by remember { mutableStateOf<CategoryEntity?>(null) } // Tiene traccia di chi stiamo modificando
-
+    var showDialog by remember { mutableStateOf(false) }
+    var categoryToEdit by remember { mutableStateOf<CategoryEntity?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { categoryToEdit = null
-                            showDialog = true
-                          },
+                onClick = {
+                    categoryToEdit = null
+                    showDialog = true
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 text = { Text(stringResource(R.string.new_category)) },
-                icon = { Icon(Icons.Default.Add, stringResource(R.string.add_icon_desc)) }
+                icon = { Icon(Icons.Default.Add, stringResource(R.string.add_icon_desc)) },
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.background),
         ) {
             // Modern Tab Switcher
             PrimaryTabRow(
@@ -113,24 +113,24 @@ fun CategoryScreen(
                     TabRowDefaults.PrimaryIndicator(
                         modifier = Modifier.tabIndicatorOffset(selectedTabIndex),
                         width = Dp.Unspecified,
-                        shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+                        shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
                     )
                 },
-                divider = {}
+                divider = {},
             ) {
                 Tab(
                     selected = selectedTab == TransactionType.EXPENSE,
                     onClick = { selectedTab = TransactionType.EXPENSE },
-                    text = { Text(stringResource(R.string.expenses_tab), fontWeight = if(selectedTab == TransactionType.EXPENSE) FontWeight.Bold else FontWeight.Normal) },
+                    text = { Text(stringResource(R.string.expenses_tab), fontWeight = if (selectedTab == TransactionType.EXPENSE) FontWeight.Bold else FontWeight.Normal) },
                     selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Tab(
                     selected = selectedTab == TransactionType.INCOME,
                     onClick = { selectedTab = TransactionType.INCOME },
-                    text = { Text(stringResource(R.string.income_tab), fontWeight = if(selectedTab == TransactionType.INCOME) FontWeight.Bold else FontWeight.Normal) },
+                    text = { Text(stringResource(R.string.income_tab), fontWeight = if (selectedTab == TransactionType.INCOME) FontWeight.Bold else FontWeight.Normal) },
                     selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -142,36 +142,36 @@ fun CategoryScreen(
             if (filteredCategories.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Default.Category,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.surfaceVariant
+                            tint = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(R.string.no_custom_categories),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 88.dp, top = 16.dp, start = 16.dp, end = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(filteredCategories, key = { it.id }) { category ->
                         CategoryCard(
                             category = category,
                             onEdit = {
                                 categoryToEdit = category
-                                showDialog= true
+                                showDialog = true
                             },
-                            onDelete = { onDeleteCategory(category.id) }
+                            onDelete = { onDeleteCategory(category.id) },
                         )
                     }
                 }
@@ -181,17 +181,18 @@ fun CategoryScreen(
 
     if (showDialog) {
         CategoryDialog(
-            type = selectedTab, // Passiamo direttamente l'enum
+            // Passiamo direttamente l'enum
+            type = selectedTab,
             existingCategories = categories,
-            categoryToEdit= categoryToEdit,
+            categoryToEdit = categoryToEdit,
             onDismiss = { showDialog = false },
             onConfirm = { label, icon ->
                 // Controllo duplicati per nome (case insensitive)
-                if(categoryToEdit == null) {
+                if (categoryToEdit == null) {
                     val exists = categories.any {
                         it.label.equals(
                             label.trim(),
-                            ignoreCase = true
+                            ignoreCase = true,
                         ) && it.type == selectedTab
                     }
 
@@ -201,22 +202,21 @@ fun CategoryScreen(
                             label = label.trim(),
                             icon = icon,
                             type = selectedTab,
-                            isCustom = true
+                            isCustom = true,
                         )
                         onAddCategory(newCategory)
-
                     }
-                }else{
+                } else {
                     // MODIFICA
                     val updatedCategory = categoryToEdit!!.copy(
                         label = label.trim(),
-                        icon = icon
+                        icon = icon,
                         // Manteniamo ID e Type originali
                     )
                     onUpdateCategory(updatedCategory)
                 }
                 showDialog = false
-            }
+            },
         )
     }
 }
@@ -224,23 +224,23 @@ fun CategoryScreen(
 @Composable
 fun CategoryCard(
     category: CategoryEntity,
-    onEdit: () -> Unit, // <--- NUOVO PARAMETRO
-    onDelete: () -> Unit
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
         elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -248,7 +248,7 @@ fun CategoryCard(
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(category.icon, fontSize = 24.sp)
                 }
@@ -256,7 +256,7 @@ fun CategoryCard(
                 Text(
                     category.label,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
 
@@ -265,22 +265,22 @@ fun CategoryCard(
                 IconButton(onClick = onEdit) {
                     Icon(
                         Icons.Default.Edit,
-                        contentDescription = stringResource(R.string.edit_category), // Assicurati di avere questa stringa o usa "Modifica"
-                        tint = MaterialTheme.colorScheme.primary
+                        // Assicurati di avere questa stringa o usa "Modifica"
+                        contentDescription = stringResource(R.string.edit_category),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = stringResource(R.string.delete),
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                     )
                 }
             }
         }
     }
 }
-
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -289,7 +289,7 @@ fun CategoryDialog(
     existingCategories: List<CategoryEntity>,
     categoryToEdit: CategoryEntity? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String) -> Unit,
 ) {
     var label by remember { mutableStateOf(categoryToEdit?.label ?: "") }
     var selectedIcon by remember { mutableStateOf(categoryToEdit?.icon ?: "🏷️") }
@@ -298,23 +298,22 @@ fun CategoryDialog(
     val availableIcons = listOf(
         "🏠", "🍔", "🚗", "🛒", "💊", "🎬", "✈️", "👔", "🎓", "🎁", "💡", "📱",
         "💰", "💸", "🏦", "📈", "💼", "🔧", "🐶", "👶", "🎉", "🏋️", "📚", "🎮",
-        "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨"
+        "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨",
     )
 
     val isEditing = categoryToEdit != null
-    val dialogTitle = if (isEditing) stringResource(R.string.edit_category) else if(type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog)
+    val dialogTitle = if (isEditing) stringResource(R.string.edit_category) else if (type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog)
 
     val msg = stringResource(R.string.error_msg_name)
     val msgIcon = stringResource(R.string.error_msg_icon)
     val msgDuplicate = stringResource(R.string.error_category_already_exists)
-
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
                 text = dialogTitle,
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall,
             )
         },
         text = {
@@ -323,13 +322,13 @@ fun CategoryDialog(
                     stringResource(R.string.insert_emoji),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 16.dp),
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.Top,
                 ) {
                     // Campo Nome
                     OutlinedTextField(
@@ -347,7 +346,7 @@ fun CategoryDialog(
                             if (errorMessage != null) {
                                 Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
                             }
-                        }
+                        },
                     )
 
                     // Campo Icona
@@ -364,8 +363,8 @@ fun CategoryDialog(
                         modifier = Modifier.width(80.dp),
                         textStyle = androidx.compose.ui.text.TextStyle(
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            fontSize = 20.sp
-                        )
+                            fontSize = 20.sp,
+                        ),
                     )
                 }
 
@@ -376,14 +375,14 @@ fun CategoryDialog(
                     text = stringResource(R.string.suggest),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxItemsInEachRow = 6
+                    maxItemsInEachRow = 6,
                 ) {
                     availableIcons.forEach { icon ->
                         Box(
@@ -392,15 +391,18 @@ fun CategoryDialog(
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (selectedIcon == icon) MaterialTheme.colorScheme.primaryContainer
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    if (selectedIcon == icon) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    },
                                 )
                                 .border(
                                     width = 1.dp,
                                     color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
-                                    shape = CircleShape
+                                    shape = CircleShape,
                                 )
-                                .clickable { selectedIcon = icon }
+                                .clickable { selectedIcon = icon },
                         ) {
                             Text(text = icon, fontSize = 20.sp)
                         }
@@ -421,7 +423,8 @@ fun CategoryDialog(
                         val isDuplicate = existingCategories.any {
                             it.label.equals(label.trim(), ignoreCase = true) &&
                                 it.type == type &&
-                                it.id != categoryToEdit?.id // Ignora se stesso se in edit
+                                // Ignora se stesso se in edit
+                                it.id != categoryToEdit?.id
                         }
 
                         if (isDuplicate) {
@@ -430,7 +433,7 @@ fun CategoryDialog(
                             onConfirm(label, selectedIcon)
                         }
                     }
-                }
+                },
             ) {
                 Text(stringResource(R.string.save))
             }
@@ -439,6 +442,6 @@ fun CategoryDialog(
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
-        }
+        },
     )
 }

@@ -76,7 +76,7 @@ val EXPORT_COLUMN_MAP = mapOf(
     "Categoria" to "Categoria",
     "Tipo" to "Tipo",
     "CartaDiCredito" to "Carta di Credito",
-    "DataAddebito" to "Data Addebito"
+    "DataAddebito" to "Data Addebito",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +93,7 @@ fun settingsScreen(
     onDelayChange: (Int) -> Unit,
     onLimitChange: (Float) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
-    onCsvExportColumnsChange: (Set<String>) -> Unit
+    onCsvExportColumnsChange: (Set<String>) -> Unit,
 ) {
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
@@ -466,7 +466,7 @@ fun settingsScreen(
                     showExportColumnsDialog = false
                 }) { Text(stringResource(R.string.save)) }
             },
-            dismissButton = { TextButton(onClick = { showExportColumnsDialog = false }) { Text(stringResource(R.string.cancel)) } }
+            dismissButton = { TextButton(onClick = { showExportColumnsDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }

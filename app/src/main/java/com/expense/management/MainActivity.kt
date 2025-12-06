@@ -119,7 +119,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState()
     val isAmountHidden by viewModel.isAmountHidden.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
-    val csvExportColumns by viewModel.csvExportColumns.collectAsState() // Read selected columns
+    val csvExportColumns by viewModel.csvExportColumns.collectAsState()
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
 
@@ -184,7 +184,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         uri = it,
                         currencySymbol = currentCurrency,
                         dateFormat = currentDateFormat,
-                        selectedColumns = csvExportColumns // Pass selected columns
+                        selectedColumns = csvExportColumns,
                     )
                 }
             }
@@ -313,11 +313,11 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                             }
                         },
                         colors =
-                            TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background,
-                                titleContentColor = MaterialTheme.colorScheme.onBackground,
-                                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                            ),
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            titleContentColor = MaterialTheme.colorScheme.onBackground,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                        ),
                     )
                 }
             },
@@ -381,9 +381,9 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
         ) { innerPadding ->
             Box(
                 modifier =
-                    Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
             ) {
                 NavHost(navController, startDestination = "dashboard") {
                     composable(
@@ -483,25 +483,25 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                             ccDelay = currentCcDelay,
                             ccLimit = currentCcLimit,
                             ccPaymentMode = currentCcPaymentMode,
-                            csvExportColumns = csvExportColumns, // Pass selected columns
+                            csvExportColumns = csvExportColumns,
                             onCurrencyChange = viewModel::updateCurrency,
                             onDateFormatChange = viewModel::updateDateFormat,
                             onDelayChange = viewModel::updateCcDelay,
                             onLimitChange = viewModel::updateCcLimit,
                             onCcPaymentModeChange = viewModel::updateCcPaymentMode,
-                            onCsvExportColumnsChange = viewModel::updateCsvExportColumns // Pass update function
+                            onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
                         )
                     }
 
                     composable(
                         route = "add_transaction/{transactionId}",
                         arguments =
-                            listOf(
-                                navArgument("transactionId") {
-                                    type = NavType.StringType
-                                    defaultValue = "0"
-                                },
-                            ),
+                        listOf(
+                            navArgument("transactionId") {
+                                type = NavType.StringType
+                                defaultValue = "0"
+                            },
+                        ),
                         enterTransition = {
                             slideIntoContainer(
                                 AnimatedContentTransitionScope.SlideDirection.Up,

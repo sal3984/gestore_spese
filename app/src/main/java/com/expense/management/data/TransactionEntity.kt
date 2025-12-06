@@ -13,7 +13,7 @@ data class TransactionEntity(
     val amount: Double,
     val categoryId: String,
     // "expense" o "income"
-    val type: TransactionType, // CAMBIATO DA String A TransactionType
+    val type: TransactionType,
     val isCreditCard: Boolean,
     // Data reale di addebito
     val effectiveDate: String,

@@ -33,7 +33,7 @@ object BackupUtils {
         "Categoria" to "Categoria",
         "Tipo" to "Tipo",
         "CartaDiCredito" to "Carta di Credito",
-        "DataAddebito" to "Data Addebito"
+        "DataAddebito" to "Data Addebito",
     )
 
     private val CURRENCY_SYMBOL_TO_CODE = mapOf(
@@ -41,12 +41,12 @@ object BackupUtils {
         "$" to "USD",
         "£" to "GBP",
         "¥" to "JPY",
-        "CHF" to "CHF", // Already a code, but good to be explicit if needed
+        "CHF" to "CHF",
         "₽" to "RUB",
         "₹" to "INR",
         "₩" to "KRW",
         "₪" to "ILS",
-        "₫" to "VND"
+        "₫" to "VND",
     )
 
     fun performCsvExport(
@@ -55,7 +55,7 @@ object BackupUtils {
         uri: Uri,
         currencySymbol: String,
         dateFormat: String,
-        selectedColumns: Set<String> // New parameter
+        selectedColumns: Set<String>,
     ) {
         val formatter = DateTimeFormatter.ofPattern(dateFormat)
         val coroutineScope = CoroutineScope(Dispatchers.IO)
@@ -63,11 +63,11 @@ object BackupUtils {
             try {
                 val expenses = viewModel.getExpensesForExport()
 
-                val category= viewModel.getAllCategoryForExport()
+                val category = viewModel.getAllCategoryForExport()
 
-                val headerColumns = selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) } // Maintain order
-                    .map { EXPORT_COLUMN_DISPLAY_NAMES[it] ?: it } // Get display name, fallback to key
-                    .map { if (it == "Importo (Convertito)") "Importo ($currencySymbol - Convertito)" else it } // Specific handling for currency symbol
+                val headerColumns = selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) }
+                    .map { EXPORT_COLUMN_DISPLAY_NAMES[it] ?: it }
+                    .map { if (it == "Importo (Convertito)") "Importo ($currencySymbol - Convertito)" else it }
                 val csvHeader = headerColumns.joinToString(",") + "\n"
 
                 val csvContent = StringBuilder(csvHeader)
@@ -98,7 +98,8 @@ object BackupUtils {
                                 row.add(code)
                             }
                             "Categoria" -> row.add(
-                                category.firstOrNull { it.id == t.categoryId }?.label ?: t.categoryId)
+                                category.firstOrNull { it.id == t.categoryId }?.label ?: t.categoryId,
+                            )
                             "Tipo" -> row.add(t.type.name)
                             "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
                             "DataAddebito" -> row.add("\"$effectiveDateStr\"")

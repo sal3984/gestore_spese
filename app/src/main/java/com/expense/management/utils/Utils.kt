@@ -53,7 +53,7 @@ fun TransactionItem(
     dateFormat: String,
     isAmountHidden: Boolean,
     onDelete: (String) -> Unit,
-    onEdit: (String) -> Unit
+    onEdit: (String) -> Unit,
 ) {
     val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
@@ -68,8 +68,8 @@ fun TransactionItem(
                 .format(DateTimeFormatter.ofPattern(dateFormat))
         } catch (e: Exception) {
             try {
-                 LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat))
-                     .format(DateTimeFormatter.ofPattern(dateFormat))
+                LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat))
+                    .format(DateTimeFormatter.ofPattern(dateFormat))
             } catch (e2: Exception) {
                 transaction.date
             }
@@ -89,7 +89,7 @@ fun TransactionItem(
                         onDelete(transaction.id)
                         showDeleteDialog = false
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text(stringResource(R.string.delete_uppercase))
                 }
@@ -98,7 +98,7 @@ fun TransactionItem(
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text(stringResource(R.string.cancel).uppercase())
                 }
-            }
+            },
         )
     }
 
@@ -109,18 +109,18 @@ fun TransactionItem(
             .clickable { onEdit(transaction.id) },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 // Icona Categoria
                 Box(
@@ -128,14 +128,17 @@ fun TransactionItem(
                         .size(52.dp)
                         .clip(CircleShape)
                         .background(
-                             if(isIncome) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                             else MaterialTheme.colorScheme.surfaceContainerHighest
+                            if (isIncome) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
                         ),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = category.icon,
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
                     )
                 }
 
@@ -147,17 +150,17 @@ fun TransactionItem(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
+                        maxLines = 1,
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                         Text(
+                        Text(
                             categoryLabel,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
                         )
                     }
 
@@ -165,10 +168,10 @@ fun TransactionItem(
                         formattedDate,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
+                        maxLines = 1,
                     )
 
-                    if(transaction.isCreditCard && !isIncome) {
+                    if (transaction.isCreditCard && !isIncome) {
                         val ccLabel = if (transaction.installmentNumber != null && transaction.totalInstallments != null) {
                             "${stringResource(R.string.credit_card)} (${transaction.installmentNumber}/${transaction.totalInstallments})"
                         } else {
@@ -180,7 +183,7 @@ fun TransactionItem(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
@@ -189,7 +192,7 @@ fun TransactionItem(
             // Sezione Importo
             Column(horizontalAlignment = Alignment.End) {
                 val amountText = if (isAmountHidden) {
-                    "*** ${currencySymbol}**"
+                    "*** $currencySymbol**"
                 } else {
                     "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.getDefault(), "%.2f", transaction.amount)}"
                 }
@@ -198,7 +201,7 @@ fun TransactionItem(
                     text = amountText,
                     style = MaterialTheme.typography.titleMedium,
                     color = amountColor,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.ExtraBold,
                 )
             }
         }
@@ -207,7 +210,7 @@ fun TransactionItem(
 
 @Composable
 fun getLocalizedCategoryLabel(category: CategoryEntity): String {
-    return when(category.id) {
+    return when (category.id) {
         "food" -> stringResource(R.string.cat_food)
         "transport" -> stringResource(R.string.cat_transport)
         "housing" -> stringResource(R.string.cat_housing)

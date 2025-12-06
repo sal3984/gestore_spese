@@ -42,6 +42,26 @@ android {
     }
 }
 
+spotless {
+    kotlin {
+        target("**/*.kt")
+
+        // Usa l'ultima versione di ktlint
+        ktlint("1.0.1").editorConfigOverride(
+            mapOf(
+                // Questa è la regola magica per Compose:
+                // Dice a ktlint di ignorare il controllo del nome se la funzione è @Composable
+                "ktlint_function_naming_ignore_when_annotated_with" to "Composable"
+            )
+        )
+
+        // Opzionale: Rimuove import non usati e formatta
+        trimTrailingWhitespace()
+        indentWithSpaces()
+        endWithNewline()
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

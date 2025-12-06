@@ -75,13 +75,13 @@ import java.util.Locale
 // Enum per il tipo di cancellazione
 enum class DeleteType {
     SINGLE,
-    THIS_AND_SUBSEQUENT
+    THIS_AND_SUBSEQUENT,
 }
 
 // Data class per gestire la transazione da eliminare
 data class TransactionToDelete(
     val transaction: TransactionEntity,
-    val isInstallment: Boolean
+    val isInstallment: Boolean,
 )
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -152,9 +152,9 @@ fun DashboardScreen(
             title = { Text(stringResource(R.string.delete_transaction_title)) },
             text = {
                 if (transactionToDelete.isInstallment) {
-                     Text(stringResource(R.string.delete_installment_message))
+                    Text(stringResource(R.string.delete_installment_message))
                 } else {
-                     Text(stringResource(R.string.delete_transaction_message))
+                    Text(stringResource(R.string.delete_transaction_message))
                 }
             },
             confirmButton = {
@@ -165,7 +165,7 @@ fun DashboardScreen(
                                 onDelete(transactionToDelete.transaction.id, DeleteType.THIS_AND_SUBSEQUENT)
                                 showDeleteDialog = null
                             },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
                             Text(stringResource(R.string.delete_this_and_subsequent))
                         }
@@ -174,7 +174,7 @@ fun DashboardScreen(
                                 onDelete(transactionToDelete.transaction.id, DeleteType.SINGLE)
                                 showDeleteDialog = null
                             },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
                             Text(stringResource(R.string.delete_single_installment))
                         }
@@ -189,13 +189,13 @@ fun DashboardScreen(
                             onDelete(transactionToDelete.transaction.id, DeleteType.SINGLE)
                             showDeleteDialog = null
                         },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     ) {
                         Text(stringResource(R.string.delete_uppercase))
                     }
                 }
             },
-            dismissButton = { /* Vuoto, il pulsante Annulla è ora nel confirmButton's Column */ }
+            dismissButton = { /* Vuoto, il pulsante Annulla è ora nel confirmButton's Column */ },
         )
     }
 
@@ -204,7 +204,7 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 80.dp)
+        contentPadding = PaddingValues(bottom = 80.dp),
     ) {
         // ITEM 1: Header + Cards
         item {
@@ -217,11 +217,11 @@ fun DashboardScreen(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
                                     MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primaryContainer
-                                )
-                            )
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                ),
+                            ),
                         )
-                        .padding(bottom = 48.dp)
+                        .padding(bottom = 48.dp),
                 ) {
                     // Navigazione Mese
                     Row(
@@ -229,16 +229,16 @@ fun DashboardScreen(
                             .fillMaxWidth()
                             .padding(top = 16.dp, start = 8.dp, end = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(
                             onClick = { onMonthChange(currentDashboardMonth.minusMonths(1)) },
-                            enabled = currentDashboardMonth > minMonth
+                            enabled = currentDashboardMonth > minMonth,
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = stringResource(R.string.previous_month),
-                                tint = Color.White
+                                tint = Color.White,
                             )
                         }
 
@@ -246,17 +246,17 @@ fun DashboardScreen(
                             currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
                         )
 
                         IconButton(
                             onClick = { onMonthChange(currentDashboardMonth.plusMonths(1)) },
-                            enabled = currentDashboardMonth < maxMonth
+                            enabled = currentDashboardMonth < maxMonth,
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = stringResource(R.string.next_month),
-                                tint = Color.White
+                                tint = Color.White,
                             )
                         }
                     }
@@ -266,18 +266,18 @@ fun DashboardScreen(
                     // Saldo Centrale
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
                             stringResource(R.string.monthly_balance),
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White.copy(alpha = 0.9f)
+                            color = Color.White.copy(alpha = 0.9f),
                         )
                         Text(
                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = Color.White,
                         )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -288,34 +288,35 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .offset(y = (-40).dp)
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 16.dp),
                 ) {
                     // Card Entrate/Uscite
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
                             modifier = Modifier
                                 .padding(20.dp)
                                 .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             // Entrate
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         Icons.Default.ArrowUpward,
                                         null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(24.dp),
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
@@ -323,13 +324,13 @@ fun DashboardScreen(
                                     Text(
                                         stringResource(R.string.income),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalIncome)}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary
+                                        color = MaterialTheme.colorScheme.secondary,
                                     )
                                 }
                             }
@@ -340,27 +341,28 @@ fun DashboardScreen(
                                     Text(
                                         stringResource(R.string.expenses),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalExpense)}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.error
+                                        color = MaterialTheme.colorScheme.error,
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
-                                Box(modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.errorContainer),
-                                    contentAlignment = Alignment.Center
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.errorContainer),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         Icons.Default.ArrowDownward,
                                         null,
                                         tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(24.dp),
                                     )
                                 }
                             }
@@ -375,7 +377,7 @@ fun DashboardScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                             shape = RoundedCornerShape(20.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -384,7 +386,7 @@ fun DashboardScreen(
                                     Text(
                                         stringResource(R.string.credit_card_limit_label),
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
                                     )
 
                                     if (ccProgress > 0.9f) {
@@ -393,7 +395,7 @@ fun DashboardScreen(
                                             Icons.Default.Warning,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(20.dp),
                                         )
                                     }
                                 }
@@ -405,7 +407,7 @@ fun DashboardScreen(
                                         .height(10.dp)
                                         .clip(RoundedCornerShape(5.dp)),
                                     color = if (ccProgress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -413,12 +415,12 @@ fun DashboardScreen(
                                         text = if (isAmountHidden) "${stringResource(R.string.spent_label)} $currencySymbol *****" else "${stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", creditCardUsed)}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
                                         "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", ccLimit)}",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -434,33 +436,33 @@ fun DashboardScreen(
             item {
                 AnimatedVisibility(
                     visibleState = visibleState,
-                    enter = fadeIn(animationSpec = tween(durationMillis = 600)) + slideInVertically(initialOffsetY = { it / 2 })
+                    enter = fadeIn(animationSpec = tween(durationMillis = 600)) + slideInVertically(initialOffsetY = { it / 2 }),
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 40.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(
                             imageVector = Icons.Default.AccountBalanceWallet,
                             contentDescription = null,
                             modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.surfaceVariant
+                            tint = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(R.string.report_no_transaction_this_month),
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.report_message_add_transaction),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -476,21 +478,21 @@ fun DashboardScreen(
                             if (it == SwipeToDismissBoxValue.EndToStart) {
                                 showDeleteDialog = TransactionToDelete(
                                     transaction = t,
-                                    isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1
+                                    isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1,
                                 )
                                 // Mantieni l'elemento in posizione fino alla conferma
                                 false
                             } else {
                                 false
                             }
-                        }
+                        },
                     )
 
                     // Wrapper per animazione di entrata semplice
                     AnimatedVisibility(
                         visibleState = visibleState,
                         enter = fadeIn(animationSpec = tween(500)) + slideInVertically(initialOffsetY = { 50 }),
-                        modifier = Modifier.animateItem()
+                        modifier = Modifier.animateItem(),
                     ) {
                         SwipeToDismissBox(
                             state = dismissState,
@@ -509,12 +511,12 @@ fun DashboardScreen(
                                         .fillMaxSize()
                                         .background(color)
                                         .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd
+                                    contentAlignment = Alignment.CenterEnd,
                                 ) {
                                     Icon(
                                         Icons.Default.Delete,
                                         contentDescription = stringResource(R.string.delete),
-                                        tint = Color.White
+                                        tint = Color.White,
                                     )
                                 }
                             },
@@ -527,10 +529,10 @@ fun DashboardScreen(
                                         dateFormat = dateFormat,
                                         isAmountHidden = isAmountHidden,
                                         onDelete = { /* La cancellazione è gestita dallo SwipeToDismissBox */ },
-                                        onEdit = onEdit
+                                        onEdit = onEdit,
                                     )
                                 }
-                            }
+                            },
                         )
                     }
                 }
@@ -543,10 +545,10 @@ fun DashboardScreen(
 fun DateHeader(dateString: String) {
     val date = try {
         LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
-    } catch(e: Exception) {
+    } catch (e: Exception) {
         try {
             LocalDate.now()
-        } catch(e2: Exception) {
+        } catch (e2: Exception) {
             LocalDate.now()
         }
     }
@@ -554,7 +556,7 @@ fun DateHeader(dateString: String) {
     val today = LocalDate.now()
     val yesterday = today.minusDays(1)
 
-    val label = when(date) {
+    val label = when (date) {
         today -> stringResource(R.string.today)
         yesterday -> stringResource(R.string.yesterday)
         else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", Locale.getDefault()))
@@ -564,14 +566,14 @@ fun DateHeader(dateString: String) {
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 16.dp)
+            .padding(vertical = 8.dp, horizontal = 16.dp),
     ) {
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(vertical = 8.dp),
         )
     }
 }
