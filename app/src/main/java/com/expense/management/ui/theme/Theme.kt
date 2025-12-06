@@ -39,7 +39,7 @@ private val LightColorScheme =
 private val DarkColorScheme =
     darkColorScheme(
         primary = PrimaryDarkTheme,
-        onPrimary = Color(0xFF001054), // Dark blue text on light primary
+        onPrimary = Color(0xFF001054),
         primaryContainer = Color(0xFF1A237E),
         onPrimaryContainer = Color(0xFFE8EAF6),
         secondary = SecondaryDarkTheme,
@@ -57,8 +57,8 @@ private val DarkColorScheme =
 @Composable
 fun gestoreSpeseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disabling dynamic color to enforce our custom palette for consistency
+    // Dynamic color is available on Android 12+ Disabling dynamic color to enforce our custom palette for consistency
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme =

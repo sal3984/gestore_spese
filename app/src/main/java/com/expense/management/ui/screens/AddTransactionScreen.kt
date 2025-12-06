@@ -107,7 +107,7 @@ fun AddTransactionScreen(
     onSave: (TransactionEntity) -> Unit,
     onDelete: (String, DeleteType) -> Unit,
     onBack: () -> Unit,
-    onDescriptionChange: (String) -> Unit
+    onDescriptionChange: (String) -> Unit,
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val context = LocalContext.current
@@ -128,7 +128,7 @@ fun AddTransactionScreen(
             transactionToEdit?.categoryId.takeIf { id -> availableCategories.any { it.id == id } }
                 ?: transactionToEdit?.categoryId.takeIf { transactionToEdit != null }
                 ?: currentTypeCategories.firstOrNull()?.id
-                ?: if (type == TransactionType.EXPENSE) "food" else "salary"
+                ?: if (type == TransactionType.EXPENSE) "food" else "salary",
         )
     }
 
@@ -176,7 +176,7 @@ fun AddTransactionScreen(
                 }
             } else {
                 LocalDate.now().format(displayFormatter)
-            }
+            },
         )
     }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -187,8 +187,8 @@ fun AddTransactionScreen(
             if (transactionToEdit == null && applyCcDelayToInstallments && isCreditCard) {
                 LocalDate.now().plusMonths(1).withDayOfMonth(15).format(displayFormatter)
             } else {
-                 LocalDate.now().format(displayFormatter)
-            }
+                LocalDate.now().format(displayFormatter)
+            },
         )
     }
     var showInstallmentDatePicker by remember { mutableStateOf(false) }
@@ -249,9 +249,9 @@ fun AddTransactionScreen(
 
             val groupId = UUID.randomUUID().toString()
             val startInstallmentDate = try {
-                 LocalDate.parse(installmentStartDateStr, displayFormatter)
+                LocalDate.parse(installmentStartDateStr, displayFormatter)
             } catch (e: DateTimeParseException) {
-                 transactionDate
+                transactionDate
             }
 
             for (i in 0 until finalInstallmentsCount) {
@@ -296,7 +296,7 @@ fun AddTransactionScreen(
                     TransactionEntity(
                         id = newId,
                         date = installmentDateToSave,
-                        description = "$description ($installmentLabel ${i+1}/$finalInstallmentsCount)",
+                        description = "$description ($installmentLabel ${i + 1}/$finalInstallmentsCount)",
                         amount = currentInstallmentAmount,
                         categoryId = selectedCategory,
                         type = type,
@@ -306,8 +306,8 @@ fun AddTransactionScreen(
                         effectiveDate = effectiveDate,
                         installmentNumber = i + 1,
                         totalInstallments = finalInstallmentsCount,
-                        groupId = groupId
-                    )
+                        groupId = groupId,
+                    ),
                 )
             }
         } else {
@@ -325,8 +325,8 @@ fun AddTransactionScreen(
                     effectiveDate = calculateEffectiveDate(transactionDate, isCreditCard, ccDelay),
                     installmentNumber = transactionToEdit?.installmentNumber,
                     totalInstallments = transactionToEdit?.totalInstallments,
-                    groupId = transactionToEdit?.groupId
-                )
+                    groupId = transactionToEdit?.groupId,
+                ),
             )
         }
         onBack()
@@ -349,7 +349,7 @@ fun AddTransactionScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         bottomBar = {
@@ -357,14 +357,14 @@ fun AddTransactionScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shadowElevation = 16.dp,
                 color = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+                contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         .navigationBarsPadding()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 16.dp),
                 ) {
                     Button(
                         onClick = { trySave() },
@@ -373,30 +373,31 @@ fun AddTransactionScreen(
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                         ),
                         shape = RoundedCornerShape(16.dp),
-                        elevation = ButtonDefaults.buttonElevation(4.dp)
+                        elevation = ButtonDefaults.buttonElevation(4.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = if (transactionToEdit == null)
+                            text = if (transactionToEdit == null) {
                                 stringResource(R.string.save_transaction)
-                            else
-                                stringResource(R.string.update_transaction),
+                            } else {
+                                stringResource(R.string.update_transaction)
+                            },
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
-                            maxLines = 1
+                            maxLines = 1,
                         )
                     }
                 }
             }
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -405,12 +406,12 @@ fun AddTransactionScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 80.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp)
+                    .padding(vertical = 12.dp),
             ) {
                 val expenseSelected = type == TransactionType.EXPENSE
                 SegmentedButton(
@@ -427,7 +428,7 @@ fun AddTransactionScreen(
                         activeContainerColor = MaterialTheme.colorScheme.error,
                         activeContentColor = MaterialTheme.colorScheme.onError,
                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
+                    ),
                 ) {
                     Text(stringResource(R.string.expense_type), fontWeight = FontWeight.Bold)
                 }
@@ -447,7 +448,7 @@ fun AddTransactionScreen(
                         activeContainerColor = MaterialTheme.colorScheme.primary,
                         activeContentColor = MaterialTheme.colorScheme.onPrimary,
                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
+                    ),
                 ) {
                     Text(stringResource(R.string.income_type), fontWeight = FontWeight.Bold)
                 }
@@ -458,7 +459,7 @@ fun AddTransactionScreen(
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(2.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     OutlinedTextField(
@@ -472,14 +473,14 @@ fun AddTransactionScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     ExposedDropdownMenuBox(
                         expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
-                        onExpandedChange = { isDescriptionExpanded = it }
+                        onExpandedChange = { isDescriptionExpanded = it },
                     ) {
                         OutlinedTextField(
                             value = description,
@@ -505,11 +506,11 @@ fun AddTransactionScreen(
                                     }
                                 }
                             },
-                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         )
                         ExposedDropdownMenu(
                             expanded = isDescriptionExpanded && suggestions.isNotEmpty(),
-                            onDismissRequest = { isDescriptionExpanded = false }
+                            onDismissRequest = { isDescriptionExpanded = false },
                         ) {
                             suggestions.forEach { suggestion ->
                                 DropdownMenuItem(
@@ -519,7 +520,7 @@ fun AddTransactionScreen(
                                         isDescriptionExpanded = false
                                         onDescriptionChange("")
                                     },
-                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                                 )
                             }
                         }
@@ -535,7 +536,7 @@ fun AddTransactionScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     )
                 }
             }
@@ -544,12 +545,12 @@ fun AddTransactionScreen(
                 Card(
                     modifier = Modifier.padding(top = 12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             OutlinedTextField(
                                 value = originalAmountText,
@@ -558,7 +559,7 @@ fun AddTransactionScreen(
                                 placeholder = { Text("0.00") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedTextField(
@@ -570,14 +571,14 @@ fun AddTransactionScreen(
                                 modifier = Modifier
                                     .weight(0.7f)
                                     .clickable { showCurrencyDialog = true },
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
                             )
                         }
                         Text(
                             text = stringResource(R.string.main_currency_hint, currencySymbol),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
                 }
@@ -601,14 +602,14 @@ fun AddTransactionScreen(
                     .fillMaxWidth()
                     .padding(start = 4.dp, bottom = 8.dp),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
                     .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (currentTypeCategories.isEmpty()) {
                     Text(stringResource(R.string.no_categories_error), modifier = Modifier.padding(8.dp))
@@ -619,16 +620,16 @@ fun AddTransactionScreen(
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { selectedCategory = category.id }
+                            modifier = Modifier.clickable { selectedCategory = category.id },
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isSelected) color else MaterialTheme.colorScheme.surfaceContainerHighest
+                                        if (isSelected) color else MaterialTheme.colorScheme.surfaceContainerHighest,
                                     ),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = category.icon,
@@ -640,7 +641,7 @@ fun AddTransactionScreen(
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 6.dp)
+                                modifier = Modifier.padding(top = 6.dp),
                             )
                         }
                     }
@@ -654,7 +655,7 @@ fun AddTransactionScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(2.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         Row(
@@ -662,12 +663,12 @@ fun AddTransactionScreen(
                                 .fillMaxWidth()
                                 .then(if (!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
                                 .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(
                                 checked = isCreditCard,
                                 onCheckedChange = { if (!isEditing) isCreditCard = it },
-                                enabled = !isEditing
+                                enabled = !isEditing,
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
@@ -675,7 +676,7 @@ fun AddTransactionScreen(
                                 Text(
                                     text = stringResource(R.string.credit_card_payment_hint),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -686,12 +687,12 @@ fun AddTransactionScreen(
                                     .fillMaxWidth()
                                     .then(if (!isEditing) Modifier.clickable { isInstallment = !isInstallment } else Modifier)
                                     .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
                                     checked = isInstallment,
                                     onCheckedChange = { isInstallment = it },
-                                    enabled = !isEditing
+                                    enabled = !isEditing,
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
@@ -699,7 +700,7 @@ fun AddTransactionScreen(
                                     Text(
                                         text = stringResource(R.string.installment_payment_hint),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -709,26 +710,29 @@ fun AddTransactionScreen(
             }
 
             AnimatedVisibility(visible = (isCreditCard || isInstallment) && type == TransactionType.EXPENSE) {
-                Column(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-                    .padding(20.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                        .padding(20.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.payment_options),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = 12.dp),
                     )
 
                     if (isInstallment) {
                         if (!isEditing) {
-                            SingleChoiceSegmentedButtonRow(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)) {
+                            SingleChoiceSegmentedButtonRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                            ) {
                                 SegmentedButton(
                                     selected = calculationMode == "installments",
                                     onClick = { calculationMode = "installments" },
@@ -747,28 +751,28 @@ fun AddTransactionScreen(
                         }
 
                         if (calculationMode == "installments" || isEditing) {
-                             Text(stringResource(R.string.number_of_installments, installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                             Slider(
-                                 value = installmentsCount.toFloat(),
-                                 onValueChange = { installmentsCount = it.toInt() },
-                                 valueRange = 2f..12f,
-                                 steps = 10,
-                                 enabled = !isEditing,
-                                 colors = SliderDefaults.colors(
-                                     thumbColor = MaterialTheme.colorScheme.primary,
-                                     activeTrackColor = MaterialTheme.colorScheme.primary
-                                 )
-                             )
-                             val amount = amountText.toDoubleOrNull() ?: 0.0
-                             if (amount > 0 && installmentsCount > 0) {
+                            Text(stringResource(R.string.number_of_installments, installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Slider(
+                                value = installmentsCount.toFloat(),
+                                onValueChange = { installmentsCount = it.toInt() },
+                                valueRange = 2f..12f,
+                                steps = 10,
+                                enabled = !isEditing,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                ),
+                            )
+                            val amount = amountText.toDoubleOrNull() ?: 0.0
+                            if (amount > 0 && installmentsCount > 0) {
                                 val amountPerInstallment = amount / installmentsCount
                                 Text(
                                     text = stringResource(R.string.calc_amount_per_installment, String.format(Locale.getDefault(), "%.2f %s", amountPerInstallment, currencySymbol)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                                    modifier = Modifier.padding(top = 4.dp, start = 4.dp),
                                 )
-                             }
+                            }
                         } else {
                             OutlinedTextField(
                                 value = installmentAmountText,
@@ -777,7 +781,7 @@ fun AddTransactionScreen(
                                 placeholder = { Text("0.00") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
                             )
 
                             val totalAmount = amountText.toDoubleOrNull() ?: 0.0
@@ -789,7 +793,7 @@ fun AddTransactionScreen(
                                     text = stringResource(R.string.number_of_installments, calculatedInstallments),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 8.dp)
+                                    modifier = Modifier.padding(top = 8.dp),
                                 )
                             }
                         }
@@ -804,7 +808,7 @@ fun AddTransactionScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { applyCcDelayToInstallments = !applyCcDelayToInstallments }
-                                            .padding(vertical = 8.dp)
+                                            .padding(vertical = 8.dp),
                                     ) {
                                         Checkbox(
                                             checked = applyCcDelayToInstallments,
@@ -820,22 +824,23 @@ fun AddTransactionScreen(
                                                 } else {
                                                     dateStr
                                                 }
-                                            }
+                                            },
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column {
                                             Text(
                                                 text = stringResource(R.string.apply_cc_delay),
                                                 style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold
+                                                fontWeight = FontWeight.SemiBold,
                                             )
                                             Text(
-                                                text = if (applyCcDelayToInstallments)
+                                                text = if (applyCcDelayToInstallments) {
                                                     stringResource(R.string.cc_delay_installment_message_on)
-                                                else
-                                                    stringResource(R.string.cc_delay_installment_message_off),
+                                                } else {
+                                                    stringResource(R.string.cc_delay_installment_message_off)
+                                                },
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
                                     }
@@ -856,13 +861,13 @@ fun AddTransactionScreen(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
                             )
                             Text(
                                 stringResource(R.string.first_installment_date_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 6.dp)
+                                modifier = Modifier.padding(top = 6.dp),
                             )
                         }
                     } else if (isCreditCard && !isInstallment) {
@@ -873,25 +878,29 @@ fun AddTransactionScreen(
                                 val tDate = LocalDate.parse(dateStr, displayFormatter)
                                 calculateEffectiveDate(tDate, true, ccDelay)
                             }
-                        } catch (e: Exception) { "" }
+                        } catch (e: Exception) {
+                            ""
+                        }
 
                         val formattedEffectiveDate = try {
                             LocalDate.parse(effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(displayFormatter)
-                        } catch (e: Exception) { effectiveDate }
+                        } catch (e: Exception) {
+                            effectiveDate
+                        }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                             Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                             Spacer(modifier = Modifier.width(12.dp))
-                             Column {
-                                 Text(stringResource(R.string.expected_debit_date), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                 Text(formattedEffectiveDate, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                             }
+                            Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(stringResource(R.string.expected_debit_date), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text(formattedEffectiveDate, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                         Text(
                             stringResource(R.string.expected_debit_date_calc, ccDelay),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp)
+                            modifier = Modifier.padding(top = 6.dp),
                         )
                     }
                 }
@@ -915,13 +924,13 @@ fun AddTransactionScreen(
                                     originalCurrency = symbol
                                     showCurrencyDialog = false
                                 }
-                                .padding(vertical = 12.dp, horizontal = 8.dp)
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } }
+            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
@@ -937,7 +946,7 @@ fun AddTransactionScreen(
                         ignoreDateWarning = true
                         trySave()
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text(stringResource(R.string.proceed_and_save))
                 }
@@ -946,7 +955,7 @@ fun AddTransactionScreen(
                 TextButton(onClick = { showPreviousMonthAlert = false }) {
                     Text(stringResource(R.string.cancel).uppercase())
                 }
-            }
+            },
         )
     }
 
@@ -956,7 +965,7 @@ fun AddTransactionScreen(
                 LocalDate.parse(dateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             } catch (e: Exception) {
                 Instant.now().toEpochMilli()
-            }
+            },
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -967,14 +976,14 @@ fun AddTransactionScreen(
                         dateStr = selectedDate.format(displayFormatter)
 
                         if (applyCcDelayToInstallments && isCreditCard && isInstallment) {
-                             installmentStartDateStr = selectedDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
+                            installmentStartDateStr = selectedDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
                         } else if (!isCreditCard && isInstallment) {
                             installmentStartDateStr = dateStr
                         }
                     }
                     showDatePicker = false
                 }) { Text("OK") }
-            }
+            },
         ) {
             DatePicker(state = datePickerState)
         }
@@ -986,7 +995,7 @@ fun AddTransactionScreen(
                 LocalDate.parse(installmentStartDateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             } catch (e: Exception) {
                 Instant.now().toEpochMilli()
-            }
+            },
         )
         DatePickerDialog(
             onDismissRequest = { showInstallmentDatePicker = false },
@@ -997,7 +1006,7 @@ fun AddTransactionScreen(
                     }
                     showInstallmentDatePicker = false
                 }) { Text("OK") }
-            }
+            },
         ) {
             DatePicker(state = datePickerState)
         }
@@ -1013,7 +1022,7 @@ fun AddTransactionScreen(
                         stringResource(R.string.delete_installment_message)
                     } else {
                         stringResource(R.string.delete_transaction_message)
-                    }
+                    },
                 )
             },
             confirmButton = {
@@ -1024,7 +1033,7 @@ fun AddTransactionScreen(
                                 onDelete(transactionToEdit.id, DeleteType.THIS_AND_SUBSEQUENT)
                                 showDeleteDialog = false
                             },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
                             Text(stringResource(R.string.delete_this_and_subsequent))
                         }
@@ -1033,7 +1042,7 @@ fun AddTransactionScreen(
                                 onDelete(transactionToEdit.id, DeleteType.SINGLE)
                                 showDeleteDialog = false
                             },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
                             Text(stringResource(R.string.delete_single_installment))
                         }
@@ -1047,15 +1056,17 @@ fun AddTransactionScreen(
                             transactionToEdit?.let { onDelete(it.id, DeleteType.SINGLE) }
                             showDeleteDialog = false
                         },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     ) {
                         Text(stringResource(R.string.delete_uppercase))
                     }
                 }
             },
-            dismissButton = { if (transactionToEdit?.groupId == null || (transactionToEdit.totalInstallments ?: 0) <= 1) {
-                TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
-            } }
+            dismissButton = {
+                if (transactionToEdit?.groupId == null || (transactionToEdit.totalInstallments ?: 0) <= 1) {
+                    TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
+                }
+            },
         )
     }
 }

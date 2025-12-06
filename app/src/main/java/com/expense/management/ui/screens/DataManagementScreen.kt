@@ -36,30 +36,29 @@ import com.expense.management.R
 fun DataManagementScreen(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
-    onExportCsv: () -> Unit
+    onExportCsv: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-
                 // Esporta CSV
                 Text(
                     stringResource(R.string.export_data_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -68,11 +67,11 @@ fun DataManagementScreen(
                     onClick = onExportCsv,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(modifier = Modifier.width(12.dp))
@@ -81,7 +80,7 @@ fun DataManagementScreen(
 
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 28.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                 )
 
                 // Backup & Ripristino
@@ -89,7 +88,7 @@ fun DataManagementScreen(
                     stringResource(R.string.backup_restore),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -99,7 +98,7 @@ fun DataManagementScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f).height(56.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                     ) {
                         Icon(Icons.Default.CloudUpload, null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -111,7 +110,7 @@ fun DataManagementScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f).height(56.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                     ) {
                         Icon(Icons.Default.CloudDownload, null)
                         Spacer(modifier = Modifier.width(8.dp))
