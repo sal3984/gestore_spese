@@ -40,7 +40,6 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
@@ -245,20 +244,19 @@ fun CategoryCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddCategoryDialog(
-    type: TransactionType, // CAMBIATO: ora accetta TransactionType
+    type: TransactionType,
     existingCategories: List<CategoryEntity>,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
     var label by remember { mutableStateOf("") }
-    var selectedIcon by remember { mutableStateOf("❓") }
+    var selectedIcon by remember { mutableStateOf("🏷️") } // Icona di default
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Lista icone preselezionabili (emoji)
     val availableIcons = listOf(
-        "🍔", "🚗", "🏠", "🎬", "💡", "💊", "🛍️", "✈️", "🎓", "🎁",
-        "🏋️", "🐾", "🔧", "💻", "🎨", "📚", "🎵", "⚽", "👶", "💇",
-        "🍕", "🍺", "👔", "📱", "💸", "🏥", "🛒", "🚌", "🎮", "💐"
+        "🏠", "🍔", "🚗", "🛒", "💊", "🎬", "✈️", "👔", "🎓", "🎁", "💡", "📱",
+        "💰", "💸", "🏦", "📈", "💼", "🔧", "🐶", "👶", "🎉", "🏋️", "📚", "🎮",
+        "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨"
     )
 
     AlertDialog(
@@ -271,70 +269,90 @@ fun AddCategoryDialog(
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = {
-                        label = it
-                        errorMessage = null
-                    },
-                    label = { Text(stringResource(R.string.category_name_label)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = errorMessage != null,
-                    supportingText = {
-                        if (errorMessage != null) {
-                            Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                Text(
+                    "Inserisci il nome e scegli un'icona o un'emoji.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // Campo Nome
+                    OutlinedTextField(
+                        value = label,
+                        onValueChange = {
+                            label = it
+                            errorMessage = null
+                        },
+                        label = { Text(stringResource(R.string.category_name_label)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f),
+                        isError = errorMessage != null,
+                        supportingText = {
+                            if (errorMessage != null) {
+                                Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    )
+
+                    // Campo Icona
+                    OutlinedTextField(
+                        value = selectedIcon,
+                        onValueChange = { input ->
+                            if (input.length <= 2) {
+                                selectedIcon = input
+                            }
+                        },
+                        label = { Text("Icona") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.width(80.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            fontSize = 20.sp
+                        )
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Sezione Icone suggerite
                 Text(
-                    stringResource(R.string.choose_icon_label),
-                    style = MaterialTheme.typography.titleSmall,
+                    text = "Suggerite:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
-                        .clip(RoundedCornerShape(12.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    maxItemsInEachRow = 6
                 ) {
-                    LazyColumn(
-                        contentPadding = PaddingValues(8.dp)
-                    ) {
-                        item {
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                maxItemsInEachRow = 6
-                            ) {
-                                availableIcons.forEach { icon ->
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(4.dp)
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (selectedIcon == icon) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surface
-                                            )
-                                            .clickable { selectedIcon = icon }
-                                            .border(
-                                                width = 1.dp,
-                                                color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                                                shape = CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(icon, fontSize = 20.sp)
-                                    }
-                                }
-                            }
+                    availableIcons.forEach { icon ->
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (selectedIcon == icon) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (selectedIcon == icon) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable { selectedIcon = icon }
+                        ) {
+                            Text(text = icon, fontSize = 20.sp)
                         }
                     }
                 }
@@ -344,7 +362,9 @@ fun AddCategoryDialog(
             Button(
                 onClick = {
                     if (label.isBlank()) {
-                        errorMessage = "Il nome è obbligatorio" // Hardcoded per semplicità, idealmente usa string resource
+                        errorMessage = "Il nome è obbligatorio"
+                    } else if (selectedIcon.isBlank()) {
+                        errorMessage = "L'icona è obbligatoria"
                     } else if (existingCategories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == type }) {
                         errorMessage = "Categoria già esistente"
                     } else {

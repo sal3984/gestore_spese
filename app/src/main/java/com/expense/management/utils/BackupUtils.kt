@@ -63,6 +63,8 @@ object BackupUtils {
             try {
                 val expenses = viewModel.getExpensesForExport()
 
+                val category= viewModel.getAllCategoryForExport()
+
                 val headerColumns = selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) } // Maintain order
                     .map { EXPORT_COLUMN_DISPLAY_NAMES[it] ?: it } // Get display name, fallback to key
                     .map { if (it == "Importo (Convertito)") "Importo ($currencySymbol - Convertito)" else it } // Specific handling for currency symbol
@@ -95,7 +97,8 @@ object BackupUtils {
                                 val code = CURRENCY_SYMBOL_TO_CODE[t.originalCurrency] ?: t.originalCurrency
                                 row.add(code)
                             }
-                            "Categoria" -> row.add(t.categoryId)
+                            "Categoria" -> row.add(
+                                category.firstOrNull { it.id == t.categoryId }?.label ?: t.categoryId)
                             "Tipo" -> row.add(t.type.name)
                             "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
                             "DataAddebito" -> row.add("\"$effectiveDateStr\"")

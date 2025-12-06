@@ -312,6 +312,9 @@ class ExpenseViewModel(
     }
 
     suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE }
+
+    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id,it.label,it.icon,it.type) }
+
 }
 
 data class BackupData(

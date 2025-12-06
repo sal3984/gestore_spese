@@ -61,12 +61,7 @@ fun DataManagementScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.export_csv_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
