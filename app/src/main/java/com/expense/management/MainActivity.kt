@@ -432,6 +432,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         CategoryScreen(
                             categories = allCategories,
                             onAddCategory = viewModel::addCategory,
+                            onUpdateCategory = viewModel::updateCategory,
                             onDeleteCategory = viewModel::removeCategory,
                         )
                     }

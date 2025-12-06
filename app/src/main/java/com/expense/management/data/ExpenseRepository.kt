@@ -49,4 +49,8 @@ class ExpenseRepository(
     suspend fun insertAllCategories(categories: List<CategoryEntity>) {
         categoryDao.insertAllCategories(categories)
     }
+
+    suspend fun updateCategory(category: CategoryEntity) {
+        categoryDao.updateCategory(category)
+    }
 }
