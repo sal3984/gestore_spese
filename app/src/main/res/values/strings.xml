@@ -179,4 +179,10 @@
     <string name="github_repo_desc">Contribute or request access</string>
     <string name="app_version">Version: %1$s</string>
 
+    <!-- New Strings -->
+    <string name="calc_mode_installments">No. Installments</string>
+    <string name="calc_mode_amount">Amount</string>
+    <string name="installment_amount_label">Installment Amount</string>
+    <string name="calc_amount_per_installment">Amount per installment: %1$s</string>
+
 </resources>

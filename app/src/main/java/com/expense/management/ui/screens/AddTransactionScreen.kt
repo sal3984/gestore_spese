@@ -91,6 +91,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.ceil
+import kotlin.math.floor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,26 +141,28 @@ fun AddTransactionScreen(
     var isInstallment by remember { mutableStateOf(false) }
     val isEditing = transactionToEdit != null
 
+    // --- Installment States ---
+    var calculationMode by remember { mutableStateOf("installments") } // "installments" or "amount"
+    var installmentAmountText by remember { mutableStateOf("") }
+    var installmentsCount by remember {
+        mutableIntStateOf(transactionToEdit?.totalInstallments ?: 3)
+    }
+
     LaunchedEffect(isEditing, transactionToEdit, isCreditCard, ccPaymentMode) {
         if (isEditing) {
             isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1
         } else {
-            // Only set default installment status if not editing
             if (isCreditCard) {
                 isInstallment = when (ccPaymentMode) {
                     "installment" -> true
                     else -> false
                 }
             } else {
-                // If not credit card, default to false, but allow user to enable it manually
                 isInstallment = false
             }
         }
     }
 
-    var installmentsCount by remember {
-        mutableIntStateOf(transactionToEdit?.totalInstallments ?: 3)
-    }
     var applyCcDelayToInstallments by remember { mutableStateOf(true) }
     var ignoreDateWarning by remember { mutableStateOf(false) }
 
@@ -168,11 +172,7 @@ fun AddTransactionScreen(
                 try {
                     LocalDate.parse(transactionToEdit.date, DateTimeFormatter.ISO_LOCAL_DATE).format(displayFormatter)
                 } catch (e: DateTimeParseException) {
-                    try {
-                        transactionToEdit.date
-                    } catch (e2: Exception) {
-                        LocalDate.now().format(displayFormatter)
-                    }
+                    transactionToEdit.date
                 }
             } else {
                 LocalDate.now().format(displayFormatter)
@@ -184,14 +184,8 @@ fun AddTransactionScreen(
 
     var installmentStartDateStr by remember {
         mutableStateOf(
-            // Only apply delay if it's a new CC installment
             if (transactionToEdit == null && applyCcDelayToInstallments && isCreditCard) {
-                try {
-                    val tDate = LocalDate.now()
-                    tDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
-                } catch (e: Exception) {
-                    LocalDate.now().format(displayFormatter)
-                }
+                LocalDate.now().plusMonths(1).withDayOfMonth(15).format(displayFormatter)
             } else {
                  LocalDate.now().format(displayFormatter)
             }
@@ -206,17 +200,15 @@ fun AddTransactionScreen(
     val installmentLabel = stringResource(R.string.installment)
 
     fun trySave() {
-        val amount = try { amountText.replace(',', '.').toDouble() } catch (e: Exception) { 0.0 }
-        val originalAmount = try { originalAmountText.replace(',', '.').toDouble() } catch (e: Exception) { amount }
+        val amount = amountText.toDoubleOrNull() ?: 0.0
+        val originalAmount = originalAmountText.toDoubleOrNull() ?: amount
 
         if (amount <= 0 || description.isBlank()) {
-            scope.launch {
-                snackbarHostState.showSnackbar(errorInvalidInput, "OK")
-            }
+            scope.launch { snackbarHostState.showSnackbar(errorInvalidInput, "OK") }
             return
         }
 
-        val transactionDate: LocalDate = try {
+        val transactionDate = try {
             LocalDate.parse(dateStr, displayFormatter)
         } catch (e: DateTimeParseException) {
             scope.launch { snackbarHostState.showSnackbar(errorInvalidDateFormat, "OK") }
@@ -230,8 +222,7 @@ fun AddTransactionScreen(
         if (transactionMonth.isBefore(limitMonth)) {
             scope.launch {
                 val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
-                val message = String.format(errorPastLimitDate, formattedMonth)
-                snackbarHostState.showSnackbar(message, "OK")
+                snackbarHostState.showSnackbar(String.format(errorPastLimitDate, formattedMonth), "OK")
             }
             return
         }
@@ -244,16 +235,26 @@ fun AddTransactionScreen(
         val dateToSave = transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         if (isInstallment && transactionToEdit == null) {
-            val installmentAmount = amount / installmentsCount
-            val groupId = UUID.randomUUID().toString()
+            val totalAmount = amount
+            val totalOriginalAmount = originalAmount
+            val installmentAmountFromField = installmentAmountText.toDoubleOrNull() ?: 0.0
 
-            val startInstallmentDate: LocalDate = try {
+            val finalInstallmentsCount = if (calculationMode == "amount" && installmentAmountFromField > 0) {
+                ceil(totalAmount / installmentAmountFromField).toInt()
+            } else {
+                installmentsCount
+            }
+
+            if (finalInstallmentsCount <= 0) return
+
+            val groupId = UUID.randomUUID().toString()
+            val startInstallmentDate = try {
                  LocalDate.parse(installmentStartDateStr, displayFormatter)
             } catch (e: DateTimeParseException) {
                  transactionDate
             }
 
-            for (i in 0 until installmentsCount) {
+            for (i in 0 until finalInstallmentsCount) {
                 val installmentDate = startInstallmentDate.plusMonths(i.toLong())
                 val effectiveDate = if (isCreditCard && applyCcDelayToInstallments) {
                     calculateEffectiveDate(installmentDate, true, ccDelay)
@@ -261,23 +262,50 @@ fun AddTransactionScreen(
                     installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 }
 
-                val newId = if(i==0) transactionId else UUID.randomUUID().toString()
+                val newId = if (i == 0) transactionId else UUID.randomUUID().toString()
                 val installmentDateToSave = installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+                val currentInstallmentAmount: Double
+                val currentOriginalInstallmentAmount: Double
+                val originalRatio = if (totalAmount > 0) totalOriginalAmount / totalAmount else 1.0
+
+                if (calculationMode == "amount" && installmentAmountFromField > 0) {
+                    currentInstallmentAmount = if (i < finalInstallmentsCount - 1) {
+                        installmentAmountFromField
+                    } else {
+                        totalAmount - (installmentAmountFromField * (finalInstallmentsCount - 1))
+                    }
+                    currentOriginalInstallmentAmount = currentInstallmentAmount * originalRatio
+                } else {
+                    val regularInstallment = floor((totalAmount / finalInstallmentsCount) * 100) / 100
+                    currentInstallmentAmount = if (i < finalInstallmentsCount - 1) {
+                        regularInstallment
+                    } else {
+                        totalAmount - (regularInstallment * (finalInstallmentsCount - 1))
+                    }
+
+                    val regularOriginalInstallment = floor((totalOriginalAmount / finalInstallmentsCount) * 100) / 100
+                    currentOriginalInstallmentAmount = if (i < finalInstallmentsCount - 1) {
+                        regularOriginalInstallment
+                    } else {
+                        totalOriginalAmount - (regularOriginalInstallment * (finalInstallmentsCount - 1))
+                    }
+                }
 
                 onSave(
                     TransactionEntity(
                         id = newId,
                         date = installmentDateToSave,
-                        description = "$description ($installmentLabel ${i+1}/$installmentsCount)",
-                        amount = installmentAmount,
+                        description = "$description ($installmentLabel ${i+1}/$finalInstallmentsCount)",
+                        amount = currentInstallmentAmount,
                         categoryId = selectedCategory,
                         type = type,
                         isCreditCard = isCreditCard,
-                        originalAmount = originalAmount / installmentsCount,
+                        originalAmount = currentOriginalInstallmentAmount,
                         originalCurrency = originalCurrency,
                         effectiveDate = effectiveDate,
                         installmentNumber = i + 1,
-                        totalInstallments = installmentsCount,
+                        totalInstallments = finalInstallmentsCount,
                         groupId = groupId
                     )
                 )
@@ -569,7 +597,9 @@ fun AddTransactionScreen(
 
             Text(
                 stringResource(R.string.category_label),
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, bottom = 8.dp),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -589,8 +619,7 @@ fun AddTransactionScreen(
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clickable { selectedCategory = category.id }
+                            modifier = Modifier.clickable { selectedCategory = category.id }
                         ) {
                             Box(
                                 modifier = Modifier
@@ -631,17 +660,16 @@ fun AddTransactionScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .then(if(!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
+                                .then(if (!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
                                 checked = isCreditCard,
-                                onCheckedChange = { if(!isEditing) isCreditCard = it },
+                                onCheckedChange = { if (!isEditing) isCreditCard = it },
                                 enabled = !isEditing
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            // Wrap Text and Hint in a Column
                             Column {
                                 Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                 Text(
@@ -653,23 +681,19 @@ fun AddTransactionScreen(
                         }
 
                         AnimatedVisibility(visible = !isEditing && !isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)) {
-                            val installmentCheckboxEnabled = !isEditing
-                            val installmentCheckboxChecked = isInstallment
-
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .then(if (installmentCheckboxEnabled) Modifier.clickable { isInstallment = !isInstallment } else Modifier)
+                                    .then(if (!isEditing) Modifier.clickable { isInstallment = !isInstallment } else Modifier)
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(
-                                    checked = installmentCheckboxChecked,
+                                    checked = isInstallment,
                                     onCheckedChange = { isInstallment = it },
-                                    enabled = installmentCheckboxEnabled
+                                    enabled = !isEditing
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
-                                // Wrap Text and Hint in a Column
                                 Column {
                                     Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                     Text(
@@ -701,18 +725,74 @@ fun AddTransactionScreen(
                     )
 
                     if (isInstallment) {
-                        Text(stringResource(R.string.number_of_installments, installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                        Slider(
-                            value = installmentsCount.toFloat(),
-                            onValueChange = { installmentsCount = it.toInt() },
-                            valueRange = 2f..12f,
-                            steps = 10,
-                            enabled = !isEditing,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
+                        if (!isEditing) {
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)) {
+                                SegmentedButton(
+                                    selected = calculationMode == "installments",
+                                    onClick = { calculationMode = "installments" },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                ) {
+                                    Text(stringResource(R.string.calc_mode_installments))
+                                }
+                                SegmentedButton(
+                                    selected = calculationMode == "amount",
+                                    onClick = { calculationMode = "amount" },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                ) {
+                                    Text(stringResource(R.string.calc_mode_amount))
+                                }
+                            }
+                        }
+
+                        if (calculationMode == "installments" || isEditing) {
+                             Text(stringResource(R.string.number_of_installments, installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                             Slider(
+                                 value = installmentsCount.toFloat(),
+                                 onValueChange = { installmentsCount = it.toInt() },
+                                 valueRange = 2f..12f,
+                                 steps = 10,
+                                 enabled = !isEditing,
+                                 colors = SliderDefaults.colors(
+                                     thumbColor = MaterialTheme.colorScheme.primary,
+                                     activeTrackColor = MaterialTheme.colorScheme.primary
+                                 )
+                             )
+                             val amount = amountText.toDoubleOrNull() ?: 0.0
+                             if (amount > 0 && installmentsCount > 0) {
+                                val amountPerInstallment = amount / installmentsCount
+                                Text(
+                                    text = stringResource(R.string.calc_amount_per_installment, String.format(Locale.getDefault(), "%.2f %s", amountPerInstallment, currencySymbol)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                                )
+                             }
+                        } else {
+                            OutlinedTextField(
+                                value = installmentAmountText,
+                                onValueChange = { installmentAmountText = it.replace(',', '.') },
+                                label = { Text(stringResource(R.string.installment_amount_label)) },
+                                placeholder = { Text("0.00") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
                             )
-                        )
+
+                            val totalAmount = amountText.toDoubleOrNull() ?: 0.0
+                            val installmentAmount = installmentAmountText.toDoubleOrNull() ?: 0.0
+                            if (totalAmount > 0 && installmentAmount > 0) {
+                                val calculatedInstallments = ceil(totalAmount / installmentAmount).toInt()
+                                installmentsCount = calculatedInstallments
+                                Text(
+                                    text = stringResource(R.string.number_of_installments, calculatedInstallments),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -730,16 +810,15 @@ fun AddTransactionScreen(
                                             checked = applyCcDelayToInstallments,
                                             onCheckedChange = { isChecked ->
                                                 applyCcDelayToInstallments = isChecked
-                                                if (isChecked) {
+                                                installmentStartDateStr = if (isChecked) {
                                                     try {
                                                         val tDate = LocalDate.parse(dateStr, displayFormatter)
-                                                        val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
-                                                        installmentStartDateStr = nextMonth15.format(displayFormatter)
+                                                        tDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
                                                     } catch (e: Exception) {
-                                                        installmentStartDateStr = dateStr
+                                                        dateStr
                                                     }
                                                 } else {
-                                                    installmentStartDateStr = dateStr
+                                                    dateStr
                                                 }
                                             }
                                         )
@@ -765,7 +844,6 @@ fun AddTransactionScreen(
                             }
                         }
 
-                        // Only show installment start date for new transactions or non-CC installments when editing
                         if (!isEditing || (isEditing && !isCreditCard && isInstallment)) {
                             OutlinedTextField(
                                 value = installmentStartDateStr,
@@ -827,8 +905,7 @@ fun AddTransactionScreen(
             title = { Text(stringResource(R.string.original_currency_dialog_title)) },
             text = {
                 Column {
-                    val commonCurrencies = listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF")
-                    commonCurrencies.forEach { symbol ->
+                    listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF").forEach { symbol ->
                         Text(
                             text = symbol,
                             style = MaterialTheme.typography.titleMedium,
@@ -876,7 +953,7 @@ fun AddTransactionScreen(
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = try {
-                LocalDate.parse(dateStr, displayFormatter).atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+                LocalDate.parse(dateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             } catch (e: Exception) {
                 Instant.now().toEpochMilli()
             }
@@ -886,20 +963,12 @@ fun AddTransactionScreen(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        dateStr = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate().format(displayFormatter)
+                        val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        dateStr = selectedDate.format(displayFormatter)
 
-                        // Update installment start date only if it's a credit card installment with delay enabled
                         if (applyCcDelayToInstallments && isCreditCard && isInstallment) {
-                            try {
-                                val tDate = LocalDate.parse(dateStr, displayFormatter)
-                                val nextMonth15 = tDate.plusMonths(1).withDayOfMonth(15)
-                                installmentStartDateStr = nextMonth15.format(displayFormatter)
-                            } catch (e: Exception) {
-                                installmentStartDateStr = dateStr
-                            }
-                        }
-                        // For non-CC installments, the start date is the transaction date by default
-                        else if (!isCreditCard && isInstallment) {
+                             installmentStartDateStr = selectedDate.plusMonths(1).withDayOfMonth(15).format(displayFormatter)
+                        } else if (!isCreditCard && isInstallment) {
                             installmentStartDateStr = dateStr
                         }
                     }
@@ -914,7 +983,7 @@ fun AddTransactionScreen(
     if (showInstallmentDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = try {
-                LocalDate.parse(installmentStartDateStr, displayFormatter).atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+                LocalDate.parse(installmentStartDateStr, displayFormatter).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             } catch (e: Exception) {
                 Instant.now().toEpochMilli()
             }
@@ -924,7 +993,7 @@ fun AddTransactionScreen(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        installmentStartDateStr = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate().format(displayFormatter)
+                        installmentStartDateStr = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(displayFormatter)
                     }
                     showInstallmentDatePicker = false
                 }) { Text("OK") }
@@ -939,14 +1008,16 @@ fun AddTransactionScreen(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text(stringResource(R.string.delete_transaction_title)) },
             text = {
-                if (transactionToEdit?.groupId != null && transactionToEdit.totalInstallments != null && transactionToEdit.totalInstallments > 1) {
-                     Text(stringResource(R.string.delete_installment_message))
-                } else {
-                     Text(stringResource(R.string.delete_transaction_message))
-                }
+                Text(
+                    if (transactionToEdit?.groupId != null && (transactionToEdit.totalInstallments ?: 0) > 1) {
+                        stringResource(R.string.delete_installment_message)
+                    } else {
+                        stringResource(R.string.delete_transaction_message)
+                    }
+                )
             },
             confirmButton = {
-                if (transactionToEdit?.groupId != null && transactionToEdit.totalInstallments != null && transactionToEdit.totalInstallments > 1) {
+                if (transactionToEdit?.groupId != null && (transactionToEdit.totalInstallments ?: 0) > 1) {
                     Column {
                         TextButton(
                             onClick = {
@@ -975,7 +1046,6 @@ fun AddTransactionScreen(
                         onClick = {
                             transactionToEdit?.let { onDelete(it.id, DeleteType.SINGLE) }
                             showDeleteDialog = false
-
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
@@ -983,7 +1053,9 @@ fun AddTransactionScreen(
                     }
                 }
             },
-            dismissButton = { /* Vuoto, il pulsante Annulla è ora nel confirmButton's Column */ }
+            dismissButton = { if (transactionToEdit?.groupId == null || (transactionToEdit.totalInstallments ?: 0) <= 1) {
+                TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
+            } }
         )
     }
 }
