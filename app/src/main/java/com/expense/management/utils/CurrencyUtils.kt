@@ -1,5 +1,7 @@
 package com.expense.management.utils
 
+import com.expense.management.data.CurrencyDao
+import com.expense.management.data.CurrencyRate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
@@ -7,68 +9,81 @@ import org.xmlpull.v1.XmlPullParserFactory
 import java.net.HttpURLConnection
 import java.net.URL
 
-object CurrencyUtils {
-    private const val ECB_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-    private var cachedRates: Map<String, Double>? = null
-    private var lastFetchTime: Long = 0
-    private const val CACHE_DURATION = 3600 * 1000 * 24 // 24 hours
+class CurrencyUtils(private val currencyDao: CurrencyDao) {
+    private val ecbUrl = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+    private val cacheDuration = 3600 * 1000 * 24 // 24 hours
 
     suspend fun convert(amount: Double, fromCurrency: String, toCurrency: String): Double? {
-        val fromCurrencyNormalized = normalizeCurrencyCode(fromCurrency)
-        val toCurrencyNormalized = normalizeCurrencyCode(toCurrency)
+        val fromNormalized = normalizeCurrencyCode(fromCurrency)
+        val toNormalized = normalizeCurrencyCode(toCurrency)
 
-        if (fromCurrencyNormalized == toCurrencyNormalized) return amount
+        if (fromNormalized == toNormalized) return amount
 
-        val rates = getRates() ?: return null
+        // Recuperiamo i tassi (prima prova rete, poi DB)
+        val ratesMap = getRatesMap()
 
-        val fromRate = if (fromCurrencyNormalized == "EUR") 1.0 else rates[fromCurrencyNormalized]
-        val toRate = if (toCurrencyNormalized == "EUR") 1.0 else rates[toCurrencyNormalized]
+        val fromRate = if (fromNormalized == "EUR") 1.0 else ratesMap[fromNormalized]
+        val toRate = if (toNormalized == "EUR") 1.0 else ratesMap[toNormalized]
 
         if (fromRate == null || toRate == null) return null
 
-        // Convert to EUR then to target
         val amountInEur = amount / fromRate
         return amountInEur * toRate
     }
 
-    private suspend fun getRates(): Map<String, Double>? {
-        if (cachedRates != null && System.currentTimeMillis() - lastFetchTime < CACHE_DURATION) {
-            return cachedRates
+    private suspend fun getRatesMap(): Map<String, Double> {
+        val lastUpdate = currencyDao.getLastUpdateTimestamp() ?: 0L
+        val isCacheExpired = (System.currentTimeMillis() - lastUpdate) > cacheDuration
+
+        // 1. Se la cache è scaduta, proviamo a scaricare da internet
+        if (isCacheExpired) {
+            val freshRates = fetchFromNetwork()
+            if (freshRates != null) {
+                // Salviamo nel DB
+                currencyDao.insertRates(freshRates)
+                // Ritorniamo la mappa fresca
+                return freshRates.associate { it.currencyCode to it.rateAgainstEuro }
+            }
         }
 
-        return withContext(Dispatchers.IO) {
-            try {
-                val url = URL(ECB_URL)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
+        // 2. Se la cache è valida O il download è fallito (offline), usiamo il DB
+        val dbRates = currencyDao.getAllRates()
+        return dbRates.associate { it.currencyCode to it.rateAgainstEuro }
+    }
 
-                val inputStream = connection.inputStream
-                val factory = XmlPullParserFactory.newInstance()
-                val parser = factory.newPullParser()
-                parser.setInput(inputStream, null)
+    private suspend fun fetchFromNetwork(): List<CurrencyRate>? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ecbUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
 
-                val rates = mutableMapOf<String, Double>()
-                var eventType = parser.eventType
-                while (eventType != XmlPullParser.END_DOCUMENT) {
-                    if (eventType == XmlPullParser.START_TAG && parser.name == "Cube") {
-                        val currency = parser.getAttributeValue(null, "currency")
-                        val rate = parser.getAttributeValue(null, "rate")
-                        if (currency != null && rate != null) {
-                            rates[currency] = rate.toDouble()
-                        }
+            val inputStream = connection.inputStream
+            val factory = XmlPullParserFactory.newInstance()
+            val parser = factory.newPullParser()
+            parser.setInput(inputStream, null)
+
+            val ratesList = mutableListOf<CurrencyRate>()
+            val now = System.currentTimeMillis()
+
+            var eventType = parser.eventType
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG && parser.name == "Cube") {
+                    val currency = parser.getAttributeValue(null, "currency")
+                    val rate = parser.getAttributeValue(null, "rate")
+                    if (currency != null && rate != null) {
+                        ratesList.add(CurrencyRate(currency, rate.toDouble(), now))
                     }
-                    eventType = parser.next()
                 }
-                inputStream.close()
-                cachedRates = rates
-                lastFetchTime = System.currentTimeMillis()
-                rates
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
+                eventType = parser.next()
             }
+            inputStream.close()
+            ratesList
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Ritorna null se offline o errore
+            null
         }
     }
 
