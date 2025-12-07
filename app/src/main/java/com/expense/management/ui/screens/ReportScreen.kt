@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.absoluteOffset
@@ -24,11 +26,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
@@ -41,10 +46,13 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,6 +96,9 @@ fun ReportScreen(
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
     var reportStartMonth by remember { mutableStateOf(YearMonth.now().minusMonths(11)) }
     var reportEndMonth by remember { mutableStateOf(YearMonth.now()) }
+
+    // --- STATO PER I DETTAGLI DELLE TRANSAZIONI PER CATEGORIA ---
+    var selectedCategoryIdForDetails by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(reportStartMonth, reportEndMonth) {
         selectedReportMonth = when {
@@ -398,7 +409,10 @@ fun ReportScreen(
                             val percentage = if (totalMonthlyExpense > 0) (amount / totalMonthlyExpense).toFloat() else 0f
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    // ADDED CLICKABLE HERE
+                                    .clickable { selectedCategoryIdForDetails = categoryId },
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Box(
@@ -437,7 +451,8 @@ fun ReportScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         LinearProgressIndicator(
-                                            progress = { percentage },
+                                            // Changed here
+                                            progress = percentage,
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .height(8.dp)
@@ -462,6 +477,33 @@ fun ReportScreen(
             }
             // Bottom padding for FAB or Nav
             Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+
+    // --- Dettaglio Transazioni per Categoria ---
+    AnimatedVisibility(
+        visible = selectedCategoryIdForDetails != null,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+    ) {
+        selectedCategoryIdForDetails?.let { categoryId ->
+            val category = categories.firstOrNull { it.id == categoryId }
+            val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
+                transactions.filter {
+                    it.type == TransactionType.EXPENSE &&
+                        YearMonth.from(parseDateSafe(it.effectiveDate)) == monthToShow &&
+                        it.categoryId == categoryId
+                }.sortedByDescending { parseDateSafe(it.date) }
+            }
+
+            CategoryTransactionsDetail(
+                transactionsForCategory = transactionsForSelectedCategory,
+                category = category,
+                currencySymbol = currencySymbol,
+                isAmountHidden = isAmountHidden,
+                dateFormat = dateFormat,
+                onDismiss = { selectedCategoryIdForDetails = null },
+            )
         }
     }
 }
@@ -719,6 +761,101 @@ fun MonthlyBarChart(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryTransactionsDetail(
+    transactionsForCategory: List<TransactionEntity>,
+    category: CategoryEntity?,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    dateFormat: String,
+    onDismiss: () -> Unit,
+) {
+    val categoryName = category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other)
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.transactions_for_category, categoryName)) },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+            )
+        },
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+    ) { paddingValues ->
+        if (transactionsForCategory.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PieChart,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = MaterialTheme.colorScheme.surfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.no_transactions_for_category, categoryName),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(transactionsForCategory) { transaction ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = transaction.description.ifEmpty { stringResource(R.string.no_description) },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = LocalDate.parse(transaction.date, DateTimeFormatter.ISO_LOCAL_DATE)
+                                        .format(DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", transaction.amount)}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (transaction.type == TransactionType.INCOME) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            )
                         }
                     }
                 }

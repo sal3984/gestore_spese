@@ -202,5 +202,12 @@
 
     <string name="error_msg_name">Name is required</string>
     <string name="error_msg_icon">Icon is required</string>
+    <string name="transactions_for_category">Transazioni per %s</string>
+    <string name="no_transactions_for_category">Nessuna transazione registrata per la categoria
+        \"%s\" questo mese.
+    </string>
+    <string name="no_description">Nessuna descrizione</string>
 
+
+    <!-- <string name="back">Indietro</string> -->
 </resources>
