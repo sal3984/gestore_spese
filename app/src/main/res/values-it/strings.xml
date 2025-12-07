@@ -205,4 +205,8 @@
         \"%s\" questo mese.
     </string>
     <string name="no_description">Nessuna descrizione</string>
+
+    <string name="cannot_change_currency">Impossibile cambiare la valuta base</string>
+    <string name="currency_change_warning">La valuta base non può essere modificata se sono presenti transazioni. Per registrare transazioni in altre valute, utilizza i campi \'Importo Originale\' e \'Valuta Originale\', che verranno convertiti nella valuta base.</string>
+    <string name="ok">OK</string>
 </resources>

@@ -88,6 +88,7 @@ fun settingsScreen(
     ccLimit: Float,
     ccPaymentMode: String,
     csvExportColumns: Set<String>,
+    hasTransactions: Boolean,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onDelayChange: (Int) -> Unit,
@@ -98,6 +99,7 @@ fun settingsScreen(
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showExportColumnsDialog by remember { mutableStateOf(false) }
+    var showCurrencyWarningDialog by remember { mutableStateOf(false) }
     var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
     val context = LocalContext.current
 
@@ -128,7 +130,15 @@ fun settingsScreen(
                     icon = Icons.Default.AttachMoney,
                     title = stringResource(R.string.currency),
                     value = stringResource(R.string.displayed_symbol, currentCurrency),
-                    onClick = { showCurrencyDialog = true },
+                    onClick = {
+                        if (hasTransactions) {
+                            showCurrencyWarningDialog = true
+                        } else {
+                            showCurrencyDialog = true
+                        }
+                    },
+                    // Valuta non cliccabile se ci sono transazioni
+                    isClickable = !hasTransactions,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 settingsListItem(
@@ -321,7 +331,7 @@ fun settingsScreen(
                     title = stringResource(R.string.github_repo),
                     value = stringResource(R.string.github_repo_desc),
                     onClick = {
-                        val githubRepoUrl = "https://github.com/sal3984/gestore_spese" // !!! REPLACE THIS WITH YOUR GITHUB REPO URL !!!
+                        val githubRepoUrl = "https://github.com/sal3984/gestore_spese"
                         val intent = Intent(Intent.ACTION_VIEW, githubRepoUrl.toUri())
                         context.startActivity(intent)
                     },
@@ -388,6 +398,20 @@ fun settingsScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
+    // Dialog Warning Valuta
+    if (showCurrencyWarningDialog) {
+        AlertDialog(
+            onDismissRequest = { showCurrencyWarningDialog = false },
+            title = { Text(stringResource(R.string.cannot_change_currency)) },
+            text = { Text(stringResource(R.string.currency_change_warning)) },
+            confirmButton = {
+                TextButton(onClick = { showCurrencyWarningDialog = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
         )
     }
 
@@ -490,7 +514,9 @@ fun settingsListItem(
     title: String,
     value: String,
     onClick: () -> Unit,
+    isClickable: Boolean = true,
 ) {
+    val alpha = if (isClickable) 1f else 0.5f
     ListItem(
         headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
         supportingContent = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -498,10 +524,10 @@ fun settingsListItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = alpha),
                 modifier =
                 Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha), CircleShape)
                     .padding(10.dp),
             )
         },
@@ -509,12 +535,12 @@ fun settingsListItem(
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
             )
         },
         modifier =
         Modifier
-            .clickable(onClick = onClick)
+            .let { if (isClickable) it.clickable(onClick = onClick) else it }
             .padding(vertical = 4.dp),
     )
 }

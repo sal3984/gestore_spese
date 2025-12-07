@@ -208,6 +208,10 @@
     </string>
     <string name="no_description">Nessuna descrizione</string>
 
+    <string name="cannot_change_currency">Cannot change base currency</string>
+    <string name="currency_change_warning">The base currency cannot be changed if transactions are present. To record transactions in other currencies, please use the \'Original Amount\' and \'Original Currency\' fields, which will be converted to the base currency.</string>
+    <string name="ok">OK</string>
+
 
     <!-- <string name="back">Indietro</string> -->
 </resources>
