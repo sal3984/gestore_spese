@@ -14,7 +14,6 @@ object CurrencyUtils {
     private const val CACHE_DURATION = 3600 * 1000 * 24 // 24 hours
 
     suspend fun convert(amount: Double, fromCurrency: String, toCurrency: String): Double? {
-
         val fromCurrencyNormalized = normalizeCurrencyCode(fromCurrency)
         val toCurrencyNormalized = normalizeCurrencyCode(toCurrency)
 

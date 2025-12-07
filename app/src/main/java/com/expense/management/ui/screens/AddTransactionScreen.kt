@@ -952,7 +952,7 @@ fun AddTransactionScreen(
             title = { Text(stringResource(R.string.original_currency_dialog_title)) },
             text = {
                 Column {
-                    listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF","HUF").forEach { symbol ->
+                    listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF", "HUF").forEach { symbol ->
                         Text(
                             text = symbol,
                             style = MaterialTheme.typography.titleMedium,
