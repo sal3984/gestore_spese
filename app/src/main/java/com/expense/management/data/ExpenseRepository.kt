@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 class ExpenseRepository(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
+    private val currencyDao: CurrencyDao,
 ) {
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()

@@ -6,12 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [TransactionEntity::class, CategoryEntity::class], version = 5, exportSchema = false)
+@Database(entities = [TransactionEntity::class, CategoryEntity::class, CurrencyRate::class], version = 6, exportSchema = false)
 @TypeConverters(TransactionTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
 
     abstract fun categoryDao(): CategoryDao
+
+    abstract fun currencyDao(): CurrencyDao
 
     companion object {
         @Volatile
@@ -23,7 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .databaseBuilder(
                         context.applicationContext,
                         AppDatabase::class.java,
-                        "spese_db_v5",
+                        "spese_db_v6",
                     )
                     .build()
                     .also { instance = it }

@@ -13,6 +13,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.screens.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
+import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,8 +33,10 @@ class ExpenseViewModel(
     private val db = AppDatabase.getDatabase(application)
 
     // Use Repository instead of DAOs directly
-    private val repository = ExpenseRepository(db.transactionDao(), db.categoryDao())
+    private val repository = ExpenseRepository(db.transactionDao(), db.categoryDao(), db.currencyDao())
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+
+    private val currencyRepo = CurrencyUtils(db.currencyDao())
 
     // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
     // Se la biometria NON è abilitata, l'app è sbloccata di default (true).
@@ -318,6 +321,10 @@ class ExpenseViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateCategory(category)
         }
+    }
+
+    suspend fun updateCurrencyRate(amount: Double, from: String, to: String): Double? {
+        return currencyRepo.convert(amount, from, to)
     }
 }
 

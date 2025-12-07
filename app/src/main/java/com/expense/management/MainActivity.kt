@@ -84,7 +84,6 @@ import com.expense.management.ui.screens.settingsScreen
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.BackupUtils
 import com.expense.management.utils.BiometricUtils
-import com.expense.management.utils.CurrencyUtils
 import com.expense.management.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -558,7 +557,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                     viewModel.searchDescriptionSuggestions(query)
                                 },
                                 onConvertAmount = { from, to, amount ->
-                                    CurrencyUtils.convert(amount, from, to)
+                                    viewModel.updateCurrencyRate(amount, from, to)
                                 },
                             )
                         }
