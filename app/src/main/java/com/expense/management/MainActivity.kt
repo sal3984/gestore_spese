@@ -125,6 +125,9 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
 
     var isAuthenticated by remember { viewModel.isAppUnlocked }
 
+    // Determina se ci sono transazioni
+    val hasTransactions = allTransactions.isNotEmpty()
+
     LaunchedEffect(isBiometricEnabled) {
         if (isBiometricEnabled && !isAuthenticated) {
             BiometricUtils.authenticateUser(
@@ -484,6 +487,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                             ccLimit = currentCcLimit,
                             ccPaymentMode = currentCcPaymentMode,
                             csvExportColumns = csvExportColumns,
+                            hasTransactions = hasTransactions,
                             onCurrencyChange = viewModel::updateCurrency,
                             onDateFormatChange = viewModel::updateDateFormat,
                             onDelayChange = viewModel::updateCcDelay,

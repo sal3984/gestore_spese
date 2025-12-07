@@ -199,4 +199,14 @@
     <string name="suggest">Suggerite:</string>
     <string name="error_msg_name">Il nome è obbligatorio</string>
     <string name="error_msg_icon">L\'icona è obbligatoria</string>
+
+    <string name="transactions_for_category">Transazioni per %s</string>
+    <string name="no_transactions_for_category">Nessuna transazione registrata per la categoria
+        \"%s\" questo mese.
+    </string>
+    <string name="no_description">Nessuna descrizione</string>
+
+    <string name="cannot_change_currency">Impossibile cambiare la valuta base</string>
+    <string name="currency_change_warning">La valuta base non può essere modificata se sono presenti transazioni. Per registrare transazioni in altre valute, utilizza i campi \'Importo Originale\' e \'Valuta Originale\', che verranno convertiti nella valuta base.</string>
+    <string name="ok">OK</string>
 </resources>
