@@ -209,4 +209,8 @@
     <string name="cannot_change_currency">Impossibile cambiare la valuta base</string>
     <string name="currency_change_warning">La valuta base non può essere modificata se sono presenti transazioni. Per registrare transazioni in altre valute, utilizza i campi \'Importo Originale\' e \'Valuta Originale\', che verranno convertiti nella valuta base.</string>
     <string name="ok">OK</string>
+
+    <string name="convert_currency_desc">Converti importo originale in valuta principale</string>
+    <string name="error_conversion_failed">Conversione valuta fallita. Controlla la tua connessione internet e riprova.</string>
+    <string name="converting">Converti</string>
 </resources>

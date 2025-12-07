@@ -213,5 +213,8 @@
     <string name="ok">OK</string>
 
 
-    <!-- <string name="back">Indietro</string> -->
+    <string name="convert_currency_desc">Convert original amount to main currency</string>
+    <string name="error_conversion_failed">Currency conversion failed. Please check your internet connection and try again.</string>
+
+    <string name="converting">Converting</string>
 </resources>

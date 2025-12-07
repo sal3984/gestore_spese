@@ -28,12 +28,14 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -108,6 +110,7 @@ fun AddTransactionScreen(
     onDelete: (String, DeleteType) -> Unit,
     onBack: () -> Unit,
     onDescriptionChange: (String) -> Unit,
+    onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val context = LocalContext.current
@@ -137,6 +140,7 @@ fun AddTransactionScreen(
     var originalAmountText by remember { mutableStateOf(transactionToEdit?.originalAmount?.toString() ?: "") }
     var originalCurrency by remember { mutableStateOf(transactionToEdit?.originalCurrency ?: currencySymbol) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var isConverting by remember { mutableStateOf(false) } // State for loading indicator
 
     var isInstallment by remember { mutableStateOf(false) }
     val isEditing = transactionToEdit != null
@@ -198,6 +202,7 @@ fun AddTransactionScreen(
     val errorInvalidDateFormat = stringResource(R.string.error_invalid_date_format)
     val errorPastLimitDate = stringResource(R.string.error_past_limit_date)
     val installmentLabel = stringResource(R.string.installment)
+    val errorConversionFailed = stringResource(R.string.error_conversion_failed)
 
     fun trySave() {
         val amount = amountText.toDoubleOrNull() ?: 0.0
@@ -561,7 +566,8 @@ fun AddTransactionScreen(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             OutlinedTextField(
                                 value = originalCurrency,
                                 onValueChange = { originalCurrency = it.uppercase(Locale.ROOT) },
@@ -574,6 +580,38 @@ fun AddTransactionScreen(
                                 shape = RoundedCornerShape(12.dp),
                             )
                         }
+
+                        // Convert Button (moved below the fields)
+                        Button(
+                            onClick = {
+                                val amount = originalAmountText.toDoubleOrNull()
+                                if (amount != null && amount > 0) {
+                                    scope.launch {
+                                        isConverting = true
+                                        val result = onConvertAmount(originalCurrency, currencySymbol, amount)
+                                        isConverting = false
+                                        if (result != null) {
+                                            amountText = String.format(Locale.US, "%.2f", result)
+                                        } else {
+                                            snackbarHostState.showSnackbar(errorConversionFailed)
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !isConverting && originalAmountText.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        ) {
+                            if (isConverting) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.converting))
+                            } else {
+                                Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.convert_currency_desc))
+                            }
+                        }
+
                         Text(
                             text = stringResource(R.string.main_currency_hint, currencySymbol),
                             style = MaterialTheme.typography.bodySmall,
@@ -914,7 +952,7 @@ fun AddTransactionScreen(
             title = { Text(stringResource(R.string.original_currency_dialog_title)) },
             text = {
                 Column {
-                    listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF").forEach { symbol ->
+                    listOf(currencySymbol, "USD", "EUR", "GBP", "JPY", "CHF","HUF").forEach { symbol ->
                         Text(
                             text = symbol,
                             style = MaterialTheme.typography.titleMedium,
