@@ -28,7 +28,7 @@
     <string name="main_currency_hint">Inserisci l\'importo nella valuta principale (%1$s) nel campo superiore.</string>
     <string name="set_original_currency">Imposta Valuta Originale (Estera)</string>
     <string name="description">Descrizione</string>
-    <string name="description_placeholder">Cena fuori, Stipendio Gennaio...</string>
+    <string name="description_placeholder">Cena fuori, Stipendio Gennaio…</string>
     <string name="category_label">Categoria:</string>
     <string name="no_categories_error">Nessuna categoria disponibile. Riavvia l\'app.</string>
     <string name="credit_card_payment">Pagamento con Carta di Credito</string>
@@ -107,7 +107,7 @@
     <string name="choose_icon_label">Scegli un\'icona:</string>
     <string name="preview_label">Anteprima: </string>
     <string name="save_button">SALVA</string>
-    <string name="category_name_placeholder">Nome...</string>
+    <string name="category_name_placeholder">Nome…</string>
 
     <!-- Default Categories -->
     <string name="cat_food">Cibo</string>
@@ -213,4 +213,15 @@
     <string name="convert_currency_desc">Converti importo originale in valuta principale</string>
     <string name="error_conversion_failed">Conversione valuta fallita. Controlla la tua connessione internet e riprova.</string>
     <string name="converting">Converti</string>
+
+    <string name="currency_rates">Tassi di cambio giornalieri</string>
+    <string name="last_update">Ultimo aggiornamento: %1$s</string>
+    <string name="no_rates_downloaded">Nessun dato scaricato</string>
+    <string name="currency_rates_info_title">Tassi di cambio giornalieri (BCE)</string>
+    <string name="currency_rates_info_message">Vengono scaricati automaticamente i tassi di cambio giornalieri ufficiali dalla Banca Centrale Europea (BCE) per eseguire conversioni di valuta.\n\nLa data di aggiornamento indica l\'ultimo download dei tassi sul dispositivo.\n\nPer aggiornare, connettiti a Internet e prova una conversione.</string>
+
+    <string name="force_update">Force Update</string>
+    <string name="available_rates_against_eur">Available Rates (vs EUR)</string>
+    <string name="updating">Updating…</string>
+    <string name="close">Close</string>
 </resources>

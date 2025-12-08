@@ -54,4 +54,7 @@ class ExpenseRepository(
     suspend fun updateCategory(category: CategoryEntity) {
         categoryDao.updateCategory(category)
     }
+
+    // Currencies
+    suspend fun getAllCurrencyRates(): List<CurrencyRate> = currencyDao.getAllRates()
 }

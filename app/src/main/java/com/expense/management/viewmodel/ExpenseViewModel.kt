@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.AppDatabase
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CurrencyRate
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
@@ -36,7 +37,7 @@ class ExpenseViewModel(
     private val repository = ExpenseRepository(db.transactionDao(), db.categoryDao(), db.currencyDao())
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
-    private val currencyRepo = CurrencyUtils(db.currencyDao())
+    val currencyUtils = CurrencyUtils(db.currencyDao())
 
     // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
     // Se la biometria NON è abilitata, l'app è sbloccata di default (true).
@@ -97,6 +98,13 @@ class ExpenseViewModel(
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
 
+    private val _currencyRatesUpdate = MutableStateFlow<Long?>(null)
+    val currencyRatesUpdate = _currencyRatesUpdate.asStateFlow()
+
+    // Stato Tassi di Cambio per UI
+    private val _currencyRates = MutableStateFlow<List<CurrencyRate>>(emptyList())
+    val currencyRates = _currencyRates.asStateFlow()
+
     val defaultExportColumns = setOf(
         "ID", "Data", "Descrizione", "ImportoConvertito", "ImportoOriginale",
         "ValutaOriginale", "Categoria", "Tipo", "CartaDiCredito", "DataAddebito",
@@ -111,6 +119,8 @@ class ExpenseViewModel(
         viewModelScope.launch {
             loadEarliestMonth()
             ensureCategoriesInitialized()
+            _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
+            refreshCurrencyRatesData()
         }
     }
 
@@ -295,6 +305,29 @@ class ExpenseViewModel(
         prefs.edit { putStringSet("csv_export_columns", columns) }
     }
 
+    fun refreshCurrencyRates() {
+        viewModelScope.launch {
+            _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
+            refreshCurrencyRatesData()
+        }
+    }
+
+    fun forceCurrencyRatesUpdate(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = currencyUtils.forceUpdate()
+            if (success) {
+                _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
+                refreshCurrencyRatesData()
+            }
+            onResult(success)
+        }
+    }
+
+    private suspend fun refreshCurrencyRatesData() {
+        val rates = repository.getAllCurrencyRates()
+        _currencyRates.value = rates
+    }
+
     // Metodi Backup
     suspend fun getAllForBackup(): BackupData =
         BackupData(
@@ -324,7 +357,9 @@ class ExpenseViewModel(
     }
 
     suspend fun updateCurrencyRate(amount: Double, from: String, to: String): Double? {
-        return currencyRepo.convert(amount, from, to)
+        val result = currencyUtils.convert(amount, from, to)
+        refreshCurrencyRates()
+        return result
     }
 }
 
