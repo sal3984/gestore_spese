@@ -51,6 +51,15 @@ class CurrencyUtils(private val currencyDao: CurrencyDao) {
         return dbRates.associate { it.currencyCode to it.rateAgainstEuro }
     }
 
+    suspend fun forceUpdate(): Boolean {
+        val freshRates = fetchFromNetwork()
+        if (freshRates != null) {
+            currencyDao.insertRates(freshRates)
+            return true
+        }
+        return false
+    }
+
     private suspend fun fetchFromNetwork(): List<CurrencyRate>? = withContext(Dispatchers.IO) {
         try {
             val url = URL(ecbUrl)
@@ -85,6 +94,10 @@ class CurrencyUtils(private val currencyDao: CurrencyDao) {
             // Ritorna null se offline o errore
             null
         }
+    }
+
+    suspend fun getLastUpdate(): Long? {
+        return currencyDao.getLastUpdateTimestamp()
     }
 
     fun normalizeCurrencyCode(currencySymbol: String): String {

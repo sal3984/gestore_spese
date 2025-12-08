@@ -78,6 +78,16 @@
     <string name="select_columns_to_export">Select columns to export</string>
     <string name="save">Save</string>
 
+    <string name="currency_rates">Daily Exchange Rates</string>
+    <string name="last_update">Last update: %1$s</string>
+    <string name="no_rates_downloaded">No data downloaded</string>
+    <string name="currency_rates_info_title">Daily Exchange Rates (ECB)</string>
+    <string name="currency_rates_info_message">The app automatically downloads official daily exchange rates from the European Central Bank (ECB) to perform currency conversions.\n\nThe update date indicates when the rates were last downloaded to your device.\n\nTo update, connect to the internet and try a conversion.</string>
+    <string name="force_update">Force Update</string>
+    <string name="available_rates_against_eur">Available Rates (vs EUR)</string>
+    <string name="updating">Updating...</string>
+    <string name="close">Close</string>
+
     <!-- Report -->
     <string name="report_year">Report %1$d</string>
     <string name="total_savings">Total Savings</string>
