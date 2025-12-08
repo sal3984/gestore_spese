@@ -1,6 +1,6 @@
 # Privacy Policy - Gestore Spese
 
-**Ultimo aggiornamento:** [04/12/2025]
+**Ultimo aggiornamento:** [08/12/2025]
 
 Questa Informativa sulla Privacy descrive come l'applicazione "Gestore Spese" gestisce i tuoi dati. Rispettiamo la tua privacy e ci impegniamo a proteggere le tue informazioni personali.
 
@@ -74,4 +74,4 @@ The application allows you to export data (CSV) and create full backups (JSON).
 *   Storage Access (via SAF): Required to read/write the backup and export files chosen by the user.
 
 ## 6. Contact
-For questions regarding this privacy policy, you can contact the developer at: [Insert your Email]
+For questions regarding this privacy policy, you can contact the developer at: alsampognaro@gmail.com
