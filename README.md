@@ -1,7 +1,7 @@
 # 💰 Gestore Spese / Expense Manager
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-![Kotlin](https://img.shields.io/badge/Kotlin-1.9.0-purple.svg)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0.0-purple.svg)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-green.svg)
 
 [🇮🇹 Italiano](#italiano) | [🇬🇧 English](#english)
@@ -12,25 +12,31 @@
 
 **Gestore Spese** è una moderna applicazione Android nativa sviluppata con **Kotlin** e **Jetpack Compose**, progettata per offrire un controllo completo e flessibile sulle finanze personali.
 
-A differenza delle classiche app di tracciamento spese, Gestore Spese include funzionalità avanzate per gestire scenari reali complessi come **carte di credito** (con addebito posticipato) e **pagamenti rateali**.
+A differenza delle classiche app di tracciamento spese, Gestore Spese include funzionalità avanzate per gestire scenari reali complessi come **carte di credito** (con addebito posticipato), **pagamenti rateali** e **conversioni valuta**.
 
 ### ✨ Funzionalità Principali
 
 #### 📊 Gestione Transazioni
 *   **Spese ed Entrate**: Registra facilmente ogni movimento finanziario.
-*   **Categorie Intelligenti**: Le categorie si adattano automaticamente in base al tipo di transazione (Spesa o Entrata).
+*   **Categorie Personalizzabili**: Crea e gestisci le tue categorie con icone ed emoji personalizzate.
 *   **Descrizioni Veloci**: Autocompletamento delle descrizioni basato sulle transazioni precedenti.
 
 #### 💳 Supporto Avanzato Carte di Credito
 Gestisci i pagamenti con carta di credito come un vero professionista:
-*   **Calcolo Data Addebito**: Imposta il giorno di chiusura/addebito della carta. L'app calcolerà automaticamente la *Data Valuta* (Effective Date) nel mese successivo, permettendoti di sapere esattamente quando i soldi usciranno dal conto.
+*   **Calcolo Data Addebito**: Imposta il giorno di chiusura/addebito della carta o il ritardo in mesi. L'app calcolerà automaticamente quando i soldi usciranno effettivamente dal conto.
+*   **Modalità Flessibili**: Supporto per saldo unico, rateale o gestione manuale.
 
 #### 📅 Pianificazione Rateale
 *   **Suddivisione Spese**: Hai fatto un acquisto importante a rate? Inserisci l'importo totale e il numero di rate.
 *   **Generazione Automatica**: L'app crea automaticamente le transazioni future per ogni mese, offrendo una proiezione chiara delle uscite future.
 
-#### 🌍 Multi-Valuta (Viaggi)
-*   **Doppia Valuta**: Registra l'importo convertito nella tua valuta principale, ma conserva anche l'importo e la valuta originale (es. USD, GBP). Utile per riconciliare le spese fatte all'estero.
+#### 🌍 Multi-Valuta e Tassi di Cambio
+*   **Doppia Valuta**: Registra l'importo convertito nella tua valuta principale, mantenendo il riferimento all'originale.
+*   **Tassi BCE**: L'app scarica automaticamente i tassi di cambio giornalieri dalla **Banca Centrale Europea** per conversioni precise. Possibilità di aggiornamento forzato manuale.
+
+#### 💾 Backup e Sicurezza
+*   **Export Dati**: Esporta le tue transazioni in **CSV** (per Excel) o effettua backup completi in **JSON**.
+*   **Privacy**: Proteggi l'accesso all'app con **autenticazione biometrica** e nascondi gli importi sensibili nella Dashboard.
 
 #### 🎨 Interfaccia Moderna
 *   Design pulito basato su **Material Design 3**.
@@ -53,25 +59,31 @@ Il progetto segue le moderne best practices di sviluppo Android:
 
 **Expense Manager** is a native Android application developed with **Kotlin** and **Jetpack Compose**, designed to offer complete and flexible control over personal finances.
 
-Unlike standard expense tracking apps, Expense Manager includes advanced features to handle complex real-world scenarios such as **credit cards** (with deferred debit) and **installment payments**.
+Unlike standard expense tracking apps, Expense Manager includes advanced features to handle complex real-world scenarios such as **credit cards** (with deferred debit), **installment payments** and **currency conversions**.
 
 ### ✨ Key Features
 
 #### 📊 Transaction Management
 *   **Expenses and Incomes**: Easily record every financial movement.
-*   **Smart Categories**: Categories automatically adapt based on the transaction type (Expense or Income).
+*   **Custom Categories**: Create and manage your own categories with custom icons and emojis.
 *   **Quick Descriptions**: Autocomplete descriptions based on previous transactions.
 
 #### 💳 Advanced Credit Card Support
 Manage credit card payments like a pro:
-*   **Debit Date Calculation**: Set the card's closing/debit day. The app automatically calculates the *Effective Date* in the following month, letting you know exactly when money will leave your account.
+*   **Debit Date Calculation**: Set the card's closing/debit day or monthly delay. The app automatically calculates exactly when money will leave your account.
+*   **Flexible Modes**: Support for single balance, installments, or manual management.
 
 #### 📅 Installment Planning
 *   **Expense Splitting**: Made a large purchase in installments? Enter the total amount and the number of installments.
 *   **Automatic Generation**: The app automatically creates future transactions for each month, offering a clear projection of future outflows.
 
-#### 🌍 Multi-Currency (Travel)
-*   **Dual Currency**: Record the converted amount in your main currency, but also keep the original amount and currency (e.g., USD, GBP). Useful for reconciling expenses made abroad.
+#### 🌍 Multi-Currency & Exchange Rates
+*   **Dual Currency**: Record the converted amount in your main currency while keeping the original reference.
+*   **ECB Rates**: The app automatically downloads daily exchange rates from the **European Central Bank** for accurate conversions. Manual force update available.
+
+#### 💾 Backup & Security
+*   **Data Export**: Export your transactions to **CSV** (for Excel) or perform full backups in **JSON**.
+*   **Privacy**: Protect app access with **biometric authentication** and hide sensitive amounts on the Dashboard.
 
 #### 🎨 Modern Interface
 *   Clean design based on **Material Design 3**.
