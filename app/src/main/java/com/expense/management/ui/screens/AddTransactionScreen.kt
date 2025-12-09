@@ -533,6 +533,96 @@ fun AddTransactionScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    if (originalCurrency == currencySymbol) {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                            TextButton(
+                                onClick = { showCurrencyDialog = true },
+                            ) {
+                                Text(stringResource(R.string.set_original_currency))
+                            }
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    AnimatedVisibility(visible = originalCurrency != currencySymbol) {
+                        Card(
+                            modifier = Modifier.padding(top = 12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    OutlinedTextField(
+                                        value = originalAmountText,
+                                        onValueChange = { originalAmountText = it.replace(',', '.') },
+                                        label = { Text(stringResource(R.string.amount_original_label)) },
+                                        placeholder = { Text("0.00") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    OutlinedTextField(
+                                        value = originalCurrency,
+                                        onValueChange = { originalCurrency = it.uppercase(Locale.ROOT) },
+                                        label = { Text(stringResource(R.string.currency_original_label)) },
+                                        readOnly = true,
+                                        trailingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                        modifier = Modifier
+                                            .weight(0.7f)
+                                            .clickable { showCurrencyDialog = true },
+                                        shape = RoundedCornerShape(12.dp),
+                                    )
+                                }
+
+                                // Convert Button (moved below the fields)
+                                Button(
+                                    onClick = {
+                                        val amount = originalAmountText.toDoubleOrNull()
+                                        if (amount != null && amount > 0) {
+                                            scope.launch {
+                                                isConverting = true
+                                                val result = onConvertAmount(originalCurrency, currencySymbol, amount)
+                                                isConverting = false
+                                                if (result != null) {
+                                                    amountText = String.format(Locale.US, "%.2f", result)
+                                                } else {
+                                                    snackbarHostState.showSnackbar(errorConversionFailed)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !isConverting && originalAmountText.isNotEmpty(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 12.dp),
+                                ) {
+                                    if (isConverting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(stringResource(R.string.converting))
+                                    } else {
+                                        Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(stringResource(R.string.convert_currency_desc))
+                                    }
+                                }
+
+                                Text(
+                                    text = stringResource(R.string.main_currency_hint, currencySymbol),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = amountText,
                         onValueChange = { amountText = it.replace(',', '.') },
@@ -546,93 +636,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            AnimatedVisibility(visible = originalCurrency != currencySymbol) {
-                Card(
-                    modifier = Modifier.padding(top = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(16.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OutlinedTextField(
-                                value = originalAmountText,
-                                onValueChange = { originalAmountText = it.replace(',', '.') },
-                                label = { Text(stringResource(R.string.amount_original_label)) },
-                                placeholder = { Text("0.00") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            OutlinedTextField(
-                                value = originalCurrency,
-                                onValueChange = { originalCurrency = it.uppercase(Locale.ROOT) },
-                                label = { Text(stringResource(R.string.currency_original_label)) },
-                                readOnly = true,
-                                trailingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                                modifier = Modifier
-                                    .weight(0.7f)
-                                    .clickable { showCurrencyDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                        }
-
-                        // Convert Button (moved below the fields)
-                        Button(
-                            onClick = {
-                                val amount = originalAmountText.toDoubleOrNull()
-                                if (amount != null && amount > 0) {
-                                    scope.launch {
-                                        isConverting = true
-                                        val result = onConvertAmount(originalCurrency, currencySymbol, amount)
-                                        isConverting = false
-                                        if (result != null) {
-                                            amountText = String.format(Locale.US, "%.2f", result)
-                                        } else {
-                                            snackbarHostState.showSnackbar(errorConversionFailed)
-                                        }
-                                    }
-                                }
-                            },
-                            enabled = !isConverting && originalAmountText.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                        ) {
-                            if (isConverting) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.converting))
-                            } else {
-                                Icon(Icons.Default.SwapHoriz, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.convert_currency_desc))
-                            }
-                        }
-
-                        Text(
-                            text = stringResource(R.string.main_currency_hint, currencySymbol),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                }
-            }
-
-            if (originalCurrency == currencySymbol) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                    TextButton(
-                        onClick = { showCurrencyDialog = true },
-                    ) {
-                        Text(stringResource(R.string.set_original_currency))
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 stringResource(R.string.category_label),
@@ -699,7 +703,15 @@ fun AddTransactionScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .then(if (!isEditing) Modifier.clickable { isCreditCard = !isCreditCard } else Modifier)
+                                .then(
+                                    if (!isEditing) {
+                                        Modifier.clickable {
+                                            isCreditCard = !isCreditCard
+                                        }
+                                    } else {
+                                        Modifier
+                                    },
+                                )
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -723,7 +735,15 @@ fun AddTransactionScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .then(if (!isEditing) Modifier.clickable { isInstallment = !isInstallment } else Modifier)
+                                    .then(
+                                        if (!isEditing) {
+                                            Modifier.clickable {
+                                                isInstallment = !isInstallment
+                                            }
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -752,8 +772,15 @@ fun AddTransactionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            RoundedCornerShape(16.dp),
+                        )
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(16.dp),
+                        )
                         .padding(20.dp),
                 ) {
                     Text(
@@ -845,7 +872,10 @@ fun AddTransactionScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { applyCcDelayToInstallments = !applyCcDelayToInstallments }
+                                            .clickable {
+                                                applyCcDelayToInstallments =
+                                                    !applyCcDelayToInstallments
+                                            }
                                             .padding(vertical = 8.dp),
                                     ) {
                                         Checkbox(
