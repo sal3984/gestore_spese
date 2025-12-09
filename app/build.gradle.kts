@@ -101,4 +101,7 @@ dependencies {
 
     // AppCompat - Necessaria per FragmentActivity e temi
     implementation("androidx.appcompat:appcompat:1.6.1")
+
+    // Wearable
+    implementation(libs.play.services.wearable)
 }
