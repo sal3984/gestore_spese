@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Gestore Spese"
 include(":app")
+include(":wear")

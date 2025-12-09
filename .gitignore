@@ -32,3 +32,7 @@ local.properties
 /.idea/markdown.xml
 *.log
 /wear/build/
+/.idea/copilot.data.migration.agent.xml
+/.idea/deviceManager.xml
+/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch
+/.idea/shelf/Uncommitted_changes_before_rebase__Changes_.xml
