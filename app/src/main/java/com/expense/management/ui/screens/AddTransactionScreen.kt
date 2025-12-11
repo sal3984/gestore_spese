@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -81,9 +82,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.expense.management.R
+import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.utils.DateUtils
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -102,7 +106,6 @@ fun AddTransactionScreen(
     transactionToEdit: TransactionEntity?,
     currencySymbol: String,
     dateFormat: String,
-    ccDelay: Int,
     ccPaymentMode: String,
     suggestions: List<String>,
     availableCategories: List<CategoryEntity>,
@@ -111,6 +114,8 @@ fun AddTransactionScreen(
     onBack: () -> Unit,
     onDescriptionChange: (String) -> Unit,
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
+    isCC: Boolean = false,
+    availableCreditCards: List<CreditCardEntity> = emptyList(),
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val context = LocalContext.current
@@ -135,7 +140,9 @@ fun AddTransactionScreen(
         )
     }
 
-    var isCreditCard by remember { mutableStateOf(transactionToEdit?.isCreditCard ?: false) }
+    var isCreditCard by remember { mutableStateOf(transactionToEdit?.isCreditCard ?: isCC) }
+    var creditCardId by remember { mutableStateOf(transactionToEdit?.creditCardId ?: availableCreditCards.firstOrNull()?.id) }
+    var showCreditCardDialog by remember { mutableStateOf(false) }
 
     var originalAmountText by remember { mutableStateOf(transactionToEdit?.originalAmount?.toString() ?: "") }
     var originalCurrency by remember { mutableStateOf(transactionToEdit?.originalCurrency ?: currencySymbol) }
@@ -152,14 +159,21 @@ fun AddTransactionScreen(
         mutableIntStateOf(transactionToEdit?.totalInstallments ?: 3)
     }
 
-    LaunchedEffect(isEditing, transactionToEdit, isCreditCard, ccPaymentMode) {
+    LaunchedEffect(isEditing, transactionToEdit, isCreditCard, ccPaymentMode, creditCardId) {
         if (isEditing) {
             isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1
         } else {
             if (isCreditCard) {
-                isInstallment = when (ccPaymentMode) {
-                    "installment" -> true
-                    else -> false
+                // Se è una carta configurata, usiamo il suo tipo per determinare se è rateale
+                val selectedCard = availableCreditCards.find { it.id == creditCardId }
+                if (selectedCard != null) {
+                    isInstallment = selectedCard.type == CardType.REVOLVING
+                } else {
+                    // Fallback alle impostazioni globali se non c'è una carta specifica o non trovata
+                    isInstallment = when (ccPaymentMode) {
+                        "installment" -> true
+                        else -> false
+                    }
                 }
             } else {
                 isInstallment = false
@@ -204,6 +218,8 @@ fun AddTransactionScreen(
     val installmentLabel = stringResource(R.string.installment)
     val errorConversionFailed = stringResource(R.string.error_conversion_failed)
 
+    val selectedCard = availableCreditCards.find { it.id == creditCardId }
+
     fun trySave() {
         val amount = amountText.toDoubleOrNull() ?: 0.0
         val originalAmount = originalAmountText.toDoubleOrNull() ?: amount
@@ -239,6 +255,8 @@ fun AddTransactionScreen(
 
         val dateToSave = transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
+
+
         if (isInstallment && transactionToEdit == null) {
             val totalAmount = amount
             val totalOriginalAmount = originalAmount
@@ -261,8 +279,8 @@ fun AddTransactionScreen(
 
             for (i in 0 until finalInstallmentsCount) {
                 val installmentDate = startInstallmentDate.plusMonths(i.toLong())
-                val effectiveDate = if (isCreditCard && applyCcDelayToInstallments) {
-                    calculateEffectiveDate(installmentDate, true, ccDelay)
+                val effectiveDate = if (isCreditCard && applyCcDelayToInstallments && selectedCard != null) {
+                    DateUtils.calculateEffectiveDate(installmentDate, selectedCard)
                 } else {
                     installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 }
@@ -312,10 +330,17 @@ fun AddTransactionScreen(
                         installmentNumber = i + 1,
                         totalInstallments = finalInstallmentsCount,
                         groupId = groupId,
+                        creditCardId = creditCardId
                     ),
                 )
             }
         } else {
+            val effectiveDate = if (isCreditCard && selectedCard != null) {
+                DateUtils.calculateEffectiveDate(transactionDate, selectedCard)
+            } else {
+                transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            }
+
             onSave(
                 TransactionEntity(
                     id = transactionId,
@@ -327,10 +352,11 @@ fun AddTransactionScreen(
                     isCreditCard = isCreditCard,
                     originalAmount = originalAmount,
                     originalCurrency = originalCurrency,
-                    effectiveDate = calculateEffectiveDate(transactionDate, isCreditCard, ccDelay),
+                    effectiveDate = effectiveDate,
                     installmentNumber = transactionToEdit?.installmentNumber,
                     totalInstallments = transactionToEdit?.totalInstallments,
                     groupId = transactionToEdit?.groupId,
+                    creditCardId = if(isCreditCard) creditCardId else null
                 ),
             )
         }
@@ -692,7 +718,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AnimatedVisibility(visible = type == TransactionType.EXPENSE) {
+            AnimatedVisibility(visible = type == TransactionType.EXPENSE && isCC) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
@@ -700,6 +726,23 @@ fun AddTransactionScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
+
+                        // Selettore Carta di Credito (Se ce ne sono)
+                        if (availableCreditCards.isNotEmpty()) {
+                            OutlinedTextField(
+                                value = availableCreditCards.find { it.id == creditCardId }?.name ?: stringResource(R.string.select_credit_card),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.credit_card)) },
+                                trailingIcon = {
+                                    IconButton(onClick = { showCreditCardDialog = true }) {
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().clickable { showCreditCardDialog = true }.padding(12.dp)
+                            )
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -944,7 +987,12 @@ fun AddTransactionScreen(
                                 transactionToEdit.effectiveDate
                             } else {
                                 val tDate = LocalDate.parse(dateStr, displayFormatter)
-                                calculateEffectiveDate(tDate, true, ccDelay)
+                                if (selectedCard != null) {
+                                    DateUtils.calculateEffectiveDate(tDate, selectedCard)
+                                } else {
+                                    // Fallback per la vecchia logica
+                                    tDate.plusMonths(1).withDayOfMonth(15).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                }
                             }
                         } catch (e: Exception) {
                             ""
@@ -965,7 +1013,7 @@ fun AddTransactionScreen(
                             }
                         }
                         Text(
-                            stringResource(R.string.expected_debit_date_calc, ccDelay),
+                            stringResource(R.string.expected_debit_date_calc, if (selectedCard != null) selectedCard.paymentDay else 15),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 6.dp),
@@ -999,6 +1047,34 @@ fun AddTransactionScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
+    // Dialog Selezione Carta
+    if (showCreditCardDialog && availableCreditCards.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showCreditCardDialog = false },
+            title = { Text(stringResource(R.string.select_credit_card)) },
+            text = {
+                Column {
+                    availableCreditCards.forEach { card ->
+                        Text(
+                            text = card.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    creditCardId = card.id
+                                    isInstallment = card.type == CardType.REVOLVING
+                                    showCreditCardDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showCreditCardDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
@@ -1137,18 +1213,4 @@ fun AddTransactionScreen(
             },
         )
     }
-}
-
-private fun calculateEffectiveDate(transactionDate: LocalDate, isCreditCard: Boolean, ccDelay: Int): String {
-    val effectiveDate = if (isCreditCard) {
-        if (ccDelay == 0) {
-            transactionDate
-        } else {
-            val targetMonth = YearMonth.from(transactionDate).plusMonths(ccDelay.toLong())
-            targetMonth.atDay(15)
-        }
-    } else {
-        transactionDate
-    }
-    return effectiveDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 }

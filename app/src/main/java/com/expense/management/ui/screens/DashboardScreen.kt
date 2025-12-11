@@ -1,5 +1,6 @@
 package com.expense.management.ui.screens
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -61,9 +64,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.utils.TransactionItem
@@ -90,7 +96,6 @@ fun DashboardScreen(
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
     currencySymbol: String,
-    ccLimit: Float,
     dateFormat: String,
     earliestMonth: YearMonth,
     currentDashboardMonth: YearMonth,
@@ -98,6 +103,7 @@ fun DashboardScreen(
     onDelete: (String, DeleteType) -> Unit,
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
+    creditCards: List<CreditCardEntity> = emptyList() // Nuova lista carte
 ) {
     val today = YearMonth.now()
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
@@ -119,20 +125,6 @@ fun DashboardScreen(
     val totalIncome = currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
     val totalExpense = currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
     val netBalance = totalIncome - totalExpense
-
-    val isViewingCurrentMonth = currentDashboardMonth == today
-    val creditCardUsed = transactions
-        .filter { it.isCreditCard && it.type == TransactionType.EXPENSE }
-        .filter {
-            try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) > today
-            } catch (e: Exception) {
-                false
-            }
-        }
-        .sumOf { it.amount }
-
-    val ccProgress = if (ccLimit > 0) (creditCardUsed / ccLimit).toFloat() else 0f
 
     // LIMITI NAVIGAZIONE
     val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)
@@ -371,56 +363,69 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Card Carta di Credito (Se attiva)
-                    if (ccLimit > 0 && isViewingCurrentMonth) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                            shape = RoundedCornerShape(20.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        stringResource(R.string.credit_card_limit_label),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                    )
+                    // Card Carte di Credito
+                    if (creditCards.isNotEmpty()) {
+                        val pagerState = rememberPagerState(pageCount = { creditCards.size })
+                        HorizontalPager(
+                            state = pagerState,
+                            pageSpacing = 16.dp,
+                            contentPadding = PaddingValues(horizontal = if (creditCards.size > 1) 32.dp else 0.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { page ->
+                            val card = creditCards[page]
 
-                                    if (ccProgress > 0.9f) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        Icon(
-                                            Icons.Default.Warning,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(20.dp),
-                                        )
+                            val spentOnCard = transactions
+                                .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                .filter { t ->
+                                    try {
+                                        val transactionDate = LocalDate.parse(t.date)
+                                        val transactionMonth = YearMonth.from(transactionDate)
+
+                                        if (card.type == CardType.SALDO) {
+                                            // Logica per carte a SALDO
+                                            // La spesa appartiene all'estratto conto del mese corrente se fatta PRIMA del giorno di chiusura
+
+                                            transactionMonth == currentDashboardMonth
+
+                                        } else {
+                                            // Logica per REVOLVING o altre carte
+                                            // La spesa impatta il plafond nel mese in cui è stata fatta
+                                            transactionMonth == currentDashboardMonth
+                                        }
+                                    } catch (e: Exception) {
+                                        false
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                LinearProgressIndicator(
-                                    progress = { ccProgress.coerceAtMost(1f) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(10.dp)
-                                        .clip(RoundedCornerShape(5.dp)),
-                                    color = if (ccProgress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(
-                                        text = if (isAmountHidden) "${stringResource(R.string.spent_label)} $currencySymbol *****" else "${stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", creditCardUsed)}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Text(
-                                        "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.0f", ccLimit)}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                .sumOf { it.amount }
+
+                            val progress = if (card.limit > 0) (spentOnCard / card.limit).toFloat() else 0f
+
+                            CreditCardItem(
+                                name = card.name,
+                                limit = card.limit,
+                                spent = spentOnCard,
+                                progress = progress,
+                                currencySymbol = currencySymbol,
+                                isAmountHidden = isAmountHidden,
+                                type = card.type
+                            )
+                        }
+
+                        if (creditCards.size > 1) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                repeat(pagerState.pageCount) { iteration ->
+                                    val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(2.dp)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                            .size(8.dp)
                                     )
                                 }
                             }
@@ -542,6 +547,79 @@ fun DashboardScreen(
 }
 
 @Composable
+fun CreditCardItem(
+    name: String,
+    limit: Double,
+    spent: Double,
+    progress: Float,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    type: CardType
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (type == CardType.REVOLVING) {
+                        Text(
+                            stringResource(R.string.installment_plan),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (progress > 0.9f) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            LinearProgressIndicator(
+                progress = { progress.coerceAtMost(1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(5.dp)),
+                color = if (progress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = if (isAmountHidden) "${stringResource(R.string.spent_label)} $currencySymbol *****" else "${stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.2f", spent)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.2f", limit)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun DateHeader(dateString: String) {
     val date = try {
         LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
@@ -574,6 +652,60 @@ fun DateHeader(dateString: String) {
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(vertical = 8.dp),
+        )
+    }
+}
+
+
+
+
+
+@Preview(showBackground = true, name = "Light Mode")
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Dark Mode")
+@Composable
+fun DashboardScreenPreview() {
+    // 1. Dati Finti (Mock)
+    val today = LocalDate.now()
+
+    // Mock Categorie
+    val sampleCategories = listOf(
+        CategoryEntity(id = "1", label = "Stipendio", icon = "work", type = TransactionType.INCOME),
+        CategoryEntity(id = "2", label = "Alimentari", icon = "shopping_cart", type = TransactionType.EXPENSE),
+        CategoryEntity(id = "3", label = "Svago", icon = "movie", type = TransactionType.EXPENSE)
+    )
+
+    // Mock Transazioni
+    val sampleTransactions = listOf(
+        // Entrata
+        TransactionEntity(
+            date = today.toString(),
+            description = "prova",
+            amount = 1500.0,
+            type = TransactionType.INCOME,
+            categoryId = "1",
+            effectiveDate = today.toString(), // Formato ISO "YYYY-MM-DD"
+            originalAmount = 1500.0,
+            originalCurrency = "USD",
+            isCreditCard = false,
+            // Aggiungi altri campi se richiesti dal tuo costruttore (es. isRecurring, ecc.)
+        ),
+
+    )
+
+    // 2. Chiamata alla DashboardScreen
+    // Nota: Se hai un tema personalizzato (es. GestoreSpeseTheme), usalo al posto di MaterialTheme
+    MaterialTheme {
+        DashboardScreen(
+            transactions = sampleTransactions,
+            categories = sampleCategories,
+            currencySymbol = "€",
+            dateFormat = "dd/MM/yyyy",
+            earliestMonth = YearMonth.now().minusMonths(6),
+            currentDashboardMonth = YearMonth.now(),
+            onMonthChange = {}, // Lambda vuota per la preview
+            onDelete = { _, _ -> }, // Lambda vuota
+            onEdit = {}, // Lambda vuota
+            isAmountHidden = false
         )
     }
 }

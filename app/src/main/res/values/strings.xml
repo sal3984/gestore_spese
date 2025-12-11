@@ -155,7 +155,7 @@
     <string name="first_installment_date">First Installment Date</string>
     <string name="first_installment_date_desc">The first installment will be charged starting from this date.</string>
     <string name="expected_debit_date">Expected Debit Date:</string>
-    <string name="expected_debit_date_calc">Calculated automatically with %1$d month(s) delay.</string>
+    <string name="expected_debit_date_calc">Automatically calculated on day %1$d next month</string>
 
     <string name="export_success_csv">Exported %1$d expenses to CSV!</string>
     <string name="export_error">Export error: %1$s</string>
@@ -227,4 +227,17 @@
     <string name="error_conversion_failed">Currency conversion failed. Please check your internet connection and try again.</string>
 
     <string name="converting">Converting</string>
+
+    <string name="transaction">Transaction</string>
+    <string name="no_cards_configured">No credit cards configured.</string>
+    <string name="add_card">Add Card</string>
+    <string name="edit_card">Edit Card</string>
+    <string name="card_name">Card Name</string>
+    <string name="card_limit">Limit</string>
+    <string name="card_type_label">Card Type</string>
+    <string name="closing_day">Closing Day</string>
+    <string name="payment_day">Debit Day</string>
+    <string name="delete_card_title">Delete Card</string>
+    <string name="delete_card_message">Are you sure you want to delete the card \"%1$s\"?</string>
+    <string name="select_credit_card">Select Credit Card</string>
 </resources>
