@@ -13,5 +13,5 @@ data class CreditCardEntity(
     val closingDay: Int,
     // Giorno di addebito (es. 15 del mese successivo). 0 se non applicabile.
     val paymentDay: Int,
-    val type: CardType
+    val type: CardType,
 )

@@ -13,10 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TransactionEntity::class,
         CategoryEntity::class,
         CurrencyRate::class,
-        CreditCardEntity::class
+        CreditCardEntity::class,
     ],
-    version = 7, // Incrementata versione
-    exportSchema = false
+    version = 7,
+    exportSchema = false,
 )
 @TypeConverters(TransactionTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -35,7 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 1. Crea la nuova tabella credit_cards
-                db.execSQL("""
+                db.execSQL(
+                    """
                     CREATE TABLE IF NOT EXISTS `credit_cards` (
                         `id` TEXT NOT NULL,
                         `name` TEXT NOT NULL,
@@ -45,7 +46,8 @@ abstract class AppDatabase : RoomDatabase() {
                         `type` TEXT NOT NULL,
                         PRIMARY KEY(`id`)
                     )
-                """)
+                """,
+                )
 
                 // 2. Aggiungi la colonna creditCardId alla tabella transactions
                 // Nota: In SQLite ALTER TABLE è limitato, ma aggiungere una colonna nullable è supportato.
@@ -59,10 +61,10 @@ abstract class AppDatabase : RoomDatabase() {
                     .databaseBuilder(
                         context.applicationContext,
                         AppDatabase::class.java,
-                        "spese_db_v6", // Manteniamo lo stesso nome file DB
+                        "spese_db_v6",
                     )
                     .addMigrations(MIGRATION_6_7)
-                    .fallbackToDestructiveMigration() // Per sicurezza in fase di sviluppo
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }
             }

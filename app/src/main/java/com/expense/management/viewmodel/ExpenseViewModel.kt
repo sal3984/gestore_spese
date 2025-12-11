@@ -39,7 +39,7 @@ class ExpenseViewModel(
         db.transactionDao(),
         db.categoryDao(),
         db.currencyDao(),
-        db.creditCardDao()
+        db.creditCardDao(),
     )
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 

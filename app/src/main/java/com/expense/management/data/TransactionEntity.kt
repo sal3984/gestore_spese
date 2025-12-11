@@ -27,5 +27,5 @@ data class TransactionEntity(
     // UUID condiviso tra tutte le rate della stessa spesa
     val groupId: String? = null,
     // ID della carta di credito usata (opzionale)
-    val creditCardId: String? = null
+    val creditCardId: String? = null,
 )

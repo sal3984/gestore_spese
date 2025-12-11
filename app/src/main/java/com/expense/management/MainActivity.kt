@@ -378,17 +378,17 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         FloatingActionButton(
                             onClick = { showAddMenu = true },
                             containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "Nuova Transazione"
+                                contentDescription = "Nuova Transazione",
                             )
                         }
 
                         DropdownMenu(
                             expanded = showAddMenu,
-                            onDismissRequest = { showAddMenu = false }
+                            onDismissRequest = { showAddMenu = false },
                         ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.transaction)) },
@@ -398,7 +398,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 onClick = {
                                     showAddMenu = false
                                     navController.navigate("add_transaction/0?isCreditCard=false")
-                                }
+                                },
                             )
 
                             DropdownMenuItem(
@@ -409,7 +409,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 onClick = {
                                     showAddMenu = false
                                     navController.navigate("add_transaction/0?isCreditCard=true")
-                                }
+                                },
                             )
                         }
                     }
@@ -443,7 +443,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 navController.navigate("add_transaction/$transactionId")
                             },
                             isAmountHidden = isAmountHidden,
-                            creditCards = allCreditCards
+                            creditCards = allCreditCards,
                         )
                     }
 
@@ -527,8 +527,6 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         )
                     }
 
-
-
                     composable(
                         route = "add_transaction/{transactionId}?isCreditCard={isCreditCard}",
                         arguments =
@@ -597,7 +595,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                     viewModel.updateCurrencyRate(amount, from, to)
                                 },
                                 isCC = isCreditCardArg,
-                                availableCreditCards = allCreditCards
+                                availableCreditCards = allCreditCards,
                             )
                         }
                     }

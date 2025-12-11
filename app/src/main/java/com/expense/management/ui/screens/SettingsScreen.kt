@@ -208,7 +208,7 @@ fun settingsScreen(
                         stringResource(R.string.no_cards_configured),
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     allCreditCards.forEach { card ->
@@ -217,7 +217,7 @@ fun settingsScreen(
                             supportingContent = {
                                 Text(
                                     "${if (card.type == CardType.SALDO) stringResource(R.string.single_balance) else stringResource(R.string.installment_plan)} • ${stringResource(R.string.max_limit, currentCurrency)} ${String.format(Locale.US, "%.0f", card.limit)}",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
                             leadingContent = {
@@ -225,7 +225,7 @@ fun settingsScreen(
                                     imageVector = Icons.Default.CreditCard,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
                                 )
                             },
                             trailingContent = {
@@ -238,7 +238,7 @@ fun settingsScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            modifier = Modifier.padding(vertical = 4.dp),
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
@@ -247,7 +247,7 @@ fun settingsScreen(
                 Button(
                     onClick = { showAddCardDialog = true },
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -551,14 +551,14 @@ fun settingsScreen(
                         value = name,
                         onValueChange = { name = it },
                         label = { Text(stringResource(R.string.card_name)) },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     )
                     OutlinedTextField(
                         value = limit,
                         onValueChange = { limit = it.replace(',', '.') },
                         label = { Text(stringResource(R.string.card_limit)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     )
 
                     Text(stringResource(R.string.card_type_label), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
@@ -586,14 +586,14 @@ fun settingsScreen(
                                 onValueChange = { closingDay = it },
                                 label = { Text(stringResource(R.string.closing_day)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                modifier = Modifier.weight(1f).padding(end = 8.dp),
                             )
                             OutlinedTextField(
                                 value = paymentDay,
                                 onValueChange = { paymentDay = it },
                                 label = { Text(stringResource(R.string.payment_day)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                                modifier = Modifier.weight(1f).padding(start = 8.dp),
                             )
                         }
                     }
@@ -613,7 +613,7 @@ fun settingsScreen(
                                 limit = limitVal,
                                 closingDay = closingDayVal,
                                 paymentDay = paymentDayVal,
-                                type = type
+                                type = type,
                             )
                             if (isEditing) {
                                 viewModel.updateCreditCard(newCard)
@@ -623,7 +623,7 @@ fun settingsScreen(
                             showAddCardDialog = false
                             showEditCardDialog = null
                         }
-                    }
+                    },
                 ) {
                     Text(stringResource(R.string.save))
                 }
@@ -635,7 +635,7 @@ fun settingsScreen(
                 }) {
                     Text(stringResource(R.string.cancel))
                 }
-            }
+            },
         )
     }
 
@@ -652,7 +652,7 @@ fun settingsScreen(
                         viewModel.deleteCreditCard(cardToDelete)
                         showDeleteCardDialog = null
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) {
                     Text(stringResource(R.string.delete))
                 }
@@ -661,7 +661,7 @@ fun settingsScreen(
                 TextButton(onClick = { showDeleteCardDialog = null }) {
                     Text(stringResource(R.string.cancel))
                 }
-            }
+            },
         )
     }
 }

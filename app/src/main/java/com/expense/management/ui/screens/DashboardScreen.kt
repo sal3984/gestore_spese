@@ -1,6 +1,5 @@
 package com.expense.management.ui.screens
 
-import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -64,7 +63,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CardType
@@ -103,7 +101,7 @@ fun DashboardScreen(
     onDelete: (String, DeleteType) -> Unit,
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
-    creditCards: List<CreditCardEntity> = emptyList() // Nuova lista carte
+    creditCards: List<CreditCardEntity> = emptyList(),
 ) {
     val today = YearMonth.now()
     val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
@@ -370,7 +368,7 @@ fun DashboardScreen(
                             state = pagerState,
                             pageSpacing = 16.dp,
                             contentPadding = PaddingValues(horizontal = if (creditCards.size > 1) 32.dp else 0.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) { page ->
                             val card = creditCards[page]
 
@@ -386,7 +384,6 @@ fun DashboardScreen(
                                             // La spesa appartiene all'estratto conto del mese corrente se fatta PRIMA del giorno di chiusura
 
                                             transactionMonth == currentDashboardMonth
-
                                         } else {
                                             // Logica per REVOLVING o altre carte
                                             // La spesa impatta il plafond nel mese in cui è stata fatta
@@ -407,7 +404,7 @@ fun DashboardScreen(
                                 progress = progress,
                                 currencySymbol = currencySymbol,
                                 isAmountHidden = isAmountHidden,
-                                type = card.type
+                                type = card.type,
                             )
                         }
 
@@ -416,7 +413,7 @@ fun DashboardScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.Center,
                             ) {
                                 repeat(pagerState.pageCount) { iteration ->
                                     val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
@@ -425,7 +422,7 @@ fun DashboardScreen(
                                             .padding(2.dp)
                                             .clip(CircleShape)
                                             .background(color)
-                                            .size(8.dp)
+                                            .size(8.dp),
                                     )
                                 }
                             }
@@ -554,7 +551,7 @@ fun CreditCardItem(
     progress: Float,
     currencySymbol: String,
     isAmountHidden: Boolean,
-    type: CardType
+    type: CardType,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -576,7 +573,7 @@ fun CreditCardItem(
                         Text(
                             stringResource(R.string.installment_plan),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -652,60 +649,6 @@ fun DateHeader(dateString: String) {
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(vertical = 8.dp),
-        )
-    }
-}
-
-
-
-
-
-@Preview(showBackground = true, name = "Light Mode")
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Dark Mode")
-@Composable
-fun DashboardScreenPreview() {
-    // 1. Dati Finti (Mock)
-    val today = LocalDate.now()
-
-    // Mock Categorie
-    val sampleCategories = listOf(
-        CategoryEntity(id = "1", label = "Stipendio", icon = "work", type = TransactionType.INCOME),
-        CategoryEntity(id = "2", label = "Alimentari", icon = "shopping_cart", type = TransactionType.EXPENSE),
-        CategoryEntity(id = "3", label = "Svago", icon = "movie", type = TransactionType.EXPENSE)
-    )
-
-    // Mock Transazioni
-    val sampleTransactions = listOf(
-        // Entrata
-        TransactionEntity(
-            date = today.toString(),
-            description = "prova",
-            amount = 1500.0,
-            type = TransactionType.INCOME,
-            categoryId = "1",
-            effectiveDate = today.toString(), // Formato ISO "YYYY-MM-DD"
-            originalAmount = 1500.0,
-            originalCurrency = "USD",
-            isCreditCard = false,
-            // Aggiungi altri campi se richiesti dal tuo costruttore (es. isRecurring, ecc.)
-        ),
-
-    )
-
-    // 2. Chiamata alla DashboardScreen
-    // Nota: Se hai un tema personalizzato (es. GestoreSpeseTheme), usalo al posto di MaterialTheme
-    MaterialTheme {
-        DashboardScreen(
-            transactions = sampleTransactions,
-            categories = sampleCategories,
-            currencySymbol = "€",
-            dateFormat = "dd/MM/yyyy",
-            earliestMonth = YearMonth.now().minusMonths(6),
-            currentDashboardMonth = YearMonth.now(),
-            onMonthChange = {}, // Lambda vuota per la preview
-            onDelete = { _, _ -> }, // Lambda vuota
-            onEdit = {}, // Lambda vuota
-            isAmountHidden = false
         )
     }
 }

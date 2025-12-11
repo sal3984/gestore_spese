@@ -6,7 +6,7 @@ class ExpenseRepository(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
     private val currencyDao: CurrencyDao,
-    private val creditCardDao: CreditCardDao? = null // Opzionale per ora, per retrocompatibilità
+    private val creditCardDao: CreditCardDao? = null,
 ) {
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()

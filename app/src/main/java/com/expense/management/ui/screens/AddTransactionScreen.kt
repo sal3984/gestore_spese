@@ -255,8 +255,6 @@ fun AddTransactionScreen(
 
         val dateToSave = transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
-
-
         if (isInstallment && transactionToEdit == null) {
             val totalAmount = amount
             val totalOriginalAmount = originalAmount
@@ -330,7 +328,7 @@ fun AddTransactionScreen(
                         installmentNumber = i + 1,
                         totalInstallments = finalInstallmentsCount,
                         groupId = groupId,
-                        creditCardId = creditCardId
+                        creditCardId = creditCardId,
                     ),
                 )
             }
@@ -356,7 +354,7 @@ fun AddTransactionScreen(
                     installmentNumber = transactionToEdit?.installmentNumber,
                     totalInstallments = transactionToEdit?.totalInstallments,
                     groupId = transactionToEdit?.groupId,
-                    creditCardId = if(isCreditCard) creditCardId else null
+                    creditCardId = if (isCreditCard) creditCardId else null,
                 ),
             )
         }
@@ -726,7 +724,6 @@ fun AddTransactionScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
-
                         // Selettore Carta di Credito (Se ce ne sono)
                         if (availableCreditCards.isNotEmpty()) {
                             OutlinedTextField(
@@ -739,7 +736,7 @@ fun AddTransactionScreen(
                                         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().clickable { showCreditCardDialog = true }.padding(12.dp)
+                                modifier = Modifier.fillMaxWidth().clickable { showCreditCardDialog = true }.padding(12.dp),
                             )
                         }
 
