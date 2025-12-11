@@ -41,12 +41,12 @@ class WearableDataListenerService : WearableListenerService() {
                             date = now,
                             description = description,
                             amount = amount,
-                            categoryId = "other", // Default category
+                            categoryId = "other",
                             type = TransactionType.EXPENSE,
                             isCreditCard = false,
                             effectiveDate = now,
                             originalAmount = amount,
-                            originalCurrency = currency
+                            originalCurrency = currency,
                         )
                         dao.insert(transaction)
                     }
