@@ -185,7 +185,7 @@ object BackupUtils {
 
                     viewModel.restoreData(normalizedBackupData)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, context.getString(R.string.restore_success, normalizedBackupData.transactions.size, normalizedBackupData.categories.size), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.restore_success, normalizedBackupData.transactions.size, normalizedBackupData.categories.size,normalizedBackupData.creditCard?.size ?: 0), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {

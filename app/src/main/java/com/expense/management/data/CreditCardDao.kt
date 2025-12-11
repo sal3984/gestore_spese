@@ -11,7 +11,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CreditCardDao {
     @Query("SELECT * FROM credit_cards")
-    fun getAllCreditCards(): Flow<List<CreditCardEntity>>
+    fun getAllCreditCardsFlow(): Flow<List<CreditCardEntity>>
+
+    @Query("SELECT * FROM credit_cards")
+    suspend fun getAllCreditCards(): List<CreditCardEntity>
+
 
     @Query("SELECT * FROM credit_cards WHERE id = :id")
     suspend fun getCreditCardById(id: String): CreditCardEntity?
@@ -24,4 +28,7 @@ interface CreditCardDao {
 
     @Delete
     suspend fun deleteCreditCard(creditCard: CreditCardEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCreditCards(categories: List<CreditCardEntity>)
 }

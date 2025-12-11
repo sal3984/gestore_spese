@@ -161,7 +161,7 @@
     <string name="export_error">Export error: %1$s</string>
     <string name="backup_success">Backup saved successfully!</string>
     <string name="backup_error">Backup error: %1$s</string>
-    <string name="restore_success">Restore completed: %1$d transactions and %2$d categories.</string>
+    <string name="restore_success">Restore completed: %1$d transactions and %2$d categories and %3$d credit cards imported..</string>
     <string name="restore_legacy_success">Restored %1$d transactions (legacy format)! Your data will appear shortly.</string>
     <string name="restore_error_file">Restore Error: Invalid or corrupt file</string>
 

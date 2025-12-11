@@ -152,7 +152,7 @@
     <string name="export_error">Errore durante l\'esportazione: %1$s</string>
     <string name="backup_success">Backup salvato con successo!</string>
     <string name="backup_error">Errore durante il backup: %1$s</string>
-    <string name="restore_success">Ripristino completato: %1$d movimenti e %2$d categorie.</string>
+    <string name="restore_success">Ripristino completato: %1$d movimenti e %2$d categorie e %3$d carte importate.</string>
     <string name="restore_legacy_success">Ripristinati %1$d movimenti (formato vecchio)! I dati appariranno a breve.</string>
     <string name="restore_error_file">Errore Ripristino: File non valido o corrotto</string>
 

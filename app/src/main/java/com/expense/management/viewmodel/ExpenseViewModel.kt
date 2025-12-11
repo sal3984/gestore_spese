@@ -364,12 +364,14 @@ class ExpenseViewModel(
         BackupData(
             transactions = repository.getAllTransactionsList(),
             categories = repository.getAllCategories(),
+            creditCard = repository.getAllCreditCard(),
         )
 
     fun restoreData(backupData: BackupData) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.insertAllTransactions(backupData.transactions)
             repository.insertAllCategories(backupData.categories)
+            repository.insertAllCreditCard(backupData.creditCard?: emptyList())
         }
     }
 
@@ -397,4 +399,5 @@ class ExpenseViewModel(
 data class BackupData(
     val transactions: List<TransactionEntity>,
     val categories: List<CategoryEntity>,
+    val creditCard: List<CreditCardEntity>?
 )

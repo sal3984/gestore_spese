@@ -40,6 +40,9 @@ class ExpenseRepository(
 
     suspend fun getAllCategories(): List<CategoryEntity> = categoryDao.getAllCategories()
 
+    suspend fun getAllCreditCard(): List<CreditCardEntity> = creditCardDao?.getAllCreditCards() ?: emptyList()
+
+
     suspend fun insertCategory(category: CategoryEntity) {
         categoryDao.insertCategory(category)
     }
@@ -60,7 +63,7 @@ class ExpenseRepository(
     suspend fun getAllCurrencyRates(): List<CurrencyRate> = currencyDao.getAllRates()
 
     // Credit Cards
-    val allCreditCards: Flow<List<CreditCardEntity>>? = creditCardDao?.getAllCreditCards()
+    val allCreditCards: Flow<List<CreditCardEntity>>? = creditCardDao?.getAllCreditCardsFlow()
 
     suspend fun getCreditCardById(id: String): CreditCardEntity? = creditCardDao?.getCreditCardById(id)
 
@@ -74,5 +77,9 @@ class ExpenseRepository(
 
     suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
         creditCardDao?.deleteCreditCard(creditCard)
+    }
+
+    suspend fun insertAllCreditCard(creditCards: List<CreditCardEntity>) {
+        creditCardDao?.insertAllCreditCards(creditCards)
     }
 }
