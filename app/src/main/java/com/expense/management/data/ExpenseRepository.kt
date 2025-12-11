@@ -6,6 +6,7 @@ class ExpenseRepository(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
     private val currencyDao: CurrencyDao,
+    private val creditCardDao: CreditCardDao? = null // Opzionale per ora, per retrocompatibilità
 ) {
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()
@@ -57,4 +58,21 @@ class ExpenseRepository(
 
     // Currencies
     suspend fun getAllCurrencyRates(): List<CurrencyRate> = currencyDao.getAllRates()
+
+    // Credit Cards
+    val allCreditCards: Flow<List<CreditCardEntity>>? = creditCardDao?.getAllCreditCards()
+
+    suspend fun getCreditCardById(id: String): CreditCardEntity? = creditCardDao?.getCreditCardById(id)
+
+    suspend fun insertCreditCard(creditCard: CreditCardEntity) {
+        creditCardDao?.insertCreditCard(creditCard)
+    }
+
+    suspend fun updateCreditCard(creditCard: CreditCardEntity) {
+        creditCardDao?.updateCreditCard(creditCard)
+    }
+
+    suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
+        creditCardDao?.deleteCreditCard(creditCard)
+    }
 }

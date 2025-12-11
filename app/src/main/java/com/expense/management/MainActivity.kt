@@ -17,12 +17,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
@@ -33,9 +34,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -112,7 +114,6 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
     val allCategories by viewModel.allCategories.collectAsState()
     val currentCurrency by viewModel.currency.collectAsState()
     val currentCcLimit by viewModel.ccLimit.collectAsState()
-    val currentCcDelay by viewModel.ccDelay.collectAsState()
     val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsState()
     val currentDateFormat by viewModel.dateFormat.collectAsState()
     val earliestMonth by viewModel.earliestMonth.collectAsState()
@@ -122,11 +123,14 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
     val csvExportColumns by viewModel.csvExportColumns.collectAsState()
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
+    val allCreditCards by viewModel.allCreditCards.collectAsState()
 
     var isAuthenticated by remember { viewModel.isAppUnlocked }
 
     // Determina se ci sono transazioni
     val hasTransactions = allTransactions.isNotEmpty()
+
+    var showAddMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(isBiometricEnabled) {
         if (isBiometricEnabled && !isAuthenticated) {
@@ -370,14 +374,44 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
             },
             floatingActionButton = {
                 if (currentRoute == "dashboard") {
-                    FloatingActionButton(
-                        onClick = { navController.navigate("add_transaction/0") },
-                        shape = RoundedCornerShape(16.dp),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                    ) {
-                        Icon(Icons.Filled.Add, stringResource(R.string.add_transaction))
+                    Box {
+                        FloatingActionButton(
+                            onClick = { showAddMenu = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Nuova Transazione"
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showAddMenu,
+                            onDismissRequest = { showAddMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.transaction)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AttachMoney, contentDescription = null)
+                                },
+                                onClick = {
+                                    showAddMenu = false
+                                    navController.navigate("add_transaction/0?isCreditCard=false")
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.credit_card)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CreditCard, contentDescription = null)
+                                },
+                                onClick = {
+                                    showAddMenu = false
+                                    navController.navigate("add_transaction/0?isCreditCard=true")
+                                }
+                            )
+                        }
                     }
                 }
             },
@@ -398,7 +432,6 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                             transactions = allTransactions,
                             categories = allCategories,
                             currencySymbol = currentCurrency,
-                            ccLimit = currentCcLimit,
                             dateFormat = currentDateFormat,
                             earliestMonth = earliestMonth,
                             currentDashboardMonth = currentDashboardMonth,
@@ -410,6 +443,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 navController.navigate("add_transaction/$transactionId")
                             },
                             isAmountHidden = isAmountHidden,
+                            creditCards = allCreditCards
                         )
                     }
 
@@ -483,28 +517,29 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         settingsScreen(
                             currentCurrency = currentCurrency,
                             currentDateFormat = currentDateFormat,
-                            ccDelay = currentCcDelay,
-                            ccLimit = currentCcLimit,
-                            ccPaymentMode = currentCcPaymentMode,
                             csvExportColumns = csvExportColumns,
                             hasTransactions = hasTransactions,
                             onCurrencyChange = viewModel::updateCurrency,
                             onDateFormatChange = viewModel::updateDateFormat,
-                            onDelayChange = viewModel::updateCcDelay,
-                            onLimitChange = viewModel::updateCcLimit,
                             onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                             onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
 
                         )
                     }
 
+
+
                     composable(
-                        route = "add_transaction/{transactionId}",
+                        route = "add_transaction/{transactionId}?isCreditCard={isCreditCard}",
                         arguments =
                         listOf(
                             navArgument("transactionId") {
                                 type = NavType.StringType
                                 defaultValue = "0"
+                            },
+                            navArgument("isCreditCard") {
+                                type = NavType.BoolType
+                                defaultValue = false
                             },
                         ),
                         enterTransition = {
@@ -521,6 +556,8 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                         },
                     ) { backStackEntry ->
                         val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
+                        val isCreditCardArg = backStackEntry.arguments?.getBoolean("isCreditCard") ?: false
+
                         var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
                         var isLoading by remember { mutableStateOf(transactionId != "0") }
 
@@ -539,7 +576,6 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                             }
                         } else {
                             AddTransactionScreen(
-                                ccDelay = currentCcDelay,
                                 currencySymbol = currentCurrency,
                                 ccPaymentMode = currentCcPaymentMode,
                                 suggestions = suggestions,
@@ -560,6 +596,8 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 onConvertAmount = { from, to, amount ->
                                     viewModel.updateCurrencyRate(amount, from, to)
                                 },
+                                isCC = isCreditCardArg,
+                                availableCreditCards = allCreditCards
                             )
                         }
                     }

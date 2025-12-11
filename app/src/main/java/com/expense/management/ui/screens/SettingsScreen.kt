@@ -2,7 +2,6 @@ package com.expense.management.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,16 +23,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -41,17 +44,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -75,6 +75,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.expense.management.R
+import com.expense.management.data.CardType
+import com.expense.management.data.CreditCardEntity
 import com.expense.management.viewmodel.ExpenseViewModel
 import java.time.Instant
 import java.time.LocalDateTime
@@ -100,15 +102,10 @@ val EXPORT_COLUMN_MAP = mapOf(
 fun settingsScreen(
     currentCurrency: String,
     currentDateFormat: String,
-    ccDelay: Int,
-    ccLimit: Float,
-    ccPaymentMode: String,
     csvExportColumns: Set<String>,
     hasTransactions: Boolean,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
-    onDelayChange: (Int) -> Unit,
-    onLimitChange: (Float) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
     viewModel: ExpenseViewModel = viewModel(),
@@ -118,18 +115,17 @@ fun settingsScreen(
     var showExportColumnsDialog by remember { mutableStateOf(false) }
     var showCurrencyWarningDialog by remember { mutableStateOf(false) }
     var showCurrencyRatesInfoDialog by remember { mutableStateOf(false) }
+    var showAddCardDialog by remember { mutableStateOf(false) }
+    var showEditCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
+    var showDeleteCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
 
-    var limitStr by remember { mutableStateOf(String.format(Locale.US, "%.0f", ccLimit)) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     // Raccogli stato aggiornamento tassi
     val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsState()
     val currencyRates by viewModel.currencyRates.collectAsState()
-
-    LaunchedEffect(ccLimit) {
-        limitStr = String.format(Locale.US, "%.0f", ccLimit)
-    }
+    val allCreditCards by viewModel.allCreditCards.collectAsState(initial = emptyList())
 
     LaunchedEffect(Unit) {
         viewModel.refreshCurrencyRates()
@@ -198,7 +194,7 @@ fun settingsScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- SEZIONE PAGAMENTI (Carta di Credito) ---
+        // --- SEZIONE GESTIONE CARTE ---
         settingsSectionHeader(stringResource(R.string.credit_card_settings))
 
         Card(
@@ -206,126 +202,56 @@ fun settingsScreen(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                // Plafond
-                OutlinedTextField(
-                    value = limitStr,
-                    onValueChange = {
-                        limitStr = it.replace(',', '.')
-                        val newLimit = limitStr.toFloatOrNull()
-                        if (newLimit != null) onLimitChange(newLimit)
-                    },
-                    label = { Text(stringResource(R.string.max_limit, currentCurrency)) },
-                    leadingIcon = { Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors =
-                    OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    ),
-                )
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Modalità Pagamento (Saldo vs Rateale)
-                Text(
-                    stringResource(R.string.credit_card_mode),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = ccPaymentMode == "single",
-                        onClick = { onCcPaymentModeChange("single") },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                    ) {
-                        Text(stringResource(R.string.single_balance), maxLines = 1)
-                    }
-                    SegmentedButton(
-                        selected = ccPaymentMode == "installment",
-                        onClick = { onCcPaymentModeChange("installment") },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                    ) {
-                        Text(stringResource(R.string.installment_plan), maxLines = 1)
-                    }
-                    SegmentedButton(
-                        selected = ccPaymentMode == "manual",
-                        onClick = { onCcPaymentModeChange("manual") },
-                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                    ) {
-                        Text(stringResource(R.string.manual), maxLines = 1)
+            Column {
+                if (allCreditCards.isEmpty()) {
+                    Text(
+                        stringResource(R.string.no_cards_configured),
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    allCreditCards.forEach { card ->
+                        ListItem(
+                            headlineContent = { Text(card.name, fontWeight = FontWeight.Bold) },
+                            supportingContent = {
+                                Text(
+                                    "${if (card.type == CardType.SALDO) stringResource(R.string.single_balance) else stringResource(R.string.installment_plan)} • ${stringResource(R.string.max_limit, currentCurrency)} ${String.format(Locale.US, "%.0f", card.limit)}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.Default.CreditCard,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            trailingContent = {
+                                Row {
+                                    IconButton(onClick = { showEditCardDialog = card }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                    }
+                                    IconButton(onClick = { showDeleteCardDialog = card }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    when (ccPaymentMode) {
-                        "single" -> stringResource(R.string.setting_credit_card_message_1)
-                        "installment" -> stringResource(R.string.setting_credit_card_message_2)
-                        else -> stringResource(R.string.setting_credit_card_message_3)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
 
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Ritardo Addebito (Solo per Saldo Unico)
-                AnimatedVisibility(visible = ccPaymentMode == "single") {
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                stringResource(R.string.debit_delay),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(8.dp),
-                            ) {
-                                Text(
-                                    if (ccDelay == 0) {
-                                        stringResource(R.string.immediate)
-                                    } else {
-                                        stringResource(
-                                            R.string.months_delay,
-                                            ccDelay,
-                                        )
-                                    },
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Slider(
-                            value = ccDelay.toFloat(),
-                            onValueChange = { onDelayChange(it.toInt()) },
-                            valueRange = 0f..3f,
-                            steps = 2,
-                            colors =
-                            SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        )
-                        Text(
-                            stringResource(R.string.cc_delay_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                Button(
+                    onClick = { showAddCardDialog = true },
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.add_card))
                 }
             }
         }
@@ -392,28 +318,6 @@ fun settingsScreen(
             }
         }
 
-       /*Spacer(modifier = Modifier.height(32.dp))
-
-       // --- SUPPORT US SECTION ---
-       settingsSectionHeader(stringResource(R.string.support_us))
-
-       Card(
-           colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-           shape = RoundedCornerShape(16.dp),
-           elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-       ) {
-           settingsListItem(
-               icon = Icons.Default.Favorite,
-               title = stringResource(R.string.donate),
-               value = stringResource(R.string.donate_desc),
-               onClick = {
-                   val paypalUrl = "https://paypal.me/YOUR_PAYPAL_USERNAME" // !!! REPLACE THIS WITH YOUR PAYPAL.ME LINK !!!
-                   val intent = Intent(Intent.ACTION_VIEW, Uri.parse(paypalUrl))
-                   context.startActivity(intent)
-               },
-           )
-       }*/
-
         Spacer(modifier = Modifier.height(80.dp))
     }
 
@@ -461,7 +365,7 @@ fun settingsScreen(
         )
     }
 
-    // Dialog Info Tassi Cambio (MODIFICATO PER MOSTRARE LISTA E AGGIORNARE)
+    // Dialog Info Tassi Cambio
     if (showCurrencyRatesInfoDialog) {
         Dialog(onDismissRequest = { showCurrencyRatesInfoDialog = false }) {
             Card(
@@ -486,7 +390,6 @@ fun settingsScreen(
 
                     var isRefreshing by remember { mutableStateOf(false) }
 
-                    // Tasto Aggiorna
                     Button(
                         onClick = {
                             isRefreshing = true
@@ -622,6 +525,143 @@ fun settingsScreen(
                 }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = { TextButton(onClick = { showExportColumnsDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
+    // Dialog Aggiungi/Modifica Carta
+    if (showAddCardDialog || showEditCardDialog != null) {
+        val isEditing = showEditCardDialog != null
+        val cardToEdit = showEditCardDialog
+
+        var name by remember { mutableStateOf(cardToEdit?.name ?: "") }
+        var limit by remember { mutableStateOf(cardToEdit?.limit?.toString() ?: "") }
+        var closingDay by remember { mutableStateOf(cardToEdit?.closingDay?.toString() ?: "1") }
+        var paymentDay by remember { mutableStateOf(cardToEdit?.paymentDay?.toString() ?: "15") }
+        var type by remember { mutableStateOf(cardToEdit?.type ?: CardType.SALDO) }
+
+        AlertDialog(
+            onDismissRequest = {
+                showAddCardDialog = false
+                showEditCardDialog = null
+            },
+            title = { Text(if (isEditing) stringResource(R.string.edit_card) else stringResource(R.string.add_card)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.card_name)) },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = limit,
+                        onValueChange = { limit = it.replace(',', '.') },
+                        label = { Text(stringResource(R.string.card_limit)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+
+                    Text(stringResource(R.string.card_type_label), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = type == CardType.SALDO,
+                            onClick = { type = CardType.SALDO },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) {
+                            Text(stringResource(R.string.single_balance))
+                        }
+                        SegmentedButton(
+                            selected = type == CardType.REVOLVING,
+                            onClick = { type = CardType.REVOLVING },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) {
+                            Text(stringResource(R.string.installment_plan))
+                        }
+                    }
+
+                    if (type == CardType.SALDO) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            OutlinedTextField(
+                                value = closingDay,
+                                onValueChange = { closingDay = it },
+                                label = { Text(stringResource(R.string.closing_day)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = paymentDay,
+                                onValueChange = { paymentDay = it },
+                                label = { Text(stringResource(R.string.payment_day)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val limitVal = limit.toDoubleOrNull()
+                        val closingDayVal = closingDay.toIntOrNull() ?: 0
+                        val paymentDayVal = paymentDay.toIntOrNull() ?: 0
+
+                        if (name.isNotBlank() && limitVal != null) {
+                            val newCard = CreditCardEntity(
+                                id = cardToEdit?.id ?: java.util.UUID.randomUUID().toString(),
+                                name = name,
+                                limit = limitVal,
+                                closingDay = closingDayVal,
+                                paymentDay = paymentDayVal,
+                                type = type
+                            )
+                            if (isEditing) {
+                                viewModel.updateCreditCard(newCard)
+                            } else {
+                                viewModel.addCreditCard(newCard)
+                            }
+                            showAddCardDialog = false
+                            showEditCardDialog = null
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAddCardDialog = false
+                    showEditCardDialog = null
+                }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // Dialog Elimina Carta
+    if (showDeleteCardDialog != null) {
+        val cardToDelete = showDeleteCardDialog!!
+        AlertDialog(
+            onDismissRequest = { showDeleteCardDialog = null },
+            title = { Text(stringResource(R.string.delete_card_title)) },
+            text = { Text(stringResource(R.string.delete_card_message, cardToDelete.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteCreditCard(cardToDelete)
+                        showDeleteCardDialog = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteCardDialog = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 }

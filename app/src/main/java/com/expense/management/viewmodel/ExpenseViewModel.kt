@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.AppDatabase
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
@@ -34,7 +35,12 @@ class ExpenseViewModel(
     private val db = AppDatabase.getDatabase(application)
 
     // Use Repository instead of DAOs directly
-    private val repository = ExpenseRepository(db.transactionDao(), db.categoryDao(), db.currencyDao())
+    private val repository = ExpenseRepository(
+        db.transactionDao(),
+        db.categoryDao(),
+        db.currencyDao(),
+        db.creditCardDao()
+    )
     private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
     val currencyUtils = CurrencyUtils(db.currencyDao())
@@ -66,6 +72,12 @@ class ExpenseViewModel(
                     }
                 dbCategories + missingDefaults
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // DATI CARTE DI CREDITO
+    val allCreditCards: StateFlow<List<CreditCardEntity>> =
+        repository.allCreditCards
+            ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            ?: MutableStateFlow(emptyList())
 
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs.getString("currency", "€") ?: "€")
@@ -147,6 +159,25 @@ class ExpenseViewModel(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    // GESTIONE CARTE DI CREDITO
+    fun addCreditCard(creditCard: CreditCardEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.insertCreditCard(creditCard)
+        }
+    }
+
+    fun updateCreditCard(creditCard: CreditCardEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateCreditCard(creditCard)
+        }
+    }
+
+    fun deleteCreditCard(creditCard: CreditCardEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteCreditCard(creditCard)
         }
     }
 

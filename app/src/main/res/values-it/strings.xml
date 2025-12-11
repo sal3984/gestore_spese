@@ -12,6 +12,7 @@
     <string name="today">Oggi</string>
     <string name="yesterday">Ieri</string>
     <string name="credit_card">Carta di Credito</string>
+    <string name="transaction">Transazione</string>
 
     <!-- Add Transaction -->
     <string name="add_transaction">Aggiungi Movimento</string>
@@ -145,7 +146,7 @@
     <string name="first_installment_date">Data Prima Rata</string>
     <string name="first_installment_date_desc">La prima rata verrà addebitata a partire da questa data.</string>
     <string name="expected_debit_date">Data Addebito Prevista:</string>
-    <string name="expected_debit_date_calc">Calcolata automaticamente con %1$d mesi di ritardo.</string>
+    <string name="expected_debit_date_calc">Calcolato automaticamente il giorno %1$d mese successivo</string>
 
     <string name="export_success_csv">Esportate %1$d spese in CSV!</string>
     <string name="export_error">Errore durante l\'esportazione: %1$s</string>
@@ -220,8 +221,21 @@
     <string name="currency_rates_info_title">Tassi di cambio giornalieri (BCE)</string>
     <string name="currency_rates_info_message">Vengono scaricati automaticamente i tassi di cambio giornalieri ufficiali dalla Banca Centrale Europea (BCE) per eseguire conversioni di valuta.\n\nLa data di aggiornamento indica l\'ultimo download dei tassi sul dispositivo.\n\nPer aggiornare, connettiti a Internet e prova una conversione.</string>
 
-    <string name="force_update">Force Update</string>
-    <string name="available_rates_against_eur">Available Rates (vs EUR)</string>
-    <string name="updating">Updating…</string>
-    <string name="close">Close</string>
+    <string name="force_update">Aggiorna Tassi</string>
+    <string name="available_rates_against_eur">Tassi Disponibili (vs EUR)</string>
+    <string name="updating">Aggiornamento…</string>
+    <string name="close">Chiudi</string>
+
+    <!-- Credit Card management -->
+    <string name="no_cards_configured">Nessuna carta di credito configurata.</string>
+    <string name="add_card">Aggiungi Carta</string>
+    <string name="edit_card">Modifica Carta</string>
+    <string name="card_name">Nome Carta</string>
+    <string name="card_limit">Plafond</string>
+    <string name="card_type_label">Tipo di Carta</string>
+    <string name="closing_day">Giorno Chiusura</string>
+    <string name="payment_day">Giorno Addebito</string>
+    <string name="delete_card_title">Elimina Carta</string>
+    <string name="delete_card_message">Sei sicuro di voler eliminare la carta \"%1$s\"?</string>
+    <string name="select_credit_card">Seleziona Carta di Credito</string>
 </resources>
