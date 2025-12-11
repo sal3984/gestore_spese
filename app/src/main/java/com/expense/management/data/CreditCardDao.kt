@@ -16,7 +16,6 @@ interface CreditCardDao {
     @Query("SELECT * FROM credit_cards")
     suspend fun getAllCreditCards(): List<CreditCardEntity>
 
-
     @Query("SELECT * FROM credit_cards WHERE id = :id")
     suspend fun getCreditCardById(id: String): CreditCardEntity?
 

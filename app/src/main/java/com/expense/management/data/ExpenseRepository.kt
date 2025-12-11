@@ -42,7 +42,6 @@ class ExpenseRepository(
 
     suspend fun getAllCreditCard(): List<CreditCardEntity> = creditCardDao?.getAllCreditCards() ?: emptyList()
 
-
     suspend fun insertCategory(category: CategoryEntity) {
         categoryDao.insertCategory(category)
     }
