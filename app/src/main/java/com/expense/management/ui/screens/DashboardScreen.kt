@@ -372,39 +372,65 @@ fun DashboardScreen(
                         ) { page ->
                             val card = creditCards[page]
 
-                            val spentOnCard = transactions
-                                .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                .filter { t ->
-                                    try {
-                                        val transactionDate = LocalDate.parse(t.date)
-                                        val transactionMonth = YearMonth.from(transactionDate)
+                            var displayedSpent: Double
+                            var totalUtilizedForDisplay: Double
+                            var totalPaidForDisplay: Double
 
-                                        if (card.type == CardType.SALDO) {
-                                            // Logica per carte a SALDO
-                                            // La spesa appartiene all'estratto conto del mese corrente se fatta PRIMA del giorno di chiusura
+                            if (card.type == CardType.REVOLVING) {
+                                // 1. "Quota Utilizzata": Somma CUMULATIVA di tutte le spese (expense) sulla carta.
+                                totalUtilizedForDisplay = transactions
+                                    .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                    .sumOf { it.amount }
 
-                                            transactionMonth == currentDashboardMonth
-                                        } else {
-                                            // Logica per REVOLVING o altre carte
-                                            // La spesa impatta il plafond nel mese in cui è stata fatta
-                                            transactionMonth == currentDashboardMonth
-                                        }
-                                    } catch (e: Exception) {
-                                        false
+                                // 2. "Somme Pagate": Somma CUMULATIVA di tutte le rate (expense con installmentNumber) pagate FINO AL MESE CORRENTE.
+                                val cumulativeInstallmentsPaidUpToCurrentMonth = transactions
+                                    .filter {
+                                        it.creditCardId == card.id &&
+                                                it.type == TransactionType.EXPENSE &&
+                                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                                try {
+                                                    YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
+                                                } catch (e: Exception) {
+                                                    false
+                                                }
                                     }
-                                }
-                                .sumOf { it.amount }
+                                    .sumOf { it.amount }
 
-                            val progress = if (card.limit > 0) (spentOnCard / card.limit).toFloat() else 0f
+                                totalPaidForDisplay = cumulativeInstallmentsPaidUpToCurrentMonth
+
+                                // 3. "Quota Rimanente": Il valore che si decrementa.
+                                displayedSpent = totalUtilizedForDisplay - totalPaidForDisplay
+
+                            } else {
+                                // Per le carte SALDO, la logica rimane quella delle spese del mese corrente
+                                displayedSpent = transactions
+                                    .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                    .filter { t ->
+                                        try {
+                                            val transactionMonth = YearMonth.from(LocalDate.parse(t.effectiveDate))
+                                            transactionMonth == currentDashboardMonth
+                                        } catch (e: Exception) {
+                                            false
+                                        }
+                                    }
+                                    .sumOf { it.amount }
+
+                                totalUtilizedForDisplay = displayedSpent
+                                totalPaidForDisplay = 0.0
+                            }
+
+                            val progress = if (card.limit > 0) (displayedSpent / card.limit).toFloat() else 0f
 
                             CreditCardItem(
                                 name = card.name,
                                 limit = card.limit,
-                                spent = spentOnCard,
+                                spent = displayedSpent,
                                 progress = progress,
                                 currencySymbol = currencySymbol,
                                 isAmountHidden = isAmountHidden,
                                 type = card.type,
+                                totalUtilized = totalUtilizedForDisplay,
+                                totalPaid = totalPaidForDisplay,
                             )
                         }
 
@@ -552,6 +578,8 @@ fun CreditCardItem(
     currencySymbol: String,
     isAmountHidden: Boolean,
     type: CardType,
+    totalUtilized: Double = 0.0,
+    totalPaid: Double = 0.0,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -589,6 +617,35 @@ fun CreditCardItem(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Display specific details for REVOLVING cards
+            if (type == CardType.REVOLVING) {
+                Text(
+                    text = stringResource(R.string.revolving_utilized_label),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalUtilized)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.revolving_paid_label),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalPaid)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             LinearProgressIndicator(
                 progress = { progress.coerceAtMost(1f) },
                 modifier = Modifier
@@ -601,7 +658,7 @@ fun CreditCardItem(
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    text = if (isAmountHidden) "${stringResource(R.string.spent_label)} $currencySymbol *****" else "${stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.2f", spent)}",
+                    text = if (isAmountHidden) "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.2f", spent)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
