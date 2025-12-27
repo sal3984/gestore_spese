@@ -14,6 +14,11 @@
     <string name="credit_card">Carta di Credito</string>
     <string name="transaction">Transazione</string>
 
+    <!-- Revolving Card Labels -->
+    <string name="revolving_utilized_label">Quota Utilizzata:</string>
+    <string name="revolving_paid_label">Quota Pagata:</string>
+    <string name="revolving_remaining_label">Quota Rimanente:</string>
+
     <!-- Add Transaction -->
     <string name="add_transaction">Aggiungi Movimento</string>
     <string name="edit_transaction">Modifica Movimento</string>

@@ -13,6 +13,11 @@
     <string name="yesterday">Yesterday</string>
     <string name="credit_card">Credit Card</string>
 
+    <!-- Revolving Card Labels -->
+    <string name="revolving_utilized_label">Utilized Amount:</string>
+    <string name="revolving_paid_label">Paid Amount:</string>
+    <string name="revolving_remaining_label">Remaining Balance:</string>
+
     <!-- Add Transaction -->
     <string name="add_transaction">Add Transaction</string>
     <string name="edit_transaction">Edit Transaction</string>
