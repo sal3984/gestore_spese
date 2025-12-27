@@ -386,13 +386,13 @@ fun DashboardScreen(
                                 val cumulativeInstallmentsPaidUpToCurrentMonth = transactions
                                     .filter {
                                         it.creditCardId == card.id &&
-                                                it.type == TransactionType.EXPENSE &&
-                                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
-                                                try {
-                                                    YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
-                                                } catch (e: Exception) {
-                                                    false
-                                                }
+                                            it.type == TransactionType.EXPENSE &&
+                                            it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                            try {
+                                                YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
+                                            } catch (e: Exception) {
+                                                false
+                                            }
                                     }
                                     .sumOf { it.amount }
 
@@ -400,14 +400,14 @@ fun DashboardScreen(
 
                                 // 3. "Quota Rimanente": Il valore che si decrementa.
                                 displayedSpent = totalUtilizedForDisplay - totalPaidForDisplay
-
                             } else {
-                                // Per le carte SALDO, la logica rimane quella delle spese del mese corrente
+                                // Per le carte SALDO, mostra l'utilizzo nel mese corrente (che verrà addebitato il mese successivo)
                                 displayedSpent = transactions
                                     .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
                                     .filter { t ->
                                         try {
-                                            val transactionMonth = YearMonth.from(LocalDate.parse(t.effectiveDate))
+                                            // Filtra per DATA TRANSAZIONE, non data di addebito
+                                            val transactionMonth = YearMonth.from(LocalDate.parse(t.date))
                                             transactionMonth == currentDashboardMonth
                                         } catch (e: Exception) {
                                             false
@@ -678,7 +678,7 @@ fun DateHeader(
     dateString: String,
     dailyTotal: Double,
     currencySymbol: String,
-    isAmountHidden: Boolean
+    isAmountHidden: Boolean,
 ) {
     val date = try {
         LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
