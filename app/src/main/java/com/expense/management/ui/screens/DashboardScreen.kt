@@ -496,11 +496,16 @@ fun DashboardScreen(
                 }
             }
         } else {
-            groupedTransactions.forEach { (dateString, transactions) ->
-                stickyHeader {
-                    DateHeader(dateString)
+            groupedTransactions.forEach { (dateString, transactionsOnDate) ->
+                val dailyTotal = transactionsOnDate.sumOf { t ->
+                    if (t.type == TransactionType.INCOME) t.amount else -t.amount
                 }
-                items(transactions, key = { it.id }) { t ->
+
+                stickyHeader {
+                    DateHeader(dateString, dailyTotal, currencySymbol, isAmountHidden)
+                }
+
+                items(transactionsOnDate, key = { it.id }) { t ->
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = {
                             if (it == SwipeToDismissBoxValue.EndToStart) {
@@ -508,7 +513,6 @@ fun DashboardScreen(
                                     transaction = t,
                                     isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1,
                                 )
-                                // Mantieni l'elemento in posizione fino alla conferma
                                 false
                             } else {
                                 false
@@ -516,7 +520,6 @@ fun DashboardScreen(
                         },
                     )
 
-                    // Wrapper per animazione di entrata semplice
                     AnimatedVisibility(
                         visibleState = visibleState,
                         enter = fadeIn(animationSpec = tween(500)) + slideInVertically(initialOffsetY = { 50 }),
@@ -525,9 +528,7 @@ fun DashboardScreen(
                         SwipeToDismissBox(
                             state = dismissState,
                             modifier = Modifier.padding(vertical = 1.dp),
-                            // Disabilita swipe da inizio a fine
                             enableDismissFromStartToEnd = false,
-                            // Abilita swipe da fine a inizio
                             enableDismissFromEndToStart = true,
                             backgroundContent = {
                                 val color = when (dismissState.targetValue) {
@@ -556,7 +557,7 @@ fun DashboardScreen(
                                         currencySymbol = currencySymbol,
                                         dateFormat = dateFormat,
                                         isAmountHidden = isAmountHidden,
-                                        onDelete = { /* La cancellazione è gestita dallo SwipeToDismissBox */ },
+                                        onDelete = { /* Gestito da SwipeToDismissBox */ },
                                         onEdit = onEdit,
                                     )
                                 }
@@ -618,7 +619,6 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Display specific details for REVOLVING cards
             if (type == CardType.REVOLVING) {
                 Text(
                     text = stringResource(R.string.revolving_utilized_label),
@@ -674,15 +674,16 @@ fun CreditCardItem(
 }
 
 @Composable
-fun DateHeader(dateString: String) {
+fun DateHeader(
+    dateString: String,
+    dailyTotal: Double,
+    currencySymbol: String,
+    isAmountHidden: Boolean
+) {
     val date = try {
         LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
     } catch (e: Exception) {
-        try {
-            LocalDate.now()
-        } catch (e2: Exception) {
-            LocalDate.now()
-        }
+        LocalDate.now()
     }
 
     val today = LocalDate.now()
@@ -694,18 +695,33 @@ fun DateHeader(dateString: String) {
         else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", Locale.getDefault()))
     }
 
+    val totalColor = when {
+        dailyTotal > 0 -> MaterialTheme.colorScheme.secondary
+        dailyTotal < 0 -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 16.dp),
     ) {
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+            Text(
+                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", dailyTotal)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = totalColor,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+        }
     }
 }
