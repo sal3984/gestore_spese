@@ -67,12 +67,7 @@ fun TransactionItem(
             LocalDate.parse(transaction.date, DateTimeFormatter.ISO_LOCAL_DATE)
                 .format(DateTimeFormatter.ofPattern(dateFormat))
         } catch (e: Exception) {
-            try {
-                LocalDate.parse(transaction.date, DateTimeFormatter.ofPattern(dateFormat))
-                    .format(DateTimeFormatter.ofPattern(dateFormat))
-            } catch (e2: Exception) {
-                transaction.date
-            }
+            transaction.date
         }
     }
 

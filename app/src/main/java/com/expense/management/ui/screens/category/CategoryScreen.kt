@@ -64,6 +64,12 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionType
 import java.util.UUID
 
+private val availableIcons = listOf(
+    "🏠", "🍔", "🚗", "🛒", "💊", "🎬", "✈️", "👔", "🎓", "🎁", "💡", "📱",
+    "💰", "💸", "🏦", "📈", "💼", "🔧", "🐶", "👶", "🎉", "🏋️", "📚", "🎮",
+    "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨",
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryScreen(
@@ -295,12 +301,6 @@ fun CategoryDialog(
     var selectedIcon by remember { mutableStateOf(categoryToEdit?.icon ?: "🏷️") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val availableIcons = listOf(
-        "🏠", "🍔", "🚗", "🛒", "💊", "🎬", "✈️", "👔", "🎓", "🎁", "💡", "📱",
-        "💰", "💸", "🏦", "📈", "💼", "🔧", "🐶", "👶", "🎉", "🏋️", "📚", "🎮",
-        "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨",
-    )
-
     val isEditing = categoryToEdit != null
     val dialogTitle = if (isEditing) stringResource(R.string.edit_category) else if (type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog)
 
@@ -353,9 +353,7 @@ fun CategoryDialog(
                     OutlinedTextField(
                         value = selectedIcon,
                         onValueChange = { input ->
-                            if (input.length <= 2) {
-                                selectedIcon = input
-                            }
+                            selectedIcon = input
                         },
                         label = { Text("Icona") },
                         singleLine = true,

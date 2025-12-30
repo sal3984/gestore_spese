@@ -83,6 +83,26 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
+private fun String.capitalizeFirstLetter(): String {
+    return replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+}
+
+private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
+    val formatters = setOf(
+        DateTimeFormatter.ISO_LOCAL_DATE,
+        DateTimeFormatter.ofPattern(dateFormat)
+    )
+    for (formatter in formatters) {
+        try {
+            return LocalDate.parse(dateString, formatter)
+        } catch (e: Exception) {
+            // ignore and try next
+        }
+    }
+    // Fallback to avoid crash
+    return LocalDate.now()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportScreen(
@@ -109,27 +129,12 @@ fun ReportScreen(
         }
     }
 
-    // Helper per parsing sicuro delle date (ISO o fallback)
-    fun parseDateSafe(dateString: String): LocalDate {
-        return try {
-            LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
-        } catch (e: Exception) {
-            try {
-                // Fallback generico o tentativo di usare il formato utente corrente se coincide
-                LocalDate.parse(dateString, DateTimeFormatter.ofPattern(dateFormat))
-            } catch (e2: Exception) {
-                // Fallback finale per evitare crash, anche se distorce leggermente i dati
-                LocalDate.now()
-            }
-        }
-    }
-
     // Calcolo Risparmio Anno Corrente
     val savings = remember(transactions, reportStartMonth, reportEndMonth) {
         transactions
             .filter { transaction ->
                 try {
-                    val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate))
+                    val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat))
                     !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
                 } catch (e: Exception) {
                     false
@@ -145,7 +150,7 @@ fun ReportScreen(
         transactions
             .filter {
                 it.type == TransactionType.EXPENSE && try {
-                    YearMonth.from(parseDateSafe(it.effectiveDate)) == monthToShow
+                    YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow
                 } catch (e: Exception) {
                     false
                 }
@@ -165,7 +170,7 @@ fun ReportScreen(
         while (!current.isAfter(reportEndMonth)) {
             val monthlyTransactions = transactions.filter { transaction ->
                 try {
-                    YearMonth.from(parseDateSafe(transaction.effectiveDate)) == current
+                    YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
                 } catch (e: Exception) {
                     false
                 }
@@ -354,8 +359,7 @@ fun ReportScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // --- 4. TITOLO DINAMICO ---
-            val monthName = monthToShow.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
-                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            val monthName = monthToShow.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())).capitalizeFirstLetter()
 
             Text(
                 stringResource(R.string.category_detail_current_month, monthName),
@@ -452,7 +456,7 @@ fun ReportScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         LinearProgressIndicator(
                                             // Changed here
-                                            progress = percentage,
+                                            progress = { percentage },
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .height(8.dp)
@@ -491,9 +495,9 @@ fun ReportScreen(
             val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
                 transactions.filter {
                     it.type == TransactionType.EXPENSE &&
-                        YearMonth.from(parseDateSafe(it.effectiveDate)) == monthToShow &&
+                        YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow &&
                         it.categoryId == categoryId
-                }.sortedByDescending { parseDateSafe(it.date) }
+                }.sortedByDescending { parseDateSafe(it.date, dateFormat) }
             }
 
             CategoryTransactionsDetail(
@@ -531,8 +535,7 @@ fun MonthSelector(
         modifier = modifier,
     ) {
         OutlinedTextField(
-            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
-                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())).capitalizeFirstLetter(),
             onValueChange = { /* Read Only */ },
             readOnly = true,
             maxLines = 1,
@@ -555,13 +558,7 @@ fun MonthSelector(
                         Text(
                             month.format(
                                 DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()),
-                            ).replaceFirstChar {
-                                if (it.isLowerCase()) {
-                                    it.titlecase(Locale.getDefault())
-                                } else {
-                                    it.toString()
-                                }
-                            },
+                            ).capitalizeFirstLetter(),
                             fontSize = responsiveFontSize,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
