@@ -90,7 +90,7 @@ private fun String.capitalizeFirstLetter(): String {
 private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
     val formatters = setOf(
         DateTimeFormatter.ISO_LOCAL_DATE,
-        DateTimeFormatter.ofPattern(dateFormat)
+        DateTimeFormatter.ofPattern(dateFormat),
     )
     for (formatter in formatters) {
         try {
