@@ -14,10 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,11 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.theme.ExpenseRed
@@ -181,6 +188,33 @@ fun TransactionItem(
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
+
+                    if (transaction.recurrenceType != RecurrenceType.NONE) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Repeat,
+                                contentDescription = null,
+                                size = 14.dp,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = when(transaction.recurrenceType) {
+                                    RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                                    RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                                    RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                                    RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                                    else -> ""
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -231,4 +265,14 @@ fun getCategory(id: String, categories: List<CategoryEntity>): CategoryEntity {
     return categories.firstOrNull { it.id == id }
         ?: categories.firstOrNull { it.id == "other" }
         ?: CategoryEntity("other", "Altro", "❓", TransactionType.EXPENSE, false)
+}
+
+@Composable
+private fun Icon(imageVector: ImageVector, contentDescription: String?, size: Dp, tint: Color) {
+    Icon(
+        imageVector = imageVector,
+        contentDescription = contentDescription,
+        modifier = Modifier.size(size),
+        tint = tint
+    )
 }

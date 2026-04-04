@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CurrencyRate::class,
         CreditCardEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -50,8 +50,15 @@ abstract class AppDatabase : RoomDatabase() {
                 )
 
                 // 2. Aggiungi la colonna creditCardId alla tabella transactions
-                // Nota: In SQLite ALTER TABLE è limitato, ma aggiungere una colonna nullable è supportato.
                 db.execSQL("ALTER TABLE `transactions` ADD COLUMN `creditCardId` TEXT DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Aggiungi colonne per la ricorrenza
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `recurrenceType` TEXT NOT NULL DEFAULT 'none'")
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `recurrenceEndDate` TEXT DEFAULT NULL")
             }
         }
 
@@ -63,7 +70,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }

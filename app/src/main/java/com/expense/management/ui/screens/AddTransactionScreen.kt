@@ -85,6 +85,7 @@ import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.utils.DateUtils
@@ -151,6 +152,11 @@ fun AddTransactionScreen(
 
     var isInstallment by remember { mutableStateOf(false) }
     val isEditing = transactionToEdit != null
+
+    // --- Recurrence States ---
+    var recurrenceType by remember { mutableStateOf(transactionToEdit?.recurrenceType ?: RecurrenceType.NONE) }
+    var recurrenceLimit by remember { mutableIntStateOf(transactionToEdit?.recurrenceLimit ?: 12) }
+    var showRecurrenceTypeDialog by remember { mutableStateOf(false) }
 
     // --- Installment States ---
     var calculationMode by remember { mutableStateOf("installments") } // "installments" or "amount"
@@ -332,6 +338,46 @@ fun AddTransactionScreen(
                     ),
                 )
             }
+        } else if (recurrenceType != RecurrenceType.NONE && transactionToEdit == null) {
+            val groupId = UUID.randomUUID().toString()
+            var currentOccurrenceDate = transactionDate
+
+            for (count in 0 until recurrenceLimit) {
+                val effectiveDate = if (isCreditCard && selectedCard != null) {
+                    DateUtils.calculateEffectiveDate(currentOccurrenceDate, selectedCard)
+                } else {
+                    currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+
+                val newId = if (count == 0) transactionId else UUID.randomUUID().toString()
+
+                onSave(
+                    TransactionEntity(
+                        id = newId,
+                        date = currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        description = description.trim(),
+                        amount = amount,
+                        categoryId = selectedCategory,
+                        type = type,
+                        isCreditCard = isCreditCard,
+                        originalAmount = originalAmount,
+                        originalCurrency = originalCurrency,
+                        effectiveDate = effectiveDate,
+                        groupId = groupId,
+                        creditCardId = if (isCreditCard) creditCardId else null,
+                        recurrenceType = recurrenceType,
+                        recurrenceLimit = recurrenceLimit,
+                    )
+                )
+
+                currentOccurrenceDate = when (recurrenceType) {
+                    RecurrenceType.DAILY -> currentOccurrenceDate.plusDays(1)
+                    RecurrenceType.WEEKLY -> currentOccurrenceDate.plusWeeks(1)
+                    RecurrenceType.MONTHLY -> currentOccurrenceDate.plusMonths(1)
+                    RecurrenceType.YEARLY -> currentOccurrenceDate.plusYears(1)
+                    else -> break
+                }
+            }
         } else {
             val effectiveDate = if (isCreditCard && selectedCard != null) {
                 DateUtils.calculateEffectiveDate(transactionDate, selectedCard)
@@ -355,6 +401,8 @@ fun AddTransactionScreen(
                     totalInstallments = transactionToEdit?.totalInstallments,
                     groupId = transactionToEdit?.groupId,
                     creditCardId = if (isCreditCard) creditCardId else null,
+                    recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
+                    recurrenceLimit = transactionToEdit?.recurrenceLimit,
                 ),
             )
         }
@@ -716,6 +764,71 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- Recurrence Section ---
+            if (!isEditing) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.recurrence_label),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = when(recurrenceType) {
+                                RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
+                                RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                                RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                                RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                                RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { showRecurrenceTypeDialog = true }) {
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().clickable { showRecurrenceTypeDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                        )
+
+                        AnimatedVisibility(visible = recurrenceType != RecurrenceType.NONE) {
+                            Column(modifier = Modifier.padding(top = 16.dp)) {
+                                Text(
+                                    text = stringResource(R.string.recurrence_occurrences, recurrenceLimit),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Slider(
+                                    value = recurrenceLimit.toFloat(),
+                                    onValueChange = { recurrenceLimit = it.toInt() },
+                                    valueRange = 2f..60f,
+                                    steps = 58,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(R.string.recurrence_occurrences_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             AnimatedVisibility(visible = type == TransactionType.EXPENSE && isCC) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1075,6 +1188,38 @@ fun AddTransactionScreen(
         )
     }
 
+    if (showRecurrenceTypeDialog) {
+        AlertDialog(
+            onDismissRequest = { showRecurrenceTypeDialog = false },
+            title = { Text(stringResource(R.string.recurrence_label)) },
+            text = {
+                Column {
+                    RecurrenceType.entries.forEach { typeEntry ->
+                        Text(
+                            text = when(typeEntry) {
+                                RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
+                                RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                                RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                                RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                                RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    recurrenceType = typeEntry
+                                    showRecurrenceTypeDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showRecurrenceTypeDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
     if (showPreviousMonthAlert) {
         AlertDialog(
             onDismissRequest = { showPreviousMonthAlert = false },
@@ -1161,13 +1306,15 @@ fun AddTransactionScreen(
                 Text(
                     if (transactionToEdit?.groupId != null && (transactionToEdit.totalInstallments ?: 0) > 1) {
                         stringResource(R.string.delete_installment_message)
+                    } else if (transactionToEdit?.groupId != null && transactionToEdit.recurrenceType != RecurrenceType.NONE) {
+                        stringResource(R.string.delete_recurrence_message)
                     } else {
                         stringResource(R.string.delete_transaction_message)
                     },
                 )
             },
             confirmButton = {
-                if (transactionToEdit?.groupId != null && (transactionToEdit.totalInstallments ?: 0) > 1) {
+                if (transactionToEdit?.groupId != null && ((transactionToEdit.totalInstallments ?: 0) > 1 || transactionToEdit.recurrenceType != RecurrenceType.NONE)) {
                     Column {
                         TextButton(
                             onClick = {
@@ -1204,7 +1351,7 @@ fun AddTransactionScreen(
                 }
             },
             dismissButton = {
-                if (transactionToEdit?.groupId == null || (transactionToEdit.totalInstallments ?: 0) <= 1) {
+                if (transactionToEdit?.groupId == null || ((transactionToEdit.totalInstallments ?: 0) <= 1 && transactionToEdit.recurrenceType == RecurrenceType.NONE)) {
                     TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             },

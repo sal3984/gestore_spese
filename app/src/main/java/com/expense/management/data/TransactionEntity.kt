@@ -24,8 +24,12 @@ data class TransactionEntity(
     // Campi per pagamento rateale  Es. 1 (di 3)
     val installmentNumber: Int? = null,
     val totalInstallments: Int? = null,
-    // UUID condiviso tra tutte le rate della stessa spesa
+    // UUID condiviso tra tutte le rate o transazioni ricorrenti dello stesso gruppo
     val groupId: String? = null,
     // ID della carta di credito usata (opzionale)
     val creditCardId: String? = null,
+    // Campi per transazioni ricorrenti
+    val recurrenceType: RecurrenceType = RecurrenceType.NONE,
+    val recurrenceEndDate: String? = null,
+    val recurrenceLimit: Int? = null,
 )
