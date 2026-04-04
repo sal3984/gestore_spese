@@ -379,10 +379,52 @@ fun AddTransactionScreen(
                 }
             }
         } else {
+            if (selectedCard == null) {
+                if (isCreditCard) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Nessuna carta selezionata. Crea o seleziona una carta di credito.",
+                            withDismissAction = true
+                        )
+                    }
+                    return
+                }
+            }
+
             val effectiveDate = if (isCreditCard && selectedCard != null) {
                 DateUtils.calculateEffectiveDate(transactionDate, selectedCard)
             } else {
                 transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            }
+
+            val commonGroupId = if (isCreditCard && !isInstallment && type == TransactionType.EXPENSE && transactionToEdit == null) {
+                UUID.randomUUID().toString()
+            } else {
+                transactionToEdit?.groupId
+            }
+
+            // Se è una carta di credito a saldo, registriamo anche un'entrata tecnica nel mese corrente
+            if (isCreditCard && !isInstallment && type == TransactionType.EXPENSE && transactionToEdit == null) {
+                val incomeCategoryId = availableCategories.find { it.id == "credit_card_adjustment" }?.id
+                    ?: availableCategories.firstOrNull { it.type == TransactionType.INCOME }?.id
+                    ?: "salary"
+
+                onSave(
+                    TransactionEntity(
+                        id = UUID.randomUUID().toString(),
+                        date = dateToSave,
+                        description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()}",
+                        amount = amount,
+                        categoryId = incomeCategoryId,
+                        type = TransactionType.INCOME,
+                        isCreditCard = false,
+                        originalAmount = originalAmount,
+                        originalCurrency = originalCurrency,
+                        effectiveDate = dateToSave, // L'entrata è nel mese corrente
+                        creditCardId = null,
+                        groupId = commonGroupId,
+                    )
+                )
             }
 
             onSave(
@@ -399,7 +441,7 @@ fun AddTransactionScreen(
                     effectiveDate = effectiveDate,
                     installmentNumber = transactionToEdit?.installmentNumber,
                     totalInstallments = transactionToEdit?.totalInstallments,
-                    groupId = transactionToEdit?.groupId,
+                    groupId = commonGroupId,
                     creditCardId = if (isCreditCard) creditCardId else null,
                     recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
                     recurrenceLimit = transactionToEdit?.recurrenceLimit,
