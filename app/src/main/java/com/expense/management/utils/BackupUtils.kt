@@ -173,12 +173,15 @@ object BackupUtils {
                 try {
                     val backupData = Gson().fromJson(jsonString, BackupData::class.java)
 
-                    // Normalizzazione date (da dd/MM/yyyy a ISO yyyy-MM-dd se necessario)
+                    // Normalizzazione date e campi nuovi (da dd/MM/yyyy a ISO yyyy-MM-dd se necessario)
                     val normalizedTransactions =
                         backupData.transactions.map { t ->
                             t.copy(
                                 date = normalizeDate(t.date),
                                 effectiveDate = normalizeDate(t.effectiveDate),
+                                // Forziamo il default se il campo è null (accade con i vecchi backup v7)
+                                recurrenceType = (t.recurrenceType as com.expense.management.data.RecurrenceType?) ?: com.expense.management.data.RecurrenceType.NONE,
+                                groupId = t.groupId ?: if (t.installmentNumber != null) java.util.UUID.randomUUID().toString() else null
                             )
                         }
                     val normalizedBackupData = backupData.copy(transactions = normalizedTransactions)
@@ -196,12 +199,13 @@ object BackupUtils {
                 val type = object : TypeToken<List<TransactionEntity>>() {}.type
                 val list: List<TransactionEntity> = Gson().fromJson(jsonString, type)
 
-                // Normalizzazione date anche per backup legacy
+                // Normalizzazione date e campi nuovi anche per backup legacy
                 val normalizedList =
                     list.map { t ->
                         t.copy(
                             date = normalizeDate(t.date),
                             effectiveDate = normalizeDate(t.effectiveDate),
+                            recurrenceType = (t.recurrenceType as com.expense.management.data.RecurrenceType?) ?: com.expense.management.data.RecurrenceType.NONE
                         )
                     }
 

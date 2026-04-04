@@ -59,6 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                 // Aggiungi colonne per la ricorrenza
                 db.execSQL("ALTER TABLE `transactions` ADD COLUMN `recurrenceType` TEXT NOT NULL DEFAULT 'none'")
                 db.execSQL("ALTER TABLE `transactions` ADD COLUMN `recurrenceEndDate` TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `recurrenceLimit` INTEGER DEFAULT NULL")
             }
         }
 

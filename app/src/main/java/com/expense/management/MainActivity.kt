@@ -281,7 +281,6 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                     label = { Text(stringResource(R.string.exit)) },
                     selected = false,
                     onClick = {
-                        coroutineScope.launch { drawerState.close() }
                         (context as? Activity)?.finish()
                     },
                     icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Esci") },
