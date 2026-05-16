@@ -280,8 +280,16 @@ fun AddTransactionScreen(
 
             for (i in 0 until finalInstallmentsCount) {
                 val installmentDate = startInstallmentDate.plusMonths(i.toLong())
-                val effectiveDate = if (isCreditCard && applyCcDelayToInstallments && selectedCard != null) {
+                val settlementDate = if (isCreditCard && selectedCard != null) {
                     DateUtils.calculateEffectiveDate(installmentDate, selectedCard)
+                } else {
+                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+
+                val effectiveDate = if (isCreditCard && type == TransactionType.INCOME) {
+                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                } else if (isCreditCard && applyCcDelayToInstallments) {
+                    settlementDate
                 } else {
                     installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 }
@@ -316,6 +324,29 @@ fun AddTransactionScreen(
                     }
                 }
 
+                if (isCreditCard && type == TransactionType.INCOME) {
+                    val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
+                        ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
+                        ?: "other"
+
+                    onSave(
+                        TransactionEntity(
+                            id = UUID.randomUUID().toString(),
+                            date = installmentDateToSave,
+                            description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()} ($installmentLabel ${i + 1}/$finalInstallmentsCount) (Future Payment)",
+                            amount = currentInstallmentAmount,
+                            categoryId = expenseCategoryId,
+                            type = TransactionType.EXPENSE,
+                            isCreditCard = false,
+                            originalAmount = currentOriginalInstallmentAmount,
+                            originalCurrency = originalCurrency,
+                            effectiveDate = settlementDate,
+                            creditCardId = null,
+                            groupId = groupId,
+                        ),
+                    )
+                }
+
                 onSave(
                     TransactionEntity(
                         id = newId,
@@ -340,18 +371,48 @@ fun AddTransactionScreen(
             var currentOccurrenceDate = transactionDate
 
             for (count in 0 until recurrenceLimit) {
-                val effectiveDate = if (isCreditCard && selectedCard != null) {
+                val settlementDate = if (isCreditCard && selectedCard != null) {
                     DateUtils.calculateEffectiveDate(currentOccurrenceDate, selectedCard)
                 } else {
                     currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 }
 
+                val effectiveDate = if (isCreditCard && type == TransactionType.INCOME) {
+                    currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                } else {
+                    settlementDate
+                }
+
                 val newId = if (count == 0) transactionId else UUID.randomUUID().toString()
+                val occurrenceDateStr = currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+                if (isCreditCard && type == TransactionType.INCOME) {
+                    val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
+                        ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
+                        ?: "other"
+
+                    onSave(
+                        TransactionEntity(
+                            id = UUID.randomUUID().toString(),
+                            date = occurrenceDateStr,
+                            description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()} (Future Payment)",
+                            amount = amount,
+                            categoryId = expenseCategoryId,
+                            type = TransactionType.EXPENSE,
+                            isCreditCard = false,
+                            originalAmount = originalAmount,
+                            originalCurrency = originalCurrency,
+                            effectiveDate = settlementDate,
+                            creditCardId = null,
+                            groupId = groupId,
+                        ),
+                    )
+                }
 
                 onSave(
                     TransactionEntity(
                         id = newId,
-                        date = currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        date = occurrenceDateStr,
                         description = description.trim(),
                         amount = amount,
                         categoryId = selectedCategory,
