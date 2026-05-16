@@ -73,6 +73,8 @@ spotless {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -97,20 +99,16 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    implementation("com.google.code.gson:gson:2.14.0")
+    implementation(libs.gson)
 
     // ROOM (Database SQLite)
-    val room_version = "2.8.4"
-    implementation("androidx.room:room-runtime:$room_version")
-    implementation("androidx.room:room-ktx:$room_version") // Per usare le coroutine
-    ksp("androidx.room:room-compiler:$room_version")
-    // Aggiungere queste dipendenze nella sezione 'dependencies' del build.gradle.kts del modulo app
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0") // Oppure la versione che usi
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.10.0") // QUESTA E' CRITICA
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Biometric
-    implementation("androidx.biometric:biometric:1.1.0")
+    implementation(libs.androidx.biometric)
 
     // AppCompat - Necessaria per FragmentActivity e temi
-    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation(libs.androidx.appcompat)
 }

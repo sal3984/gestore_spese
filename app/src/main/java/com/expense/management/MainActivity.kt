@@ -55,7 +55,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,6 +87,7 @@ import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.BackupUtils
 import com.expense.management.utils.BiometricUtils
 import com.expense.management.viewmodel.ExpenseViewModel
+import com.expense.management.viewmodel.ExpenseViewModelFactory
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -105,26 +105,27 @@ class MainActivity : FragmentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
-    val navController = rememberNavController()
+fun mainApp() {
     val context = LocalContext.current
+    val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
+    val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    val allTransactions by viewModel.allTransactions.collectAsState()
-    val allCategories by viewModel.allCategories.collectAsState()
-    val currentCurrency by viewModel.currency.collectAsState()
-    val currentCcLimit by viewModel.ccLimit.collectAsState()
-    val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsState()
-    val currentDateFormat by viewModel.dateFormat.collectAsState()
-    val earliestMonth by viewModel.earliestMonth.collectAsState()
-    val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsState()
-    val isAmountHidden by viewModel.isAmountHidden.collectAsState()
-    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
-    val csvExportColumns by viewModel.csvExportColumns.collectAsState()
+    val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
+    val allCategories by viewModel.allCategories.collectAsStateWithLifecycle()
+    val currentCurrency by viewModel.currency.collectAsStateWithLifecycle()
+    val currentCcLimit by viewModel.ccLimit.collectAsStateWithLifecycle()
+    val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsStateWithLifecycle()
+    val currentDateFormat by viewModel.dateFormat.collectAsStateWithLifecycle()
+    val earliestMonth by viewModel.earliestMonth.collectAsStateWithLifecycle()
+    val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsStateWithLifecycle()
+    val isAmountHidden by viewModel.isAmountHidden.collectAsStateWithLifecycle()
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
+    val csvExportColumns by viewModel.csvExportColumns.collectAsStateWithLifecycle()
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
-    val allCreditCards by viewModel.allCreditCards.collectAsState()
+    val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle()
 
     var isAuthenticated by remember { viewModel.isAppUnlocked }
 

@@ -1,18 +1,25 @@
 package com.expense.management.viewmodel
 
-import android.app.Application
-import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.edit
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.expense.management.data.AppDatabase
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.usecase.DeleteTransactionUseCase
+import com.expense.management.domain.usecase.GetBackupDataUseCase
+import com.expense.management.domain.usecase.GetCategoriesUseCase
+import com.expense.management.domain.usecase.GetCreditCardsUseCase
+import com.expense.management.domain.usecase.GetTransactionsUseCase
+import com.expense.management.domain.usecase.InitializeCategoriesUseCase
+import com.expense.management.domain.usecase.ManageCreditCardUseCase
+import com.expense.management.domain.usecase.RestoreDataUseCase
+import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.ui.screens.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
 import com.expense.management.utils.CurrencyUtils
@@ -21,84 +28,66 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 
 class ExpenseViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application)
-
-    // Use Repository instead of DAOs directly
-    private val repository = ExpenseRepository(
-        db.transactionDao(),
-        db.categoryDao(),
-        db.currencyDao(),
-        db.creditCardDao(),
-    )
-    private val prefs = application.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-
-    val currencyUtils = CurrencyUtils(db.currencyDao())
+    private val repository: ExpenseRepository,
+    private val currencyUtils: CurrencyUtils,
+    private val prefs: SharedPreferences?,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val getCategoriesUseCase: GetCategoriesUseCase,
+    private val saveTransactionUseCase: SaveTransactionUseCase,
+    private val deleteTransactionUseCase: DeleteTransactionUseCase,
+    private val initializeCategoriesUseCase: InitializeCategoriesUseCase,
+    private val getCreditCardsUseCase: GetCreditCardsUseCase,
+    private val manageCreditCardUseCase: ManageCreditCardUseCase,
+    private val getBackupDataUseCase: GetBackupDataUseCase,
+    private val restoreDataUseCase: RestoreDataUseCase,
+) : ViewModel() {
 
     // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
-    // Se la biometria NON è abilitata, l'app è sbloccata di default (true).
-    // Se la biometria È abilitata, l'app è bloccata (false).
-    var isAppUnlocked = mutableStateOf(!prefs.getBoolean("is_biometric_enabled", false))
+    var isAppUnlocked = mutableStateOf(!(prefs?.getBoolean("is_biometric_enabled", false) ?: false))
 
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> =
-        repository.allTransactions
+        getTransactionsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // DATI CATEGORIE
     val allCategories: StateFlow<List<CategoryEntity>> =
-        repository.allCategoriesFlow
-            .map { dbCategories ->
-                val dbIds = dbCategories.map { it.id }.toSet()
-                val missingDefaults =
-                    CATEGORIES.filter { it.id !in dbIds }.map {
-                        CategoryEntity(
-                            id = it.id,
-                            label = it.label,
-                            icon = it.icon,
-                            type = it.type,
-                            isCustom = false,
-                        )
-                    }
-                dbCategories + missingDefaults
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        getCategoriesUseCase()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // DATI CARTE DI CREDITO
     val allCreditCards: StateFlow<List<CreditCardEntity>> =
-        repository.allCreditCards
-            ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-            ?: MutableStateFlow(emptyList())
+        getCreditCardsUseCase()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
-    private val _currency = MutableStateFlow(prefs.getString("currency", "€") ?: "€")
+    private val _currency = MutableStateFlow(prefs?.getString("currency", "€") ?: "€")
     val currency = _currency.asStateFlow()
 
-    private val _ccLimit = MutableStateFlow(prefs.getFloat("cc_limit", 1500f))
+    private val _ccLimit = MutableStateFlow(prefs?.getFloat("cc_limit", 1500f) ?: 1500f)
     val ccLimit = _ccLimit.asStateFlow()
 
-    private val _ccDelay = MutableStateFlow(prefs.getInt("cc_delay", 1))
+    private val _ccDelay = MutableStateFlow(prefs?.getInt("cc_delay", 1) ?: 1)
     val ccDelay = _ccDelay.asStateFlow()
 
-    private val _dateFormat = MutableStateFlow(prefs.getString("date_format", "dd/MM/yyyy") ?: "dd/MM/yyyy")
+    private val _dateFormat = MutableStateFlow(prefs?.getString("date_format", "dd/MM/yyyy") ?: "dd/MM/yyyy")
     val dateFormat = _dateFormat.asStateFlow()
 
-    private val _isAmountHidden = MutableStateFlow(prefs.getBoolean("hide_amount", false))
+    private val _isAmountHidden = MutableStateFlow(prefs?.getBoolean("hide_amount", false) ?: false)
     val isAmountHidden = _isAmountHidden.asStateFlow()
 
-    private val _isBiometricEnabled = MutableStateFlow(prefs.getBoolean("is_biometric_enabled", false))
+    private val _isBiometricEnabled = MutableStateFlow(prefs?.getBoolean("is_biometric_enabled", false) ?: false)
     val isBiometricEnabled = _isBiometricEnabled.asStateFlow()
 
-    private val _ccPaymentMode = MutableStateFlow(prefs.getString("cc_payment_mode", "single") ?: "single")
+    private val _ccPaymentMode = MutableStateFlow(prefs?.getString("cc_payment_mode", "single") ?: "single")
     val ccPaymentMode = _ccPaymentMode.asStateFlow()
 
     private val _earliestMonth = MutableStateFlow(YearMonth.now())
@@ -123,61 +112,35 @@ class ExpenseViewModel(
     )
 
     private val _csvExportColumns = MutableStateFlow(
-        prefs.getStringSet("csv_export_columns", defaultExportColumns) ?: defaultExportColumns,
+        prefs?.getStringSet("csv_export_columns", defaultExportColumns) ?: defaultExportColumns,
     )
     val csvExportColumns = _csvExportColumns.asStateFlow()
 
     init {
         viewModelScope.launch {
+            initializeCategoriesUseCase()
             loadEarliestMonth()
-            ensureCategoriesInitialized()
             _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
             refreshCurrencyRatesData()
-        }
-    }
-
-    fun ensureCategoriesInitialized() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val existingCategories = repository.getAllCategories()
-                val existingIds = existingCategories.map { it.id }.toSet()
-
-                val categoriesToAdd =
-                    CATEGORIES.filter { it.id !in existingIds }.map {
-                        CategoryEntity(
-                            id = it.id,
-                            label = it.label,
-                            icon = it.icon,
-                            type = it.type,
-                            isCustom = false,
-                        )
-                    }
-
-                if (categoriesToAdd.isNotEmpty()) {
-                    repository.insertAllCategories(categoriesToAdd)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
         }
     }
 
     // GESTIONE CARTE DI CREDITO
     fun addCreditCard(creditCard: CreditCardEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.insertCreditCard(creditCard)
+            manageCreditCardUseCase.add(creditCard)
         }
     }
 
     fun updateCreditCard(creditCard: CreditCardEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.updateCreditCard(creditCard)
+            manageCreditCardUseCase.update(creditCard)
         }
     }
 
     fun deleteCreditCard(creditCard: CreditCardEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.deleteCreditCard(creditCard)
+            manageCreditCardUseCase.delete(creditCard)
         }
     }
 
@@ -198,7 +161,7 @@ class ExpenseViewModel(
     }
 
     private suspend fun loadEarliestMonth() {
-        allTransactions.collect { _ ->
+        allTransactions.collectLatest { _ ->
             val minDateString = repository.getMinEffectiveDate()
             if (minDateString != null) {
                 try {
@@ -217,27 +180,7 @@ class ExpenseViewModel(
 
     fun saveTransaction(transaction: TransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            val existingTransaction = repository.getTransactionById(transaction.id)
-
-            if (existingTransaction != null && transaction.groupId != null && transaction.totalInstallments ?: 1 > 1) {
-                // This is an update to an existing installment transaction
-                // Check if the category has changed
-                if (existingTransaction.categoryId != transaction.categoryId) {
-                    // Category has changed, update all transactions in the group
-                    val transactionsInGroup = repository.getAllTransactionsList()
-                        .filter { it.groupId == transaction.groupId }
-
-                    transactionsInGroup.forEach { installment ->
-                        repository.insertTransaction(installment.copy(categoryId = transaction.categoryId))
-                    }
-                } else {
-                    // Category has not changed, just update the single transaction
-                    repository.insertTransaction(transaction)
-                }
-            } else {
-                // New transaction, or a single non-installment transaction, or a new installment group (first transaction)
-                repository.insertTransaction(transaction)
-            }
+            saveTransactionUseCase(transaction)
         }
     }
 
@@ -246,40 +189,7 @@ class ExpenseViewModel(
         deleteType: DeleteType,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val transactionToDelete = repository.getTransactionById(transactionId) ?: return@launch
-
-            when (deleteType) {
-                DeleteType.SINGLE -> {
-                    // Elimina sempre la singola transazione
-                    repository.deleteTransaction(transactionId)
-                }
-
-                DeleteType.THIS_AND_SUBSEQUENT -> {
-                    val groupId = transactionToDelete.groupId
-                    if (groupId != null) {
-                        // Recupera tutte le transazioni, filtra per groupId e per data successiva o uguale
-                        val transactionsInGroup =
-                            repository
-                                .getAllTransactionsList()
-                                .filter { it.groupId == groupId }
-                                .filter {
-                                    try {
-                                        LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE) >= LocalDate.parse(transactionToDelete.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)
-                                    } catch (e: Exception) {
-                                        false // Ignora se la data non è parsabile
-                                    }
-                                }
-
-                        // Elimina singolarmente le transazioni filtrate
-                        transactionsInGroup.forEach { installment ->
-                            repository.deleteTransaction(installment.id)
-                        }
-                    } else {
-                        // Se non è un gruppo, elimina la singola transazione (comportamento fallback)
-                        repository.deleteTransaction(transactionId)
-                    }
-                }
-            }
+            deleteTransactionUseCase(transactionId, deleteType)
         }
     }
 
@@ -298,42 +208,42 @@ class ExpenseViewModel(
     // Aggiornamento Impostazioni
     fun updateCurrency(symbol: String) {
         _currency.value = symbol
-        prefs.edit { putString("currency", symbol) }
+        prefs?.edit { putString("currency", symbol) }
     }
 
     fun updateDateFormat(format: String) {
         _dateFormat.value = format
-        prefs.edit { putString("date_format", format) }
+        prefs?.edit { putString("date_format", format) }
     }
 
     fun updateCcLimit(limit: Float) {
         _ccLimit.value = limit
-        prefs.edit { putFloat("cc_limit", limit) }
+        prefs?.edit { putFloat("cc_limit", limit) }
     }
 
     fun updateCcDelay(delay: Int) {
         _ccDelay.value = delay
-        prefs.edit { putInt("cc_delay", delay) }
+        prefs?.edit { putInt("cc_delay", delay) }
     }
 
     fun updateCcPaymentMode(mode: String) {
         _ccPaymentMode.value = mode
-        prefs.edit { putString("cc_payment_mode", mode) }
+        prefs?.edit { putString("cc_payment_mode", mode) }
     }
 
     fun updateIsAmountHidden(isHidden: Boolean) {
         _isAmountHidden.value = isHidden
-        prefs.edit { putBoolean("hide_amount", isHidden) }
+        prefs?.edit { putBoolean("hide_amount", isHidden) }
     }
 
     fun updateBiometricEnabled(isEnabled: Boolean) {
         _isBiometricEnabled.value = isEnabled
-        prefs.edit { putBoolean("is_biometric_enabled", isEnabled) }
+        prefs?.edit { putBoolean("is_biometric_enabled", isEnabled) }
     }
 
     fun updateCsvExportColumns(columns: Set<String>) {
         _csvExportColumns.value = columns
-        prefs.edit { putStringSet("csv_export_columns", columns) }
+        prefs?.edit { putStringSet("csv_export_columns", columns) }
     }
 
     fun refreshCurrencyRates() {
@@ -360,18 +270,11 @@ class ExpenseViewModel(
     }
 
     // Metodi Backup
-    suspend fun getAllForBackup(): BackupData =
-        BackupData(
-            transactions = repository.getAllTransactionsList(),
-            categories = repository.getAllCategories(),
-            creditCard = repository.getAllCreditCard(),
-        )
+    suspend fun getAllForBackup(): BackupData = getBackupDataUseCase()
 
     fun restoreData(backupData: BackupData) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.insertAllTransactions(backupData.transactions)
-            repository.insertAllCategories(backupData.categories)
-            repository.insertAllCreditCard(backupData.creditCard ?: emptyList())
+            restoreDataUseCase(backupData)
         }
     }
 

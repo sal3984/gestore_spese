@@ -1,10 +1,19 @@
 package com.expense.management.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    indices = [
+        Index(value = ["effectiveDate"]),
+        Index(value = ["categoryId"]),
+        Index(value = ["groupId"]),
+        Index(value = ["creditCardId"]),
+    ],
+)
 data class TransactionEntity(
     // ID ora è una stringa UUID generata in automatico
     @PrimaryKey val id: String = UUID.randomUUID().toString(),

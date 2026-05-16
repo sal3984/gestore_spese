@@ -56,7 +56,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,11 +72,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.viewmodel.ExpenseViewModel
+import com.expense.management.viewmodel.ExpenseViewModelFactory
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -108,8 +109,9 @@ fun settingsScreen(
     onDateFormatChange: (String) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
-    viewModel: ExpenseViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+    val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showExportColumnsDialog by remember { mutableStateOf(false) }
@@ -119,13 +121,12 @@ fun settingsScreen(
     var showEditCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
     var showDeleteCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
 
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     // Raccogli stato aggiornamento tassi
-    val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsState()
-    val currencyRates by viewModel.currencyRates.collectAsState()
-    val allCreditCards by viewModel.allCreditCards.collectAsState(initial = emptyList())
+    val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
+    val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
+    val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle(initialValue = emptyList())
 
     LaunchedEffect(Unit) {
         viewModel.refreshCurrencyRates()

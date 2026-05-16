@@ -52,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -132,57 +133,65 @@ fun ReportScreen(
     }
 
     // Calcolo Risparmio Anno Corrente
-    val savings = remember(transactions, reportStartMonth, reportEndMonth) {
-        transactions
-            .filter { transaction ->
-                try {
-                    val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat))
-                    !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
-                } catch (_: Exception) {
-                    false
+    val savings: Double by remember(transactions, reportStartMonth, reportEndMonth) {
+        derivedStateOf {
+            transactions
+                .filter { transaction ->
+                    try {
+                        val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat))
+                        !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
+                    } catch (_: Exception) {
+                        false
+                    }
                 }
-            }
-            .sumOf { if (it.type == TransactionType.INCOME) it.amount else -it.amount }
+                .sumOf { if (it.type == TransactionType.INCOME) it.amount else -it.amount }
+        }
     }
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
     val monthToShow = selectedReportMonth ?: reportEndMonth
 
-    val expenseByCategory = remember(transactions, monthToShow) {
-        transactions
-            .filter {
-                it.type == TransactionType.EXPENSE && try {
-                    YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow
-                } catch (e: Exception) {
-                    false
+    val expenseByCategory: List<Pair<String, Double>> by remember(transactions, monthToShow) {
+        derivedStateOf {
+            transactions
+                .filter {
+                    it.type == TransactionType.EXPENSE && try {
+                        YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow
+                    } catch (e: Exception) {
+                        false
+                    }
                 }
-            }
-            .groupBy { it.categoryId }
-            .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
-            .toList()
-            .sortedByDescending { it.second }
+                .groupBy { it.categoryId }
+                .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
+                .toList()
+                .sortedByDescending { it.second }
+        }
     }
 
-    val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
+    val totalMonthlyExpense: Double by remember {
+        derivedStateOf { expenseByCategory.sumOf { it.second } }
+    }
 
     // Calcolo Bilancio Mensile (Range Selezionato)
-    val monthlyBalances = remember(transactions, reportStartMonth, reportEndMonth) {
-        val balances = mutableListOf<Pair<YearMonth, Double>>()
-        var current = reportStartMonth
-        while (!current.isAfter(reportEndMonth)) {
-            val monthlyTransactions = transactions.filter { transaction ->
-                try {
-                    YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
-                } catch (e: Exception) {
-                    false
+    val monthlyBalances: List<Pair<YearMonth, Double>> by remember(transactions, reportStartMonth, reportEndMonth) {
+        derivedStateOf {
+            val balances = mutableListOf<Pair<YearMonth, Double>>()
+            var current = reportStartMonth
+            while (!current.isAfter(reportEndMonth)) {
+                val monthlyTransactions = transactions.filter { transaction ->
+                    try {
+                        YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
+                    } catch (e: Exception) {
+                        false
+                    }
                 }
+                val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+                val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+                balances.add(current to (income - expense))
+                current = current.plusMonths(1)
             }
-            val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-            val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-            balances.add(current to (income - expense))
-            current = current.plusMonths(1)
+            balances
         }
-        balances
     }
 
     val scrollState = rememberScrollState()
@@ -403,7 +412,8 @@ fun ReportScreen(
                     modifier = Modifier.fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    expenseByCategory.forEachIndexed { index, (categoryId, amount) ->
+                    expenseByCategory.forEachIndexed { index, pair ->
+                        val (categoryId, amount) = pair
                         AnimatedVisibility(
                             visibleState = visibleState,
                             enter = fadeIn(animationSpec = tween(durationMillis = 500, delayMillis = index * 50)) +
