@@ -1,5 +1,8 @@
 package com.expense.management.utils
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +55,7 @@ import java.util.Locale
 
 // --- COMPONENTI UI CONDIVISI ---
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun TransactionItem(
     transaction: TransactionEntity,
@@ -62,6 +66,8 @@ fun TransactionItem(
     onDelete: (String) -> Unit,
     onEdit: (String) -> Unit,
     locale: Locale = Locale.getDefault(),
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
@@ -109,6 +115,16 @@ fun TransactionItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
+            .then(
+                if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                    with(sharedTransitionScope) {
+                        Modifier.sharedElement(
+                            rememberSharedContentState(key = "transaction_${transaction.id}"),
+                            animatedVisibilityScope = animatedVisibilityScope
+                        )
+                    }
+                } else Modifier
+            )
             .clickable { onEdit(transaction.id) },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),

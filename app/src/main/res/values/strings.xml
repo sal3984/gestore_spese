@@ -258,4 +258,8 @@
     <string name="delete_card_title">Delete Card</string>
     <string name="delete_card_message">Are you sure you want to delete the card \"%1$s\"?</string>
     <string name="select_credit_card">Select Credit Card</string>
+    <string name="basic_details_label">Basic Details</string>
+    <string name="category_selection_label">Category Selection</string>
+    <string name="payment_method_label">Payment Method</string>
+    <string name="use_credit_card_label">Use Credit Card</string>
 </resources>

@@ -1,6 +1,9 @@
 package com.expense.management.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -89,7 +92,7 @@ data class TransactionToDelete(
     val isInstallment: Boolean,
 )
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun DashboardScreen(
     transactions: List<TransactionEntity>,
@@ -103,6 +106,8 @@ fun DashboardScreen(
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
     creditCards: List<CreditCardEntity> = emptyList(),
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
@@ -284,8 +289,10 @@ fun DashboardScreen(
                 ) {
                     // Card Entrate/Uscite
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -530,12 +537,14 @@ fun DashboardScreen(
                     ) {
                         SwipeToDismissBox(
                             state = dismissState,
-                            modifier = Modifier.padding(vertical = 1.dp),
+                            modifier = Modifier
+                                .padding(vertical = 4.dp, horizontal = 16.dp)
+                                .clip(RoundedCornerShape(16.dp)),
                             enableDismissFromStartToEnd = false,
                             enableDismissFromEndToStart = true,
                             backgroundContent = {
                                 val color = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
+                                    SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
                                     else -> Color.Transparent
                                 }
                                 Box(
@@ -553,7 +562,12 @@ fun DashboardScreen(
                                 }
                             },
                             content = {
-                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    shape = RoundedCornerShape(16.dp),
+                                    tonalElevation = 2.dp,
+                                    shadowElevation = 1.dp
+                                ) {
                                     TransactionItem(
                                         transaction = t,
                                         categories = categories,
@@ -563,6 +577,8 @@ fun DashboardScreen(
                                         onDelete = { /* Gestito da SwipeToDismissBox */ },
                                         onEdit = onEdit,
                                         locale = locale,
+                                        sharedTransitionScope = sharedTransitionScope,
+                                        animatedVisibilityScope = animatedVisibilityScope,
                                     )
                                 }
                             },
@@ -588,9 +604,11 @@ fun CreditCardItem(
     locale: Locale = Locale.getDefault(),
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f)
+        ),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {

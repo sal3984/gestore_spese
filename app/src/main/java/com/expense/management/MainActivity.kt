@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -421,181 +422,187 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                     .padding(innerPadding)
                     .fillMaxSize(),
             ) {
-                NavHost(navController, startDestination = "dashboard") {
-                    composable(
-                        "dashboard",
-                        enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) },
-                    ) {
-                        DashboardScreen(
-                            transactions = allTransactions,
-                            categories = allCategories,
-                            currencySymbol = currentCurrency,
-                            dateFormat = currentDateFormat,
-                            earliestMonth = earliestMonth,
-                            currentDashboardMonth = currentDashboardMonth,
-                            onMonthChange = viewModel::updateDashboardMonth,
-                            onDelete = { transactionId, deleteType ->
-                                viewModel.deleteTransaction(transactionId, deleteType)
-                            },
-                            onEdit = { transactionId ->
-                                navController.navigate("add_transaction/$transactionId")
-                            },
-                            isAmountHidden = isAmountHidden,
-                            creditCards = allCreditCards,
-                        )
-                    }
-
-                    composable(
-                        "report",
-                        enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) },
-                    ) {
-                        ReportScreen(
-                            transactions = allTransactions,
-                            categories = allCategories,
-                            currencySymbol = currentCurrency,
-                            dateFormat = currentDateFormat,
-                            isAmountHidden = isAmountHidden,
-                        )
-                    }
-
-                    composable(
-                        "categories",
-                        enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) },
-                    ) {
-                        CategoryScreen(
-                            categories = allCategories,
-                            onAddCategory = viewModel::addCategory,
-                            onUpdateCategory = viewModel::updateCategory,
-                            onDeleteCategory = viewModel::removeCategory,
-                        )
-                    }
-
-                    composable(
-                        "data_management",
-                        enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) },
-                    ) {
-                        DataManagementScreen(
-                            onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
-                            onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
-                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
-                        )
-                    }
-
-                    composable(
-                        "security",
-                        enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) },
-                    ) {
-                        securityScreen(
-                            isAmountHidden = isAmountHidden,
-                            isBiometricEnabled = isBiometricEnabled,
-                            onAmountHiddenChange = viewModel::updateIsAmountHidden,
-                            onBiometricEnabledChange = { isEnabled ->
-                                if (isEnabled) {
-                                    BiometricUtils.authenticateUser(
-                                        context,
-                                        onSuccess = { viewModel.updateBiometricEnabled(true) },
-                                        onError = { },
-                                    )
-                                } else {
-                                    viewModel.updateBiometricEnabled(false)
-                                }
-                            },
-                        )
-                    }
-
-                    composable(
-                        "settings",
-                        enterTransition = { fadeIn(animationSpec = tween(300)) },
-                        exitTransition = { fadeOut(animationSpec = tween(300)) },
-                    ) {
-                        settingsScreen(
-                            currentCurrency = currentCurrency,
-                            currentDateFormat = currentDateFormat,
-                            csvExportColumns = csvExportColumns,
-                            hasTransactions = hasTransactions,
-                            onCurrencyChange = viewModel::updateCurrency,
-                            onDateFormatChange = viewModel::updateDateFormat,
-                            onCcPaymentModeChange = viewModel::updateCcPaymentMode,
-                            onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
-
-                        )
-                    }
-
-                    composable(
-                        route = "add_transaction/{transactionId}?isCreditCard={isCreditCard}",
-                        arguments =
-                        listOf(
-                            navArgument("transactionId") {
-                                type = NavType.StringType
-                                defaultValue = "0"
-                            },
-                            navArgument("isCreditCard") {
-                                type = NavType.BoolType
-                                defaultValue = false
-                            },
-                        ),
-                        enterTransition = {
-                            slideIntoContainer(
-                                AnimatedContentTransitionScope.SlideDirection.Up,
-                                animationSpec = tween(300),
+                SharedTransitionLayout {
+                    NavHost(navController, startDestination = "dashboard") {
+                        composable(
+                            "dashboard",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            DashboardScreen(
+                                transactions = allTransactions,
+                                categories = allCategories,
+                                currencySymbol = currentCurrency,
+                                dateFormat = currentDateFormat,
+                                earliestMonth = earliestMonth,
+                                currentDashboardMonth = currentDashboardMonth,
+                                onMonthChange = viewModel::updateDashboardMonth,
+                                onDelete = { transactionId, deleteType ->
+                                    viewModel.deleteTransaction(transactionId, deleteType)
+                                },
+                                onEdit = { transactionId ->
+                                    navController.navigate("add_transaction/$transactionId")
+                                },
+                                isAmountHidden = isAmountHidden,
+                                creditCards = allCreditCards,
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                                animatedVisibilityScope = this@composable,
                             )
-                        },
-                        exitTransition = {
-                            slideOutOfContainer(
-                                AnimatedContentTransitionScope.SlideDirection.Down,
-                                animationSpec = tween(300),
-                            )
-                        },
-                    ) { backStackEntry ->
-                        val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
-                        val isCreditCardArg = backStackEntry.arguments?.getBoolean("isCreditCard") ?: false
-
-                        var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
-                        var isLoading by remember { mutableStateOf(transactionId != "0") }
-
-                        LaunchedEffect(transactionId) {
-                            if (transactionId != "0") {
-                                transactionToEdit = viewModel.getTransactionById(transactionId)
-                                isLoading = false
-                            } else {
-                                isLoading = false
-                            }
                         }
 
-                        if (isLoading && transactionId != "0") {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                CircularProgressIndicator()
-                            }
-                        } else {
-                            AddTransactionScreen(
+                        composable(
+                            "report",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            ReportScreen(
+                                transactions = allTransactions,
+                                categories = allCategories,
                                 currencySymbol = currentCurrency,
-                                ccPaymentMode = currentCcPaymentMode,
-                                suggestions = suggestions,
                                 dateFormat = currentDateFormat,
-                                onSave = { transaction ->
-                                    viewModel.saveTransaction(transaction)
-                                },
-                                onDelete = { id, deleteType ->
-                                    viewModel.deleteTransaction(id, deleteType)
-                                    navController.popBackStack()
-                                },
-                                transactionToEdit = transactionToEdit,
-                                onBack = { navController.popBackStack() },
-                                availableCategories = allCategories,
-                                onDescriptionChange = { query ->
-                                    viewModel.searchDescriptionSuggestions(query)
-                                },
-                                onConvertAmount = { from, to, amount ->
-                                    viewModel.updateCurrencyRate(amount, from, to)
-                                },
-                                isCC = isCreditCardArg,
-                                availableCreditCards = allCreditCards,
+                                isAmountHidden = isAmountHidden,
                             )
+                        }
+
+                        composable(
+                            "categories",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            CategoryScreen(
+                                categories = allCategories,
+                                onAddCategory = viewModel::addCategory,
+                                onUpdateCategory = viewModel::updateCategory,
+                                onDeleteCategory = viewModel::removeCategory,
+                            )
+                        }
+
+                        composable(
+                            "data_management",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            DataManagementScreen(
+                                onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
+                                onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
+                                onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
+                            )
+                        }
+
+                        composable(
+                            "security",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            securityScreen(
+                                isAmountHidden = isAmountHidden,
+                                isBiometricEnabled = isBiometricEnabled,
+                                onAmountHiddenChange = viewModel::updateIsAmountHidden,
+                                onBiometricEnabledChange = { isEnabled ->
+                                    if (isEnabled) {
+                                        BiometricUtils.authenticateUser(
+                                            context,
+                                            onSuccess = { viewModel.updateBiometricEnabled(true) },
+                                            onError = { },
+                                        )
+                                    } else {
+                                        viewModel.updateBiometricEnabled(false)
+                                    }
+                                },
+                            )
+                        }
+
+                        composable(
+                            "settings",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            settingsScreen(
+                                currentCurrency = currentCurrency,
+                                currentDateFormat = currentDateFormat,
+                                csvExportColumns = csvExportColumns,
+                                hasTransactions = hasTransactions,
+                                onCurrencyChange = viewModel::updateCurrency,
+                                onDateFormatChange = viewModel::updateDateFormat,
+                                onCcPaymentModeChange = viewModel::updateCcPaymentMode,
+                                onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
+
+                                )
+                        }
+
+                        composable(
+                            route = "add_transaction/{transactionId}?isCreditCard={isCreditCard}",
+                            arguments =
+                            listOf(
+                                navArgument("transactionId") {
+                                    type = NavType.StringType
+                                    defaultValue = "0"
+                                },
+                                navArgument("isCreditCard") {
+                                    type = NavType.BoolType
+                                    defaultValue = false
+                                },
+                            ),
+                            enterTransition = {
+                                slideIntoContainer(
+                                    AnimatedContentTransitionScope.SlideDirection.Up,
+                                    animationSpec = tween(300),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                    AnimatedContentTransitionScope.SlideDirection.Down,
+                                    animationSpec = tween(300),
+                                )
+                            },
+                        ) { backStackEntry ->
+                            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
+                            val isCreditCardArg = backStackEntry.arguments?.getBoolean("isCreditCard") ?: false
+
+                            var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
+                            var isLoading by remember { mutableStateOf(transactionId != "0") }
+
+                            LaunchedEffect(transactionId) {
+                                if (transactionId != "0") {
+                                    transactionToEdit = viewModel.getTransactionById(transactionId)
+                                    isLoading = false
+                                } else {
+                                    isLoading = false
+                                }
+                            }
+
+                            if (isLoading && transactionId != "0") {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
+                                AddTransactionScreen(
+                                    currencySymbol = currentCurrency,
+                                    ccPaymentMode = currentCcPaymentMode,
+                                    suggestions = suggestions,
+                                    dateFormat = currentDateFormat,
+                                    onSave = { transaction ->
+                                        viewModel.saveTransaction(transaction)
+                                    },
+                                    onDelete = { id, deleteType ->
+                                        viewModel.deleteTransaction(id, deleteType)
+                                        navController.popBackStack()
+                                    },
+                                    transactionToEdit = transactionToEdit,
+                                    onBack = { navController.popBackStack() },
+                                    availableCategories = allCategories,
+                                    onDescriptionChange = { query ->
+                                        viewModel.searchDescriptionSuggestions(query)
+                                    },
+                                    onConvertAmount = { from, to, amount ->
+                                        viewModel.updateCurrencyRate(amount, from, to)
+                                    },
+                                    isCC = isCreditCardArg,
+                                    availableCreditCards = allCreditCards,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = this@composable,
+                                )
+                            }
                         }
                     }
                 }

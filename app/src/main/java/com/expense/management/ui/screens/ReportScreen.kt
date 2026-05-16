@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
@@ -46,18 +44,18 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -121,6 +119,8 @@ fun ReportScreen(
 
     // --- STATO PER I DETTAGLI DELLE TRANSAZIONI PER CATEGORIA ---
     var selectedCategoryIdForDetails by remember { mutableStateOf<String?>(null) }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(reportStartMonth, reportEndMonth) {
         selectedReportMonth = when {
@@ -484,32 +484,33 @@ fun ReportScreen(
             // Bottom padding for FAB or Nav
             Spacer(modifier = Modifier.height(80.dp))
         }
-    }
 
-    // --- Dettaglio Transazioni per Categoria ---
-    AnimatedVisibility(
-        visible = selectedCategoryIdForDetails != null,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-    ) {
-        selectedCategoryIdForDetails?.let { categoryId ->
-            val category = categories.firstOrNull { it.id == categoryId }
-            val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
-                transactions.filter {
-                    it.type == TransactionType.EXPENSE &&
-                        YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow &&
-                        it.categoryId == categoryId
-                }.sortedByDescending { parseDateSafe(it.date, dateFormat) }
+        // --- Dettaglio Transazioni per Categoria (BottomSheet) ---
+        if (selectedCategoryIdForDetails != null) {
+            ModalBottomSheet(
+                onDismissRequest = { selectedCategoryIdForDetails = null },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surface,
+                dragHandle = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = true) }, // Custom subtle handle
+            ) {
+                val categoryId = selectedCategoryIdForDetails!!
+                val category = categories.firstOrNull { it.id == categoryId }
+                val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
+                    transactions.filter {
+                        it.type == TransactionType.EXPENSE &&
+                            YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow &&
+                            it.categoryId == categoryId
+                    }.sortedByDescending { parseDateSafe(it.date, dateFormat) }
+                }
+
+                CategoryTransactionsBottomSheetContent(
+                    transactionsForCategory = transactionsForSelectedCategory,
+                    category = category,
+                    currencySymbol = currencySymbol,
+                    isAmountHidden = isAmountHidden,
+                    dateFormat = dateFormat,
+                )
             }
-
-            CategoryTransactionsDetail(
-                transactionsForCategory = transactionsForSelectedCategory,
-                category = category,
-                currencySymbol = currencySymbol,
-                isAmountHidden = isAmountHidden,
-                dateFormat = dateFormat,
-                onDismiss = { selectedCategoryIdForDetails = null },
-            )
         }
     }
 }
@@ -758,67 +759,61 @@ fun MonthlyBarChart(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryTransactionsDetail(
+fun CategoryTransactionsBottomSheetContent(
     transactionsForCategory: List<TransactionEntity>,
     category: CategoryEntity?,
     currencySymbol: String,
     isAmountHidden: Boolean,
     dateFormat: String,
-    onDismiss: () -> Unit,
 ) {
     val locale = ComposeLocale.current.platformLocale
     val categoryName = category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.transactions_for_category, categoryName)) },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-            )
-        },
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-    ) { paddingValues ->
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp) // Space for navigation bar
+    ) {
+        Text(
+            text = stringResource(R.string.transactions_for_category, categoryName),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(16.dp)
+        )
+
         if (transactionsForCategory.isEmpty()) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.PieChart,
                     contentDescription = null,
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.surfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.no_transactions_for_category, categoryName),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(transactionsForCategory) { transaction ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
                             modifier = Modifier

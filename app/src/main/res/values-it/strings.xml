@@ -258,4 +258,8 @@
     <string name="recurrence_occurrences_hint">Quante volte vuoi ripetere questo movimento?</string>
     <string name="delete_recurrence_message">Questo movimento è ricorrente. L\'eliminazione rimuoverà tutte le occorrenze future del gruppo. Continuare?</string>
 
+    <string name="basic_details_label">Dettagli Base</string>
+    <string name="category_selection_label">Selezione Categoria</string>
+    <string name="payment_method_label">Metodo di Pagamento</string>
+    <string name="use_credit_card_label">Usa Carta di Credito</string>
 </resources>

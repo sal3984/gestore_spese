@@ -1,6 +1,9 @@
 package com.expense.management.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -100,7 +103,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun AddTransactionScreen(
     transactionToEdit: TransactionEntity?,
@@ -116,6 +119,8 @@ fun AddTransactionScreen(
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
     isCC: Boolean = false,
     availableCreditCards: List<CreditCardEntity> = emptyList(),
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val locale = ComposeLocale.current.platformLocale
@@ -649,8 +654,28 @@ fun AddTransactionScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (sharedTransitionScope != null && animatedVisibilityScope != null && transactionToEdit != null) {
+                            with(sharedTransitionScope) {
+                                Modifier.sharedElement(
+                                    rememberSharedContentState(key = "transaction_${transactionToEdit.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
+                            }
+                        } else Modifier
+                    )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.basic_details_label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
                     OutlinedTextField(
                         value = dateStr,
                         onValueChange = { dateStr = it },
@@ -823,52 +848,60 @@ fun AddTransactionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                stringResource(R.string.category_label),
+                stringResource(R.string.category_selection_label),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 4.dp, bottom = 8.dp),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                if (currentTypeCategories.isEmpty()) {
-                    Text(stringResource(R.string.no_categories_error), modifier = Modifier.padding(8.dp))
-                } else {
-                    currentTypeCategories.forEach { category ->
-                        val isSelected = selectedCategory == category.id
-                        val color = if (type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (currentTypeCategories.isEmpty()) {
+                        Text(stringResource(R.string.no_categories_error), modifier = Modifier.padding(8.dp))
+                    } else {
+                        currentTypeCategories.forEach { category ->
+                            val isSelected = selectedCategory == category.id
+                            val color = if (type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { selectedCategory = category.id },
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isSelected) color else MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    ),
-                                contentAlignment = Alignment.Center,
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable { selectedCategory = category.id },
                             ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isSelected) color else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        ),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = category.icon,
+                                        fontSize = 28.sp,
+                                    )
+                                }
                                 Text(
-                                    text = category.icon,
-                                    fontSize = 28.sp,
+                                    text = category.label.split(" ").first(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 6.dp),
                                 )
                             }
-                            Text(
-                                text = category.label.split(" ").first(),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
                         }
                     }
                 }
@@ -887,9 +920,10 @@ fun AddTransactionScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = stringResource(R.string.recurrence_label),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp),
+                            modifier = Modifier.padding(bottom = 12.dp),
                         )
 
                         OutlinedTextField(
@@ -948,7 +982,14 @@ fun AddTransactionScreen(
                     elevation = CardDefaults.cardElevation(2.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.payment_method_label),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
                         // Selettore Carta di Credito (Se ce ne sono)
                         if (availableCreditCards.isNotEmpty()) {
                             OutlinedTextField(
@@ -987,7 +1028,7 @@ fun AddTransactionScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                Text(stringResource(R.string.use_credit_card_label), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                 Text(
                                     text = stringResource(R.string.credit_card_payment_hint),
                                     style = MaterialTheme.typography.bodySmall,
@@ -997,34 +1038,40 @@ fun AddTransactionScreen(
                         }
 
                         AnimatedVisibility(visible = !isEditing && !isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .then(
-                                        if (!isEditing) {
-                                            Modifier.clickable {
-                                                isInstallment = !isInstallment
-                                            }
-                                        } else {
-                                            Modifier
-                                        },
-                                    )
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Checkbox(
-                                    checked = isInstallment,
-                                    onCheckedChange = { isInstallment = it },
-                                    enabled = !isEditing,
+                            Column {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                                    Text(
-                                        text = stringResource(R.string.installment_payment_hint),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (!isEditing) {
+                                                Modifier.clickable {
+                                                    isInstallment = !isInstallment
+                                                }
+                                            } else {
+                                                Modifier
+                                            },
+                                        )
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = isInstallment,
+                                        onCheckedChange = { isInstallment = it },
+                                        enabled = !isEditing,
                                     )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                        Text(
+                                            text = stringResource(R.string.installment_payment_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
