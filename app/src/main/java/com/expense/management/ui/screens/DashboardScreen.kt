@@ -290,7 +290,7 @@ fun DashboardScreen(
                     // Card Entrate/Uscite
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
                         shape = RoundedCornerShape(24.dp),
@@ -566,7 +566,7 @@ fun DashboardScreen(
                                     color = MaterialTheme.colorScheme.surfaceContainerLow,
                                     shape = RoundedCornerShape(16.dp),
                                     tonalElevation = 2.dp,
-                                    shadowElevation = 1.dp
+                                    shadowElevation = 1.dp,
                                 ) {
                                     TransactionItem(
                                         transaction = t,
@@ -605,7 +605,7 @@ fun CreditCardItem(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),

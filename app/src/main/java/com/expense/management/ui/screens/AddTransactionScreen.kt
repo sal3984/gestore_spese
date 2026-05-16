@@ -661,11 +661,13 @@ fun AddTransactionScreen(
                             with(sharedTransitionScope) {
                                 Modifier.sharedElement(
                                     rememberSharedContentState(key = "transaction_${transactionToEdit.id}"),
-                                    animatedVisibilityScope = animatedVisibilityScope
+                                    animatedVisibilityScope = animatedVisibilityScope,
                                 )
                             }
-                        } else Modifier
-                    )
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -673,7 +675,7 @@ fun AddTransactionScreen(
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = 12.dp),
                     )
 
                     OutlinedTextField(
@@ -860,7 +862,7 @@ fun AddTransactionScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
                     modifier = Modifier
@@ -988,7 +990,7 @@ fun AddTransactionScreen(
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 12.dp)
+                            modifier = Modifier.padding(bottom = 12.dp),
                         )
                         // Selettore Carta di Credito (Se ce ne sono)
                         if (availableCreditCards.isNotEmpty()) {
@@ -1041,7 +1043,7 @@ fun AddTransactionScreen(
                             Column {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 )
                                 Row(
                                     modifier = Modifier

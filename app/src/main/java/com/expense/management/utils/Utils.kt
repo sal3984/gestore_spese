@@ -120,10 +120,12 @@ fun TransactionItem(
                     with(sharedTransitionScope) {
                         Modifier.sharedElement(
                             rememberSharedContentState(key = "transaction_${transaction.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope
+                            animatedVisibilityScope = animatedVisibilityScope,
                         )
                     }
-                } else Modifier
+                } else {
+                    Modifier
+                },
             )
             .clickable { onEdit(transaction.id) },
         shape = RoundedCornerShape(20.dp),

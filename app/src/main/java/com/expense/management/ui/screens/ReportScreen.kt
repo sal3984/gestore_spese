@@ -491,7 +491,7 @@ fun ReportScreen(
                 onDismissRequest = { selectedCategoryIdForDetails = null },
                 sheetState = sheetState,
                 containerColor = MaterialTheme.colorScheme.surface,
-                dragHandle = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = true) }, // Custom subtle handle
+                dragHandle = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = true) },
             ) {
                 val categoryId = selectedCategoryIdForDetails!!
                 val category = categories.firstOrNull { it.id == categoryId }
@@ -773,13 +773,13 @@ fun CategoryTransactionsBottomSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 32.dp) // Space for navigation bar
+            .padding(bottom = 32.dp),
     ) {
         Text(
             text = stringResource(R.string.transactions_for_category, categoryName),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         )
 
         if (transactionsForCategory.isEmpty()) {
@@ -813,7 +813,7 @@ fun CategoryTransactionsBottomSheetContent(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
                     ) {
                         Row(
                             modifier = Modifier

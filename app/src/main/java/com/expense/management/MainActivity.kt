@@ -527,7 +527,7 @@ fun mainApp(viewModel: ExpenseViewModel = viewModel()) {
                                 onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                                 onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
 
-                                )
+                            )
                         }
 
                         composable(
