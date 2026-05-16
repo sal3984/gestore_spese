@@ -181,7 +181,7 @@ object BackupUtils {
                                 effectiveDate = normalizeDate(t.effectiveDate),
                                 // Forziamo il default se il campo è null (accade con i vecchi backup v7)
                                 recurrenceType = (t.recurrenceType as com.expense.management.data.RecurrenceType?) ?: com.expense.management.data.RecurrenceType.NONE,
-                                groupId = t.groupId ?: if (t.installmentNumber != null) java.util.UUID.randomUUID().toString() else null
+                                groupId = t.groupId ?: if (t.installmentNumber != null) java.util.UUID.randomUUID().toString() else null,
                             )
                         }
                     val normalizedBackupData = backupData.copy(transactions = normalizedTransactions)
@@ -205,7 +205,7 @@ object BackupUtils {
                         t.copy(
                             date = normalizeDate(t.date),
                             effectiveDate = normalizeDate(t.effectiveDate),
-                            recurrenceType = (t.recurrenceType as com.expense.management.data.RecurrenceType?) ?: com.expense.management.data.RecurrenceType.NONE
+                            recurrenceType = (t.recurrenceType as com.expense.management.data.RecurrenceType?) ?: com.expense.management.data.RecurrenceType.NONE,
                         )
                     }
 

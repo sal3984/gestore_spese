@@ -61,6 +61,7 @@ fun TransactionItem(
     isAmountHidden: Boolean,
     onDelete: (String) -> Unit,
     onEdit: (String) -> Unit,
+    locale: Locale = Locale.getDefault(),
 ) {
     val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
@@ -192,17 +193,17 @@ fun TransactionItem(
                     if (transaction.recurrenceType != RecurrenceType.NONE) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(top = 4.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Repeat,
                                 contentDescription = null,
                                 size = 14.dp,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = when(transaction.recurrenceType) {
+                                text = when (transaction.recurrenceType) {
                                     RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
                                     RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
                                     RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
@@ -211,7 +212,7 @@ fun TransactionItem(
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
@@ -223,7 +224,7 @@ fun TransactionItem(
                 val amountText = if (isAmountHidden) {
                     "*** $currencySymbol**"
                 } else {
-                    "${if (isIncome) "+" else "-"} $currencySymbol${String.format(Locale.getDefault(), "%.2f", transaction.amount)}"
+                    "${if (isIncome) "+" else "-"} $currencySymbol${String.format(locale, "%.2f", transaction.amount)}"
                 }
 
                 Text(
@@ -273,6 +274,6 @@ private fun Icon(imageVector: ImageVector, contentDescription: String?, size: Dp
         imageVector = imageVector,
         contentDescription = contentDescription,
         modifier = Modifier.size(size),
-        tint = tint
+        tint = tint,
     )
 }

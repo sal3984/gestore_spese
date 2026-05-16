@@ -41,7 +41,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -74,7 +73,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -100,6 +98,7 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.floor
+import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +118,7 @@ fun AddTransactionScreen(
     availableCreditCards: List<CreditCardEntity> = emptyList(),
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
-    val context = LocalContext.current
+    val locale = ComposeLocale.current.platformLocale
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -167,7 +166,7 @@ fun AddTransactionScreen(
 
     LaunchedEffect(isEditing, transactionToEdit, isCreditCard, ccPaymentMode, creditCardId) {
         if (isEditing) {
-            isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1
+            isInstallment = (transactionToEdit.totalInstallments ?: 1) > 1
         } else {
             if (isCreditCard) {
                 // Se è una carta configurata, usiamo il suo tipo per determinare se è rateale
@@ -248,7 +247,7 @@ fun AddTransactionScreen(
 
         if (transactionMonth.isBefore(limitMonth)) {
             scope.launch {
-                val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
                 snackbarHostState.showSnackbar(String.format(errorPastLimitDate, formattedMonth), "OK")
             }
             return
@@ -262,12 +261,10 @@ fun AddTransactionScreen(
         val dateToSave = transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         if (isInstallment && transactionToEdit == null) {
-            val totalAmount = amount
-            val totalOriginalAmount = originalAmount
             val installmentAmountFromField = installmentAmountText.toDoubleOrNull() ?: 0.0
 
             val finalInstallmentsCount = if (calculationMode == "amount" && installmentAmountFromField > 0) {
-                ceil(totalAmount / installmentAmountFromField).toInt()
+                ceil(amount / installmentAmountFromField).toInt()
             } else {
                 installmentsCount
             }
@@ -294,28 +291,28 @@ fun AddTransactionScreen(
 
                 val currentInstallmentAmount: Double
                 val currentOriginalInstallmentAmount: Double
-                val originalRatio = if (totalAmount > 0) totalOriginalAmount / totalAmount else 1.0
+                val originalRatio = if (amount > 0) originalAmount / amount else 1.0
 
                 if (calculationMode == "amount" && installmentAmountFromField > 0) {
                     currentInstallmentAmount = if (i < finalInstallmentsCount - 1) {
                         installmentAmountFromField
                     } else {
-                        totalAmount - (installmentAmountFromField * (finalInstallmentsCount - 1))
+                        amount - (installmentAmountFromField * (finalInstallmentsCount - 1))
                     }
                     currentOriginalInstallmentAmount = currentInstallmentAmount * originalRatio
                 } else {
-                    val regularInstallment = floor((totalAmount / finalInstallmentsCount) * 100) / 100
+                    val regularInstallment = floor((amount / finalInstallmentsCount) * 100) / 100
                     currentInstallmentAmount = if (i < finalInstallmentsCount - 1) {
                         regularInstallment
                     } else {
-                        totalAmount - (regularInstallment * (finalInstallmentsCount - 1))
+                        amount - (regularInstallment * (finalInstallmentsCount - 1))
                     }
 
-                    val regularOriginalInstallment = floor((totalOriginalAmount / finalInstallmentsCount) * 100) / 100
+                    val regularOriginalInstallment = floor((originalAmount / finalInstallmentsCount) * 100) / 100
                     currentOriginalInstallmentAmount = if (i < finalInstallmentsCount - 1) {
                         regularOriginalInstallment
                     } else {
-                        totalOriginalAmount - (regularOriginalInstallment * (finalInstallmentsCount - 1))
+                        originalAmount - (regularOriginalInstallment * (finalInstallmentsCount - 1))
                     }
                 }
 
@@ -367,7 +364,7 @@ fun AddTransactionScreen(
                         creditCardId = if (isCreditCard) creditCardId else null,
                         recurrenceType = recurrenceType,
                         recurrenceLimit = recurrenceLimit,
-                    )
+                    ),
                 )
 
                 currentOccurrenceDate = when (recurrenceType) {
@@ -384,47 +381,59 @@ fun AddTransactionScreen(
                     scope.launch {
                         snackbarHostState.showSnackbar(
                             message = "Nessuna carta selezionata. Crea o seleziona una carta di credito.",
-                            withDismissAction = true
+                            withDismissAction = true,
                         )
                     }
                     return
                 }
             }
 
-            val effectiveDate = if (isCreditCard && selectedCard != null) {
+            val settlementDate = if (isCreditCard && selectedCard != null) {
                 DateUtils.calculateEffectiveDate(transactionDate, selectedCard)
             } else {
                 transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
             }
 
-            val commonGroupId = if (isCreditCard && !isInstallment && type == TransactionType.EXPENSE && transactionToEdit == null) {
+            // Per le entrate (ricariche) con carta, l'effetto sulla liquidità è immediato (dateToSave),
+            // ma il debito sulla carta sarà saldato alla data di regolamento (settlementDate).
+            // Per le uscite con carta, l'effetto sulla liquidità è posticipato (settlementDate).
+            val effectiveDate = if (isCreditCard && type == TransactionType.INCOME) {
+                dateToSave
+            } else {
+                settlementDate
+            }
+
+            val commonGroupId = if (isCreditCard && !isInstallment && transactionToEdit == null) {
                 UUID.randomUUID().toString()
             } else {
                 transactionToEdit?.groupId
             }
 
-            // Se è una carta di credito a saldo, registriamo anche un'entrata tecnica nel mese corrente
-            if (isCreditCard && !isInstallment && type == TransactionType.EXPENSE && transactionToEdit == null) {
-                val incomeCategoryId = availableCategories.find { it.id == "credit_card_adjustment" }?.id
-                    ?: availableCategories.firstOrNull { it.type == TransactionType.INCOME }?.id
-                    ?: "salary"
+            // Gestione doppia registrazione per Carte di Credito (non a rate)
+            if (isCreditCard && !isInstallment && transactionToEdit == null) {
+                if (type == TransactionType.INCOME) {
+                    // RICARICA con CC: Registriamo un'uscita tecnica alla data di saldo della carta (settlementDate)
+                    val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
+                        ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
+                        ?: "other"
 
-                onSave(
-                    TransactionEntity(
-                        id = UUID.randomUUID().toString(),
-                        date = dateToSave,
-                        description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()}",
-                        amount = amount,
-                        categoryId = incomeCategoryId,
-                        type = TransactionType.INCOME,
-                        isCreditCard = false,
-                        originalAmount = originalAmount,
-                        originalCurrency = originalCurrency,
-                        effectiveDate = dateToSave, // L'entrata è nel mese corrente
-                        creditCardId = null,
-                        groupId = commonGroupId,
+                    onSave(
+                        TransactionEntity(
+                            id = UUID.randomUUID().toString(),
+                            date = dateToSave,
+                            description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()} (Future Payment)",
+                            amount = amount,
+                            categoryId = expenseCategoryId,
+                            type = TransactionType.EXPENSE,
+                            isCreditCard = false,
+                            originalAmount = originalAmount,
+                            originalCurrency = originalCurrency,
+                            effectiveDate = settlementDate,
+                            creditCardId = null,
+                            groupId = commonGroupId,
+                        ),
                     )
-                )
+                }
             }
 
             onSave(
@@ -611,7 +620,7 @@ fun AddTransactionScreen(
                             label = { Text(stringResource(R.string.description)) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+                                .menuAnchor(),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                             shape = RoundedCornerShape(12.dp),
@@ -819,11 +828,11 @@ fun AddTransactionScreen(
                             text = stringResource(R.string.recurrence_label),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 8.dp),
                         )
 
                         OutlinedTextField(
-                            value = when(recurrenceType) {
+                            value = when (recurrenceType) {
                                 RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
                                 RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
                                 RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
@@ -846,7 +855,7 @@ fun AddTransactionScreen(
                                 Text(
                                     text = stringResource(R.string.recurrence_occurrences, recurrenceLimit),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
                                 )
                                 Slider(
                                     value = recurrenceLimit.toFloat(),
@@ -862,7 +871,7 @@ fun AddTransactionScreen(
                                     text = stringResource(R.string.recurrence_occurrences_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
                         }
@@ -871,7 +880,7 @@ fun AddTransactionScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            AnimatedVisibility(visible = type == TransactionType.EXPENSE && isCC) {
+            AnimatedVisibility(visible = isCC) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
@@ -962,7 +971,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            AnimatedVisibility(visible = (isCreditCard || isInstallment) && type == TransactionType.EXPENSE) {
+            AnimatedVisibility(visible = (isCreditCard || isInstallment) && (type == TransactionType.EXPENSE || type == TransactionType.INCOME)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1027,7 +1036,7 @@ fun AddTransactionScreen(
                             if (amount > 0 && installmentsCount > 0) {
                                 val amountPerInstallment = amount / installmentsCount
                                 Text(
-                                    text = stringResource(R.string.calc_amount_per_installment, String.format(Locale.getDefault(), "%.2f %s", amountPerInstallment, currencySymbol)),
+                                    text = stringResource(R.string.calc_amount_per_installment, String.format(locale, "%.2f %s", amountPerInstallment, currencySymbol)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp, start = 4.dp),
@@ -1238,7 +1247,7 @@ fun AddTransactionScreen(
                 Column {
                     RecurrenceType.entries.forEach { typeEntry ->
                         Text(
-                            text = when(typeEntry) {
+                            text = when (typeEntry) {
                                 RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
                                 RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
                                 RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
