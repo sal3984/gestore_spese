@@ -19,4 +19,23 @@ class TransactionTypeConverter {
             }
         }
     }
+
+    @TypeConverter
+    fun fromRecurrenceType(recurrenceType: RecurrenceType?): String? {
+        return recurrenceType?.value
+    }
+
+    @TypeConverter
+    fun toRecurrenceType(value: String?): RecurrenceType? {
+        return value?.let {
+            when (it) {
+                "none" -> RecurrenceType.NONE
+                "daily" -> RecurrenceType.DAILY
+                "weekly" -> RecurrenceType.WEEKLY
+                "monthly" -> RecurrenceType.MONTHLY
+                "yearly" -> RecurrenceType.YEARLY
+                else -> RecurrenceType.NONE
+            }
+        }
+    }
 }

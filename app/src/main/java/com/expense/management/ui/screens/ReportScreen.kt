@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
@@ -46,18 +44,19 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,9 +81,10 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
-private fun String.capitalizeFirstLetter(): String {
-    return replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+private fun String.capitalizeFirstLetter(locale: java.util.Locale = Locale.getDefault()): String {
+    return replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
 }
 
 private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
@@ -112,6 +112,7 @@ fun ReportScreen(
     dateFormat: String,
     isAmountHidden: Boolean,
 ) {
+    val locale = ComposeLocale.current.platformLocale
     // --- 1. STATO DEL MESE SELEZIONATO ---
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
     var reportStartMonth by remember { mutableStateOf(YearMonth.now().minusMonths(11)) }
@@ -119,6 +120,8 @@ fun ReportScreen(
 
     // --- STATO PER I DETTAGLI DELLE TRANSAZIONI PER CATEGORIA ---
     var selectedCategoryIdForDetails by remember { mutableStateOf<String?>(null) }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(reportStartMonth, reportEndMonth) {
         selectedReportMonth = when {
@@ -130,57 +133,65 @@ fun ReportScreen(
     }
 
     // Calcolo Risparmio Anno Corrente
-    val savings = remember(transactions, reportStartMonth, reportEndMonth) {
-        transactions
-            .filter { transaction ->
-                try {
-                    val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat))
-                    !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
-                } catch (e: Exception) {
-                    false
+    val savings: Double by remember(transactions, reportStartMonth, reportEndMonth) {
+        derivedStateOf {
+            transactions
+                .filter { transaction ->
+                    try {
+                        val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat))
+                        !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
+                    } catch (_: Exception) {
+                        false
+                    }
                 }
-            }
-            .sumOf { if (it.type == TransactionType.INCOME) it.amount else -it.amount }
+                .sumOf { if (it.type == TransactionType.INCOME) it.amount else -it.amount }
+        }
     }
 
     // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
     val monthToShow = selectedReportMonth ?: reportEndMonth
 
-    val expenseByCategory = remember(transactions, monthToShow) {
-        transactions
-            .filter {
-                it.type == TransactionType.EXPENSE && try {
-                    YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow
-                } catch (e: Exception) {
-                    false
+    val expenseByCategory: List<Pair<String, Double>> by remember(transactions, monthToShow) {
+        derivedStateOf {
+            transactions
+                .filter {
+                    it.type == TransactionType.EXPENSE && try {
+                        YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow
+                    } catch (e: Exception) {
+                        false
+                    }
                 }
-            }
-            .groupBy { it.categoryId }
-            .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
-            .toList()
-            .sortedByDescending { it.second }
+                .groupBy { it.categoryId }
+                .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
+                .toList()
+                .sortedByDescending { it.second }
+        }
     }
 
-    val totalMonthlyExpense = expenseByCategory.sumOf { it.second }
+    val totalMonthlyExpense: Double by remember {
+        derivedStateOf { expenseByCategory.sumOf { it.second } }
+    }
 
     // Calcolo Bilancio Mensile (Range Selezionato)
-    val monthlyBalances = remember(transactions, reportStartMonth, reportEndMonth) {
-        val balances = mutableListOf<Pair<YearMonth, Double>>()
-        var current = reportStartMonth
-        while (!current.isAfter(reportEndMonth)) {
-            val monthlyTransactions = transactions.filter { transaction ->
-                try {
-                    YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
-                } catch (e: Exception) {
-                    false
+    val monthlyBalances: List<Pair<YearMonth, Double>> by remember(transactions, reportStartMonth, reportEndMonth) {
+        derivedStateOf {
+            val balances = mutableListOf<Pair<YearMonth, Double>>()
+            var current = reportStartMonth
+            while (!current.isAfter(reportEndMonth)) {
+                val monthlyTransactions = transactions.filter { transaction ->
+                    try {
+                        YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
+                    } catch (e: Exception) {
+                        false
+                    }
                 }
+                val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+                val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+                balances.add(current to (income - expense))
+                current = current.plusMonths(1)
             }
-            val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-            val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-            balances.add(current to (income - expense))
-            current = current.plusMonths(1)
+            balances
         }
-        balances
     }
 
     val scrollState = rememberScrollState()
@@ -229,7 +240,7 @@ fun ReportScreen(
                         color = Color.White.copy(alpha = 0.9f),
                     )
                     Text(
-                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", savings)}",
+                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", savings)}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White,
@@ -359,7 +370,7 @@ fun ReportScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // --- 4. TITOLO DINAMICO ---
-            val monthName = monthToShow.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())).capitalizeFirstLetter()
+            val monthName = monthToShow.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)).capitalizeFirstLetter(locale)
 
             Text(
                 stringResource(R.string.category_detail_current_month, monthName),
@@ -401,7 +412,8 @@ fun ReportScreen(
                     modifier = Modifier.fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    expenseByCategory.forEachIndexed { index, (categoryId, amount) ->
+                    expenseByCategory.forEachIndexed { index, pair ->
+                        val (categoryId, amount) = pair
                         AnimatedVisibility(
                             visibleState = visibleState,
                             enter = fadeIn(animationSpec = tween(durationMillis = 500, delayMillis = index * 50)) +
@@ -446,7 +458,7 @@ fun ReportScreen(
                                             color = MaterialTheme.colorScheme.onSurface,
                                         )
                                         Text(
-                                            text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", amount)}",
+                                            text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", amount)}",
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface,
@@ -467,7 +479,7 @@ fun ReportScreen(
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(
-                                            text = String.format(Locale.getDefault(), "%.0f%%", percentage * 100),
+                                            text = String.format(locale, "%.0f%%", percentage * 100),
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -482,32 +494,33 @@ fun ReportScreen(
             // Bottom padding for FAB or Nav
             Spacer(modifier = Modifier.height(80.dp))
         }
-    }
 
-    // --- Dettaglio Transazioni per Categoria ---
-    AnimatedVisibility(
-        visible = selectedCategoryIdForDetails != null,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-    ) {
-        selectedCategoryIdForDetails?.let { categoryId ->
-            val category = categories.firstOrNull { it.id == categoryId }
-            val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
-                transactions.filter {
-                    it.type == TransactionType.EXPENSE &&
-                        YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow &&
-                        it.categoryId == categoryId
-                }.sortedByDescending { parseDateSafe(it.date, dateFormat) }
+        // --- Dettaglio Transazioni per Categoria (BottomSheet) ---
+        if (selectedCategoryIdForDetails != null) {
+            ModalBottomSheet(
+                onDismissRequest = { selectedCategoryIdForDetails = null },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surface,
+                dragHandle = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = true) },
+            ) {
+                val categoryId = selectedCategoryIdForDetails!!
+                val category = categories.firstOrNull { it.id == categoryId }
+                val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
+                    transactions.filter {
+                        it.type == TransactionType.EXPENSE &&
+                            YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow &&
+                            it.categoryId == categoryId
+                    }.sortedByDescending { parseDateSafe(it.date, dateFormat) }
+                }
+
+                CategoryTransactionsBottomSheetContent(
+                    transactionsForCategory = transactionsForSelectedCategory,
+                    category = category,
+                    currencySymbol = currencySymbol,
+                    isAmountHidden = isAmountHidden,
+                    dateFormat = dateFormat,
+                )
             }
-
-            CategoryTransactionsDetail(
-                transactionsForCategory = transactionsForSelectedCategory,
-                category = category,
-                currencySymbol = currencySymbol,
-                isAmountHidden = isAmountHidden,
-                dateFormat = dateFormat,
-                onDismiss = { selectedCategoryIdForDetails = null },
-            )
         }
     }
 }
@@ -520,13 +533,13 @@ fun MonthSelector(
     label: String,
     modifier: Modifier = Modifier,
 ) {
+    val locale = ComposeLocale.current.platformLocale
     var expanded by remember { mutableStateOf(false) }
     val months = remember {
         (-24..0).map { YearMonth.now().plusMonths(it.toLong()) }.sortedByDescending { it }
     }
 
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp
+    val screenWidth = LocalConfiguration.current.screenWidthDp
     val responsiveFontSize = (screenWidth * 0.032f).sp
 
     ExposedDropdownMenuBox(
@@ -535,7 +548,7 @@ fun MonthSelector(
         modifier = modifier,
     ) {
         OutlinedTextField(
-            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())).capitalizeFirstLetter(),
+            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)).capitalizeFirstLetter(locale),
             onValueChange = { /* Read Only */ },
             readOnly = true,
             maxLines = 1,
@@ -557,8 +570,8 @@ fun MonthSelector(
                     text = {
                         Text(
                             month.format(
-                                DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()),
-                            ).capitalizeFirstLetter(),
+                                DateTimeFormatter.ofPattern("MMMM yyyy", locale),
+                            ).capitalizeFirstLetter(locale),
                             fontSize = responsiveFontSize,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -583,6 +596,7 @@ fun MonthlyBarChart(
     selectedMonth: YearMonth?,
     onMonthSelected: (YearMonth) -> Unit,
 ) {
+    val locale = ComposeLocale.current.platformLocale
     if (data.isEmpty()) return
 
     val maxAbs = data.maxOfOrNull { kotlin.math.abs(it.second) }?.toFloat()?.coerceAtLeast(1f) ?: 1f
@@ -681,7 +695,7 @@ fun MonthlyBarChart(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = month.month.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(),
+                        text = month.month.getDisplayName(TextStyle.NARROW, locale).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
                         fontSize = 11.sp,
@@ -698,20 +712,9 @@ fun MonthlyBarChart(
             val index = data.indexOfFirst { it.first == month }
             if (index >= 0) {
                 val xOffset = (barWidth * index) + (barWidth / 2)
-                // Stima approssimativa della larghezza del tooltip
-                val tooltipWidth = 80.dp
-
-                // Calcola se il tooltip sta per uscire dai bordi
-                val currentX = xOffset
-                val minX = tooltipWidth / 2
-                val maxX = totalWidth - (tooltipWidth / 2)
 
                 // Applica un offset correttivo per mantenerlo nei limiti
-                val extraOffset = when {
-                    index <= 9 -> (-16).dp
-                    index >= 10 -> (-40).dp
-                    else -> 0.dp
-                }
+                val extraOffset = if (index <= 9) (-16).dp else (-40).dp
 
                 Box(
                     modifier = Modifier
@@ -746,12 +749,12 @@ fun MonthlyBarChart(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Text(
-                                        text = month.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
+                                        text = month.month.getDisplayName(TextStyle.SHORT, locale).uppercase(),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
-                                        text = if (isAmountHidden) "*****" else "${String.format(Locale.getDefault(), "%.2f", balance)} $currencySymbol",
+                                        text = if (isAmountHidden) "*****" else "${String.format(locale, "%.2f", balance)} $currencySymbol",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
@@ -766,66 +769,61 @@ fun MonthlyBarChart(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryTransactionsDetail(
+fun CategoryTransactionsBottomSheetContent(
     transactionsForCategory: List<TransactionEntity>,
     category: CategoryEntity?,
     currencySymbol: String,
     isAmountHidden: Boolean,
     dateFormat: String,
-    onDismiss: () -> Unit,
 ) {
+    val locale = ComposeLocale.current.platformLocale
     val categoryName = category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.transactions_for_category, categoryName)) },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-            )
-        },
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-    ) { paddingValues ->
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.transactions_for_category, categoryName),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(16.dp),
+        )
+
         if (transactionsForCategory.isEmpty()) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.PieChart,
                     contentDescription = null,
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.surfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.no_transactions_for_category, categoryName),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(transactionsForCategory) { transaction ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
                         Row(
                             modifier = Modifier
@@ -842,13 +840,13 @@ fun CategoryTransactionsDetail(
                                 )
                                 Text(
                                     text = LocalDate.parse(transaction.date, DateTimeFormatter.ISO_LOCAL_DATE)
-                                        .format(DateTimeFormatter.ofPattern(dateFormat, Locale.getDefault())),
+                                        .format(DateTimeFormatter.ofPattern(dateFormat, locale)),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             Text(
-                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", transaction.amount)}",
+                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", transaction.amount)}",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = if (transaction.type == TransactionType.INCOME) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,

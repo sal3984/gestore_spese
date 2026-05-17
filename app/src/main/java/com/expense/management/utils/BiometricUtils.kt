@@ -16,6 +16,7 @@ object BiometricUtils {
         onError: () -> Unit,
     ) {
         val fragmentActivity = context as? FragmentActivity ?: return
+        if (fragmentActivity.isFinishing || fragmentActivity.isDestroyed) return
         val executor: Executor = ContextCompat.getMainExecutor(context)
 
         val biometricPrompt =

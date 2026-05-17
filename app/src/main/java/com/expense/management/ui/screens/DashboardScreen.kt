@@ -1,6 +1,9 @@
 package com.expense.management.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -75,6 +78,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
 // Enum per il tipo di cancellazione
 enum class DeleteType {
@@ -88,7 +92,7 @@ data class TransactionToDelete(
     val isInstallment: Boolean,
 )
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun DashboardScreen(
     transactions: List<TransactionEntity>,
@@ -102,15 +106,18 @@ fun DashboardScreen(
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
     creditCards: List<CreditCardEntity> = emptyList(),
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val today = YearMonth.now()
-    val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+    val locale = ComposeLocale.current.platformLocale
+    val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
 
     val currentTrans = transactions
         .filter {
             try {
                 YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 false
             }
         }
@@ -233,7 +240,7 @@ fun DashboardScreen(
                         }
 
                         Text(
-                            currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                            currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
@@ -264,7 +271,7 @@ fun DashboardScreen(
                             color = Color.White.copy(alpha = 0.9f),
                         )
                         Text(
-                            text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", netBalance)}",
+                            text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
@@ -282,8 +289,10 @@ fun DashboardScreen(
                 ) {
                     // Card Entrate/Uscite
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -317,7 +326,7 @@ fun DashboardScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
-                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalIncome)}",
+                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalIncome)}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.secondary,
@@ -334,7 +343,7 @@ fun DashboardScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
-                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalExpense)}",
+                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalExpense)}",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.error,
@@ -409,7 +418,7 @@ fun DashboardScreen(
                                             // Filtra per DATA TRANSAZIONE, non data di addebito
                                             val transactionMonth = YearMonth.from(LocalDate.parse(t.date))
                                             transactionMonth == currentDashboardMonth
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             false
                                         }
                                     }
@@ -431,6 +440,7 @@ fun DashboardScreen(
                                 type = card.type,
                                 totalUtilized = totalUtilizedForDisplay,
                                 totalPaid = totalPaidForDisplay,
+                                locale = locale,
                             )
                         }
 
@@ -502,7 +512,7 @@ fun DashboardScreen(
                 }
 
                 stickyHeader {
-                    DateHeader(dateString, dailyTotal, currencySymbol, isAmountHidden)
+                    DateHeader(dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
                 }
 
                 items(transactionsOnDate, key = { it.id }) { t ->
@@ -527,12 +537,14 @@ fun DashboardScreen(
                     ) {
                         SwipeToDismissBox(
                             state = dismissState,
-                            modifier = Modifier.padding(vertical = 1.dp),
+                            modifier = Modifier
+                                .padding(vertical = 4.dp, horizontal = 16.dp)
+                                .clip(RoundedCornerShape(16.dp)),
                             enableDismissFromStartToEnd = false,
                             enableDismissFromEndToStart = true,
                             backgroundContent = {
                                 val color = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
+                                    SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
                                     else -> Color.Transparent
                                 }
                                 Box(
@@ -550,7 +562,12 @@ fun DashboardScreen(
                                 }
                             },
                             content = {
-                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    shape = RoundedCornerShape(16.dp),
+                                    tonalElevation = 2.dp,
+                                    shadowElevation = 1.dp,
+                                ) {
                                     TransactionItem(
                                         transaction = t,
                                         categories = categories,
@@ -559,6 +576,9 @@ fun DashboardScreen(
                                         isAmountHidden = isAmountHidden,
                                         onDelete = { /* Gestito da SwipeToDismissBox */ },
                                         onEdit = onEdit,
+                                        locale = locale,
+                                        sharedTransitionScope = sharedTransitionScope,
+                                        animatedVisibilityScope = animatedVisibilityScope,
                                     )
                                 }
                             },
@@ -581,11 +601,14 @@ fun CreditCardItem(
     type: CardType,
     totalUtilized: Double = 0.0,
     totalPaid: Double = 0.0,
+    locale: Locale = Locale.getDefault(),
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
+        ),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -626,7 +649,7 @@ fun CreditCardItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalUtilized)}",
+                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalUtilized)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -638,7 +661,7 @@ fun CreditCardItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", totalPaid)}",
+                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalPaid)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -658,13 +681,13 @@ fun CreditCardItem(
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    text = if (isAmountHidden) "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.2f", spent)}",
+                    text = if (isAmountHidden) "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(Locale.getDefault(), "%.2f", limit)}",
+                    "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(locale, "%.2f", limit)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -679,10 +702,11 @@ fun DateHeader(
     dailyTotal: Double,
     currencySymbol: String,
     isAmountHidden: Boolean,
+    locale: Locale = Locale.getDefault(),
 ) {
     val date = try {
         LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         LocalDate.now()
     }
 
@@ -692,7 +716,7 @@ fun DateHeader(
     val label = when (date) {
         today -> stringResource(R.string.today)
         yesterday -> stringResource(R.string.yesterday)
-        else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", Locale.getDefault()))
+        else -> date.format(DateTimeFormatter.ofPattern("dd MMMM", locale))
     }
 
     val totalColor = when {
@@ -716,7 +740,7 @@ fun DateHeader(
                 modifier = Modifier.padding(vertical = 8.dp),
             )
             Text(
-                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(Locale.getDefault(), "%.2f", dailyTotal)}",
+                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", dailyTotal)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = totalColor,
                 fontWeight = FontWeight.Bold,

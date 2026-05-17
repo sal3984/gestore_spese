@@ -52,6 +52,19 @@
     <string name="error_invalid_date_format">Invalid date format.</string>
     <string name="error_past_limit_date">Cannot operate on transactions before %1$s.</string>
 
+    <!-- Recurrence -->
+    <string name="recurrence_label">Recurrence</string>
+    <string name="recurrence_none">None</string>
+    <string name="recurrence_daily">Daily</string>
+    <string name="recurrence_weekly">Weekly</string>
+    <string name="recurrence_monthly">Monthly</string>
+    <string name="recurrence_yearly">Yearly</string>
+    <string name="recurrence_end_date">End Date</string>
+    <string name="recurrence_end_date_hint">Select until when this transaction should repeat.</string>
+    <string name="recurrence_occurrences">Number of occurrences</string>
+    <string name="recurrence_occurrences_hint">How many times should this transaction repeat?</string>
+    <string name="delete_recurrence_message">This is a recurring transaction. Deleting it will remove all future occurrences in the same group. Continue?</string>
+
     <!-- Settings -->
     <string name="settings">Settings</string>
     <string name="general">General</string>
@@ -177,8 +190,8 @@
     <string name="biometric_subtitle">Use biometrics or PIN to log in</string>
     <string name="installment_payment">Installment Payment</string>
 
-    <string name="delete_this_and_subsequent">Delete this and subsequent installments</string>
-    <string name="delete_single_installment">Delete only this installment</string>
+    <string name="delete_this_and_subsequent">Delete this and subsequent items</string>
+    <string name="delete_single_installment">Delete only this item</string>
 
     <string name="report_no_transaction_this_month">No transactions this month</string>
     <string name="report_message_add_transaction">Add a new expense or income to start tracking your transactions.</string>
@@ -245,4 +258,14 @@
     <string name="delete_card_title">Delete Card</string>
     <string name="delete_card_message">Are you sure you want to delete the card \"%1$s\"?</string>
     <string name="select_credit_card">Select Credit Card</string>
+    <string name="basic_details_label">Basic Details</string>
+    <string name="category_selection_label">Category Selection</string>
+    <string name="search_categories">Search categories…</string>
+    <string name="frequent_categories">Frequent</string>
+    <string name="all_categories">All Categories</string>
+    <string name="no_categories_found">No categories found</string>
+    <string name="search_results">Search Results</string>
+    <string name="payment_method_label">Payment Method</string>
+    <string name="use_credit_card_label">Use Credit Card</string>
+    <string name="image">Image</string>
 </resources>

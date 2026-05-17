@@ -168,13 +168,14 @@
     <string name="biometric_subtitle">Usa biometria o PIN per accedere</string>
 
     <string name="delete_this_and_subsequent">Elimina questa e le successive</string>
-    <string name="delete_single_installment">Elimina solo questa rata</string>
+
+    <string name="delete_single_installment">Elimina solo questo elemento</string>
 
     <string name="report_no_transaction_this_month">Nessuna transazione\nin questo mese</string>
     <string name="report_message_add_transaction">Aggiungi una nuova spesa o entrata\nper iniziare a tracciare i tuoi movimenti.</string>
 
     <string name="credit_card_payment_hint">Il comportamento del pagamento con carta di credito (singolo, rateale, manuale) è configurabile nelle impostazioni.</string>
-    <string name="installment_payment_hint">Si riferisce a pagamenti rateali gestiti da servizi esterni (es. Klarna, PayPal, Satispay).</string>
+    <string name="installment_payment_hint">Si riferisce a pagamenti rateali gestiti da servizi esterni (e.g., Klarna, PayPal, Satispay).</string>
 
     <!-- About -->
     <string name="about">Info</string>
@@ -243,4 +244,28 @@
     <string name="delete_card_title">Elimina Carta</string>
     <string name="delete_card_message">Sei sicuro di voler eliminare la carta \"%1$s\"?</string>
     <string name="select_credit_card">Seleziona Carta di Credito</string>
+
+    <!-- Recurrence -->
+    <string name="recurrence_label">Ricorrenza</string>
+    <string name="recurrence_none">Nessuna</string>
+    <string name="recurrence_daily">Giornaliera</string>
+    <string name="recurrence_weekly">Settimanale</string>
+    <string name="recurrence_monthly">Mensile</string>
+    <string name="recurrence_yearly">Annuale</string>
+    <string name="recurrence_end_date">Data di fine</string>
+    <string name="recurrence_end_date_hint">Scegli fino a quando ripetere il movimento.</string>
+    <string name="recurrence_occurrences">Numero di ripetizioni: %1$d</string>
+    <string name="recurrence_occurrences_hint">Quante volte vuoi ripetere questo movimento?</string>
+    <string name="delete_recurrence_message">Questo movimento è ricorrente. L\'eliminazione rimuoverà tutte le occorrenze future del gruppo. Continuare?</string>
+
+    <string name="basic_details_label">Dettagli Base</string>
+    <string name="category_selection_label">Selezione Categoria</string>
+    <string name="search_categories">Cerca categorie...</string>
+    <string name="frequent_categories">Frequenti</string>
+    <string name="all_categories">Tutte le Categorie</string>
+    <string name="no_categories_found">Nessuna categoria trovata</string>
+    <string name="search_results">Risultati della ricerca</string>
+    <string name="payment_method_label">Metodo di Pagamento</string>
+    <string name="use_credit_card_label">Usa Carta di Credito</string>
+    <string name="image">Imm.</string>
 </resources>

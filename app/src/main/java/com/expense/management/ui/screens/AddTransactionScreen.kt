@@ -1,6 +1,10 @@
 package com.expense.management.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +32,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -41,7 +45,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -66,6 +70,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,20 +79,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.utils.CategoryImage
 import com.expense.management.utils.DateUtils
+import com.expense.management.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -99,8 +110,9 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.floor
+import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun AddTransactionScreen(
     transactionToEdit: TransactionEntity?,
@@ -116,9 +128,12 @@ fun AddTransactionScreen(
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
     isCC: Boolean = false,
     availableCreditCards: List<CreditCardEntity> = emptyList(),
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    viewModel: ExpenseViewModel? = null,
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
-    val context = LocalContext.current
+    val locale = ComposeLocale.current.platformLocale
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -152,6 +167,11 @@ fun AddTransactionScreen(
     var isInstallment by remember { mutableStateOf(false) }
     val isEditing = transactionToEdit != null
 
+    // --- Recurrence States ---
+    var recurrenceType by remember { mutableStateOf(transactionToEdit?.recurrenceType ?: RecurrenceType.NONE) }
+    var recurrenceLimit by remember { mutableIntStateOf(transactionToEdit?.recurrenceLimit ?: 12) }
+    var showRecurrenceTypeDialog by remember { mutableStateOf(false) }
+
     // --- Installment States ---
     var calculationMode by remember { mutableStateOf("installments") } // "installments" or "amount"
     var installmentAmountText by remember { mutableStateOf("") }
@@ -161,7 +181,7 @@ fun AddTransactionScreen(
 
     LaunchedEffect(isEditing, transactionToEdit, isCreditCard, ccPaymentMode, creditCardId) {
         if (isEditing) {
-            isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1
+            isInstallment = (transactionToEdit.totalInstallments ?: 1) > 1
         } else {
             if (isCreditCard) {
                 // Se è una carta configurata, usiamo il suo tipo per determinare se è rateale
@@ -242,7 +262,7 @@ fun AddTransactionScreen(
 
         if (transactionMonth.isBefore(limitMonth)) {
             scope.launch {
-                val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
                 snackbarHostState.showSnackbar(String.format(errorPastLimitDate, formattedMonth), "OK")
             }
             return
@@ -256,12 +276,10 @@ fun AddTransactionScreen(
         val dateToSave = transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         if (isInstallment && transactionToEdit == null) {
-            val totalAmount = amount
-            val totalOriginalAmount = originalAmount
             val installmentAmountFromField = installmentAmountText.toDoubleOrNull() ?: 0.0
 
             val finalInstallmentsCount = if (calculationMode == "amount" && installmentAmountFromField > 0) {
-                ceil(totalAmount / installmentAmountFromField).toInt()
+                ceil(amount / installmentAmountFromField).toInt()
             } else {
                 installmentsCount
             }
@@ -277,8 +295,16 @@ fun AddTransactionScreen(
 
             for (i in 0 until finalInstallmentsCount) {
                 val installmentDate = startInstallmentDate.plusMonths(i.toLong())
-                val effectiveDate = if (isCreditCard && applyCcDelayToInstallments && selectedCard != null) {
+                val settlementDate = if (isCreditCard && selectedCard != null) {
                     DateUtils.calculateEffectiveDate(installmentDate, selectedCard)
+                } else {
+                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+
+                val effectiveDate = if (isCreditCard && type == TransactionType.INCOME) {
+                    installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                } else if (isCreditCard && applyCcDelayToInstallments) {
+                    settlementDate
                 } else {
                     installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 }
@@ -288,29 +314,52 @@ fun AddTransactionScreen(
 
                 val currentInstallmentAmount: Double
                 val currentOriginalInstallmentAmount: Double
-                val originalRatio = if (totalAmount > 0) totalOriginalAmount / totalAmount else 1.0
+                val originalRatio = if (amount > 0) originalAmount / amount else 1.0
 
                 if (calculationMode == "amount" && installmentAmountFromField > 0) {
                     currentInstallmentAmount = if (i < finalInstallmentsCount - 1) {
                         installmentAmountFromField
                     } else {
-                        totalAmount - (installmentAmountFromField * (finalInstallmentsCount - 1))
+                        amount - (installmentAmountFromField * (finalInstallmentsCount - 1))
                     }
                     currentOriginalInstallmentAmount = currentInstallmentAmount * originalRatio
                 } else {
-                    val regularInstallment = floor((totalAmount / finalInstallmentsCount) * 100) / 100
+                    val regularInstallment = floor((amount / finalInstallmentsCount) * 100) / 100
                     currentInstallmentAmount = if (i < finalInstallmentsCount - 1) {
                         regularInstallment
                     } else {
-                        totalAmount - (regularInstallment * (finalInstallmentsCount - 1))
+                        amount - (regularInstallment * (finalInstallmentsCount - 1))
                     }
 
-                    val regularOriginalInstallment = floor((totalOriginalAmount / finalInstallmentsCount) * 100) / 100
+                    val regularOriginalInstallment = floor((originalAmount / finalInstallmentsCount) * 100) / 100
                     currentOriginalInstallmentAmount = if (i < finalInstallmentsCount - 1) {
                         regularOriginalInstallment
                     } else {
-                        totalOriginalAmount - (regularOriginalInstallment * (finalInstallmentsCount - 1))
+                        originalAmount - (regularOriginalInstallment * (finalInstallmentsCount - 1))
                     }
+                }
+
+                if (isCreditCard && type == TransactionType.INCOME) {
+                    val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
+                        ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
+                        ?: "other"
+
+                    onSave(
+                        TransactionEntity(
+                            id = UUID.randomUUID().toString(),
+                            date = installmentDateToSave,
+                            description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()} ($installmentLabel ${i + 1}/$finalInstallmentsCount) (Future Payment)",
+                            amount = currentInstallmentAmount,
+                            categoryId = expenseCategoryId,
+                            type = TransactionType.EXPENSE,
+                            isCreditCard = false,
+                            originalAmount = currentOriginalInstallmentAmount,
+                            originalCurrency = originalCurrency,
+                            effectiveDate = settlementDate,
+                            creditCardId = null,
+                            groupId = groupId,
+                        ),
+                    )
                 }
 
                 onSave(
@@ -332,11 +381,135 @@ fun AddTransactionScreen(
                     ),
                 )
             }
+        } else if (recurrenceType != RecurrenceType.NONE && transactionToEdit == null) {
+            val groupId = UUID.randomUUID().toString()
+            var currentOccurrenceDate = transactionDate
+
+            for (count in 0 until recurrenceLimit) {
+                val settlementDate = if (isCreditCard && selectedCard != null) {
+                    DateUtils.calculateEffectiveDate(currentOccurrenceDate, selectedCard)
+                } else {
+                    currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+
+                val effectiveDate = if (isCreditCard && type == TransactionType.INCOME) {
+                    currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                } else {
+                    settlementDate
+                }
+
+                val newId = if (count == 0) transactionId else UUID.randomUUID().toString()
+                val occurrenceDateStr = currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+                if (isCreditCard && type == TransactionType.INCOME) {
+                    val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
+                        ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
+                        ?: "other"
+
+                    onSave(
+                        TransactionEntity(
+                            id = UUID.randomUUID().toString(),
+                            date = occurrenceDateStr,
+                            description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()} (Future Payment)",
+                            amount = amount,
+                            categoryId = expenseCategoryId,
+                            type = TransactionType.EXPENSE,
+                            isCreditCard = false,
+                            originalAmount = originalAmount,
+                            originalCurrency = originalCurrency,
+                            effectiveDate = settlementDate,
+                            creditCardId = null,
+                            groupId = groupId,
+                        ),
+                    )
+                }
+
+                onSave(
+                    TransactionEntity(
+                        id = newId,
+                        date = occurrenceDateStr,
+                        description = description.trim(),
+                        amount = amount,
+                        categoryId = selectedCategory,
+                        type = type,
+                        isCreditCard = isCreditCard,
+                        originalAmount = originalAmount,
+                        originalCurrency = originalCurrency,
+                        effectiveDate = effectiveDate,
+                        groupId = groupId,
+                        creditCardId = if (isCreditCard) creditCardId else null,
+                        recurrenceType = recurrenceType,
+                        recurrenceLimit = recurrenceLimit,
+                    ),
+                )
+
+                currentOccurrenceDate = when (recurrenceType) {
+                    RecurrenceType.DAILY -> currentOccurrenceDate.plusDays(1)
+                    RecurrenceType.WEEKLY -> currentOccurrenceDate.plusWeeks(1)
+                    RecurrenceType.MONTHLY -> currentOccurrenceDate.plusMonths(1)
+                    RecurrenceType.YEARLY -> currentOccurrenceDate.plusYears(1)
+                    else -> break
+                }
+            }
         } else {
-            val effectiveDate = if (isCreditCard && selectedCard != null) {
+            if (selectedCard == null) {
+                if (isCreditCard) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Nessuna carta selezionata. Crea o seleziona una carta di credito.",
+                            withDismissAction = true,
+                        )
+                    }
+                    return
+                }
+            }
+
+            val settlementDate = if (isCreditCard && selectedCard != null) {
                 DateUtils.calculateEffectiveDate(transactionDate, selectedCard)
             } else {
                 transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            }
+
+            // Per le entrate (ricariche) con carta, l'effetto sulla liquidità è immediato (dateToSave),
+            // ma il debito sulla carta sarà saldato alla data di regolamento (settlementDate).
+            // Per le uscite con carta, l'effetto sulla liquidità è posticipato (settlementDate).
+            val effectiveDate = if (isCreditCard && type == TransactionType.INCOME) {
+                dateToSave
+            } else {
+                settlementDate
+            }
+
+            val commonGroupId = if (isCreditCard && !isInstallment && transactionToEdit == null) {
+                UUID.randomUUID().toString()
+            } else {
+                transactionToEdit?.groupId
+            }
+
+            // Gestione doppia registrazione per Carte di Credito (non a rate)
+            if (isCreditCard && !isInstallment && transactionToEdit == null) {
+                if (type == TransactionType.INCOME) {
+                    // RICARICA con CC: Registriamo un'uscita tecnica alla data di saldo della carta (settlementDate)
+                    val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
+                        ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
+                        ?: "other"
+
+                    onSave(
+                        TransactionEntity(
+                            id = UUID.randomUUID().toString(),
+                            date = dateToSave,
+                            description = "[${selectedCard?.name ?: "Credit Card"}] ${description.trim()} (Future Payment)",
+                            amount = amount,
+                            categoryId = expenseCategoryId,
+                            type = TransactionType.EXPENSE,
+                            isCreditCard = false,
+                            originalAmount = originalAmount,
+                            originalCurrency = originalCurrency,
+                            effectiveDate = settlementDate,
+                            creditCardId = null,
+                            groupId = commonGroupId,
+                        ),
+                    )
+                }
             }
 
             onSave(
@@ -353,8 +526,10 @@ fun AddTransactionScreen(
                     effectiveDate = effectiveDate,
                     installmentNumber = transactionToEdit?.installmentNumber,
                     totalInstallments = transactionToEdit?.totalInstallments,
-                    groupId = transactionToEdit?.groupId,
+                    groupId = commonGroupId,
                     creditCardId = if (isCreditCard) creditCardId else null,
+                    recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
+                    recurrenceLimit = transactionToEdit?.recurrenceLimit,
                 ),
             )
         }
@@ -489,8 +664,30 @@ fun AddTransactionScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (sharedTransitionScope != null && animatedVisibilityScope != null && transactionToEdit != null) {
+                            with(sharedTransitionScope) {
+                                Modifier.sharedElement(
+                                    rememberSharedContentState(key = "transaction_${transactionToEdit.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                )
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.basic_details_label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+
                     OutlinedTextField(
                         value = dateStr,
                         onValueChange = { dateStr = it },
@@ -521,7 +718,7 @@ fun AddTransactionScreen(
                             label = { Text(stringResource(R.string.description)) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+                                .menuAnchor(),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                             shape = RoundedCornerShape(12.dp),
@@ -663,67 +860,106 @@ fun AddTransactionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                stringResource(R.string.category_label),
+                stringResource(R.string.category_selection_label),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 4.dp, bottom = 8.dp),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (currentTypeCategories.isEmpty()) {
-                    Text(stringResource(R.string.no_categories_error), modifier = Modifier.padding(8.dp))
-                } else {
-                    currentTypeCategories.forEach { category ->
-                        val isSelected = selectedCategory == category.id
-                        val color = if (type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { selectedCategory = category.id },
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isSelected) color else MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = category.icon,
-                                    fontSize = 28.sp,
-                                )
-                            }
-                            Text(
-                                text = category.label.split(" ").first(),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
-                        }
-                    }
-                }
-            }
+            CategorySelector(
+                type = type,
+                selectedCategoryId = selectedCategory,
+                onCategorySelected = { selectedCategory = it },
+                availableCategories = availableCategories,
+                viewModel = viewModel,
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AnimatedVisibility(visible = type == TransactionType.EXPENSE && isCC) {
+            // --- Recurrence Section ---
+            if (!isEditing) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(2.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.recurrence_label),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+
+                        OutlinedTextField(
+                            value = when (recurrenceType) {
+                                RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
+                                RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                                RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                                RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                                RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { showRecurrenceTypeDialog = true }) {
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().clickable { showRecurrenceTypeDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                        )
+
+                        AnimatedVisibility(visible = recurrenceType != RecurrenceType.NONE) {
+                            Column(modifier = Modifier.padding(top = 16.dp)) {
+                                Text(
+                                    text = stringResource(R.string.recurrence_occurrences, recurrenceLimit),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Slider(
+                                    value = recurrenceLimit.toFloat(),
+                                    onValueChange = { recurrenceLimit = it.toInt() },
+                                    valueRange = 2f..60f,
+                                    steps = 58,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(R.string.recurrence_occurrences_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            AnimatedVisibility(visible = isCC) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.payment_method_label),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
                         // Selettore Carta di Credito (Se ce ne sono)
                         if (availableCreditCards.isNotEmpty()) {
                             OutlinedTextField(
@@ -762,7 +998,7 @@ fun AddTransactionScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(stringResource(R.string.credit_card_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                Text(stringResource(R.string.use_credit_card_label), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                                 Text(
                                     text = stringResource(R.string.credit_card_payment_hint),
                                     style = MaterialTheme.typography.bodySmall,
@@ -772,34 +1008,40 @@ fun AddTransactionScreen(
                         }
 
                         AnimatedVisibility(visible = !isEditing && !isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .then(
-                                        if (!isEditing) {
-                                            Modifier.clickable {
-                                                isInstallment = !isInstallment
-                                            }
-                                        } else {
-                                            Modifier
-                                        },
-                                    )
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Checkbox(
-                                    checked = isInstallment,
-                                    onCheckedChange = { isInstallment = it },
-                                    enabled = !isEditing,
+                            Column {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                                    Text(
-                                        text = stringResource(R.string.installment_payment_hint),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (!isEditing) {
+                                                Modifier.clickable {
+                                                    isInstallment = !isInstallment
+                                                }
+                                            } else {
+                                                Modifier
+                                            },
+                                        )
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = isInstallment,
+                                        onCheckedChange = { isInstallment = it },
+                                        enabled = !isEditing,
                                     )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                        Text(
+                                            text = stringResource(R.string.installment_payment_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -807,7 +1049,7 @@ fun AddTransactionScreen(
                 }
             }
 
-            AnimatedVisibility(visible = (isCreditCard || isInstallment) && type == TransactionType.EXPENSE) {
+            AnimatedVisibility(visible = (isCreditCard || isInstallment) && (type == TransactionType.EXPENSE || type == TransactionType.INCOME)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -872,7 +1114,7 @@ fun AddTransactionScreen(
                             if (amount > 0 && installmentsCount > 0) {
                                 val amountPerInstallment = amount / installmentsCount
                                 Text(
-                                    text = stringResource(R.string.calc_amount_per_installment, String.format(Locale.getDefault(), "%.2f %s", amountPerInstallment, currencySymbol)),
+                                    text = stringResource(R.string.calc_amount_per_installment, String.format(locale, "%.2f %s", amountPerInstallment, currencySymbol)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp, start = 4.dp),
@@ -1075,6 +1317,38 @@ fun AddTransactionScreen(
         )
     }
 
+    if (showRecurrenceTypeDialog) {
+        AlertDialog(
+            onDismissRequest = { showRecurrenceTypeDialog = false },
+            title = { Text(stringResource(R.string.recurrence_label)) },
+            text = {
+                Column {
+                    RecurrenceType.entries.forEach { typeEntry ->
+                        Text(
+                            text = when (typeEntry) {
+                                RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
+                                RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                                RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                                RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                                RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    recurrenceType = typeEntry
+                                    showRecurrenceTypeDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showRecurrenceTypeDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
     if (showPreviousMonthAlert) {
         AlertDialog(
             onDismissRequest = { showPreviousMonthAlert = false },
@@ -1161,13 +1435,15 @@ fun AddTransactionScreen(
                 Text(
                     if (transactionToEdit?.groupId != null && (transactionToEdit.totalInstallments ?: 0) > 1) {
                         stringResource(R.string.delete_installment_message)
+                    } else if (transactionToEdit?.groupId != null && transactionToEdit.recurrenceType != RecurrenceType.NONE) {
+                        stringResource(R.string.delete_recurrence_message)
                     } else {
                         stringResource(R.string.delete_transaction_message)
                     },
                 )
             },
             confirmButton = {
-                if (transactionToEdit?.groupId != null && (transactionToEdit.totalInstallments ?: 0) > 1) {
+                if (transactionToEdit?.groupId != null && ((transactionToEdit.totalInstallments ?: 0) > 1 || transactionToEdit.recurrenceType != RecurrenceType.NONE)) {
                     Column {
                         TextButton(
                             onClick = {
@@ -1204,10 +1480,205 @@ fun AddTransactionScreen(
                 }
             },
             dismissButton = {
-                if (transactionToEdit?.groupId == null || (transactionToEdit.totalInstallments ?: 0) <= 1) {
+                if (transactionToEdit?.groupId == null || ((transactionToEdit.totalInstallments ?: 0) <= 1 && transactionToEdit.recurrenceType == RecurrenceType.NONE)) {
                     TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             },
+        )
+    }
+}
+
+@Composable
+fun CategorySelector(
+    type: TransactionType,
+    selectedCategoryId: String?,
+    onCategorySelected: (String) -> Unit,
+    availableCategories: List<CategoryEntity>,
+    viewModel: ExpenseViewModel?,
+) {
+    val frequentCategories by if (viewModel != null) {
+        viewModel.getFrequentCategories(type).collectAsStateWithLifecycle()
+    } else {
+        remember { mutableStateOf(emptyList<CategoryEntity>()) }
+    }
+
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredCategories = remember(availableCategories, type, searchQuery) {
+        availableCategories.filter { it.type == type && it.label.contains(searchQuery, ignoreCase = true) }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .padding(12.dp),
+    ) {
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text(stringResource(R.string.search_categories)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            ),
+        )
+
+        // Frequent Categories Section
+        if (frequentCategories.isNotEmpty() && searchQuery.isEmpty()) {
+            Text(
+                text = stringResource(R.string.frequent_categories),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                frequentCategories.forEach { category ->
+                    key(category.id) {
+                        CategoryChip(
+                            category = category,
+                            isSelected = selectedCategoryId == category.id,
+                            onClick = { onCategorySelected(category.id) },
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
+        }
+
+        // All Categories Grid
+        Text(
+            text = if (searchQuery.isEmpty()) stringResource(R.string.all_categories) else stringResource(R.string.search_results),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+        )
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (filteredCategories.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                    Text(stringResource(R.string.no_categories_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                val chunks = remember(filteredCategories) { filteredCategories.chunked(4) }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    chunks.forEach { rowCategories ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowCategories.forEach { category ->
+                                key(category.id) {
+                                    CategoryGridItem(
+                                        modifier = Modifier.weight(1f),
+                                        category = category,
+                                        isSelected = selectedCategoryId == category.id,
+                                        onClick = { onCategorySelected(category.id) },
+                                    )
+                                }
+                            }
+                            if (rowCategories.size < 4) {
+                                repeat(4 - rowCategories.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryChip(
+    category: CategoryEntity,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = Modifier.height(40.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        ) {
+            CategoryImage(category = category, size = 24.dp)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = category.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+fun CategoryGridItem(
+    category: CategoryEntity,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .height(84.dp) // Fixed height to prevent flickering during layout passes
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    shape = RoundedCornerShape(16.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            CategoryImage(category = category, size = 32.dp)
+        }
+        Text(
+            text = category.label,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }

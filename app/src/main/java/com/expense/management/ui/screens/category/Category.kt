@@ -20,10 +20,12 @@ val CATEGORIES =
         Category("health", "Salute", "\u2764\uFE0F", TransactionType.EXPENSE),
         Category("shopping", "Shopping", "\uD83D\uDED2", TransactionType.EXPENSE),
         Category("other", "Altro", "\u2753", TransactionType.EXPENSE),
+        Category("credit_card_payment", "Addebito Carta", "\uD83D\uDCB3", TransactionType.EXPENSE),
         // ENTRATE (income)
         Category("salary", "Stipendio", "\uD83D\uDCB0", TransactionType.INCOME),
         Category("bonifico", "Bonifico", "\uD83D\uDCB3", TransactionType.INCOME),
         Category("gift", "Regalo", "\uD83C\uDF81", TransactionType.INCOME),
         Category("refund", "Rimborso", "\u21A9\uFE0F", TransactionType.INCOME),
         Category("investment", "Investimenti", "\uD83D\uDCCA", TransactionType.INCOME),
+        Category("credit_card_adjustment", "Credito Carta", "\uD83D\uDCB3", TransactionType.INCOME),
     )
