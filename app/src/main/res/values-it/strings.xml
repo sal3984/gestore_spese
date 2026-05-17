@@ -260,6 +260,12 @@
 
     <string name="basic_details_label">Dettagli Base</string>
     <string name="category_selection_label">Selezione Categoria</string>
+    <string name="search_categories">Cerca categorie...</string>
+    <string name="frequent_categories">Frequenti</string>
+    <string name="all_categories">Tutte le Categorie</string>
+    <string name="no_categories_found">Nessuna categoria trovata</string>
+    <string name="search_results">Risultati della ricerca</string>
     <string name="payment_method_label">Metodo di Pagamento</string>
     <string name="use_credit_card_label">Usa Carta di Credito</string>
+    <string name="image">Imm.</string>
 </resources>

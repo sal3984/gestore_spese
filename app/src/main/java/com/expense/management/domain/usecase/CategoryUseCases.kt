@@ -16,6 +16,7 @@ class GetCategoriesUseCase(private val repository: ExpenseRepository) {
                 icon = it.icon,
                 type = it.type,
                 isCustom = false,
+                imageUri = null,
             )
         }
         dbCategories + missingDefaults
@@ -33,6 +34,7 @@ class InitializeCategoriesUseCase(private val repository: ExpenseRepository) {
                 icon = it.icon,
                 type = it.type,
                 isCustom = false,
+                imageUri = null,
             )
         }
         if (categoriesToAdd.isNotEmpty()) {

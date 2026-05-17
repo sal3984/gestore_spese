@@ -9,6 +9,7 @@ import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
 import com.expense.management.domain.usecase.GetCreditCardsUseCase
+import com.expense.management.domain.usecase.GetFrequentCategoriesUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.InitializeCategoriesUseCase
 import com.expense.management.domain.usecase.ManageCreditCardUseCase
@@ -43,6 +44,7 @@ class ExpenseViewModelFactory(private val context: Context) : ViewModelProvider.
                 manageCreditCardUseCase = ManageCreditCardUseCase(repository),
                 getBackupDataUseCase = GetBackupDataUseCase(repository),
                 restoreDataUseCase = RestoreDataUseCase(repository),
+                getFrequentCategoriesUseCase = GetFrequentCategoriesUseCase(repository),
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

@@ -15,6 +15,7 @@ import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
 import com.expense.management.domain.usecase.GetCreditCardsUseCase
+import com.expense.management.domain.usecase.GetFrequentCategoriesUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.InitializeCategoriesUseCase
 import com.expense.management.domain.usecase.ManageCreditCardUseCase
@@ -48,7 +49,18 @@ class ExpenseViewModel(
     private val manageCreditCardUseCase: ManageCreditCardUseCase,
     private val getBackupDataUseCase: GetBackupDataUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
+    private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
 ) : ViewModel() {
+
+    // Frequent Categories Caching
+    private val frequentExpenses = getFrequentCategoriesUseCase(TransactionType.EXPENSE)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val frequentIncome = getFrequentCategoriesUseCase(TransactionType.INCOME)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun getFrequentCategories(type: TransactionType): StateFlow<List<CategoryEntity>> =
+        if (type == TransactionType.EXPENSE) frequentExpenses else frequentIncome
 
     // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
     var isAppUnlocked = mutableStateOf(!(prefs?.getBoolean("is_biometric_enabled", false) ?: false))

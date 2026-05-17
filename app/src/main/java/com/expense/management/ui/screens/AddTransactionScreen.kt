@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -51,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -68,6 +70,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,12 +79,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
@@ -89,7 +96,9 @@ import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.utils.CategoryImage
 import com.expense.management.utils.DateUtils
+import com.expense.management.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -121,6 +130,7 @@ fun AddTransactionScreen(
     availableCreditCards: List<CreditCardEntity> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    viewModel: ExpenseViewModel? = null,
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val locale = ComposeLocale.current.platformLocale
@@ -858,56 +868,14 @@ fun AddTransactionScreen(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
             )
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(2.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (currentTypeCategories.isEmpty()) {
-                        Text(stringResource(R.string.no_categories_error), modifier = Modifier.padding(8.dp))
-                    } else {
-                        currentTypeCategories.forEach { category ->
-                            val isSelected = selectedCategory == category.id
-                            val color = if (type == TransactionType.EXPENSE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable { selectedCategory = category.id },
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (isSelected) color else MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = category.icon,
-                                        fontSize = 28.sp,
-                                    )
-                                }
-                                Text(
-                                    text = category.label.split(" ").first(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 6.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            CategorySelector(
+                type = type,
+                selectedCategoryId = selectedCategory,
+                onCategorySelected = { selectedCategory = it },
+                availableCategories = availableCategories,
+                viewModel = viewModel,
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1516,6 +1484,201 @@ fun AddTransactionScreen(
                     TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             },
+        )
+    }
+}
+
+@Composable
+fun CategorySelector(
+    type: TransactionType,
+    selectedCategoryId: String?,
+    onCategorySelected: (String) -> Unit,
+    availableCategories: List<CategoryEntity>,
+    viewModel: ExpenseViewModel?,
+) {
+    val frequentCategories by if (viewModel != null) {
+        viewModel.getFrequentCategories(type).collectAsStateWithLifecycle()
+    } else {
+        remember { mutableStateOf(emptyList<CategoryEntity>()) }
+    }
+
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredCategories = remember(availableCategories, type, searchQuery) {
+        availableCategories.filter { it.type == type && it.label.contains(searchQuery, ignoreCase = true) }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .padding(12.dp),
+    ) {
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text(stringResource(R.string.search_categories)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            ),
+        )
+
+        // Frequent Categories Section
+        if (frequentCategories.isNotEmpty() && searchQuery.isEmpty()) {
+            Text(
+                text = stringResource(R.string.frequent_categories),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                frequentCategories.forEach { category ->
+                    key(category.id) {
+                        CategoryChip(
+                            category = category,
+                            isSelected = selectedCategoryId == category.id,
+                            onClick = { onCategorySelected(category.id) },
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
+        }
+
+        // All Categories Grid
+        Text(
+            text = if (searchQuery.isEmpty()) stringResource(R.string.all_categories) else stringResource(R.string.search_results),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+        )
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (filteredCategories.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                    Text(stringResource(R.string.no_categories_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                val chunks = remember(filteredCategories) { filteredCategories.chunked(4) }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    chunks.forEach { rowCategories ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowCategories.forEach { category ->
+                                key(category.id) {
+                                    CategoryGridItem(
+                                        modifier = Modifier.weight(1f),
+                                        category = category,
+                                        isSelected = selectedCategoryId == category.id,
+                                        onClick = { onCategorySelected(category.id) },
+                                    )
+                                }
+                            }
+                            if (rowCategories.size < 4) {
+                                repeat(4 - rowCategories.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryChip(
+    category: CategoryEntity,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = Modifier.height(40.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        ) {
+            CategoryImage(category = category, size = 24.dp)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = category.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+fun CategoryGridItem(
+    category: CategoryEntity,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .height(84.dp) // Fixed height to prevent flickering during layout passes
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    shape = RoundedCornerShape(16.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            CategoryImage(category = category, size = 32.dp)
+        }
+        Text(
+            text = category.label,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }

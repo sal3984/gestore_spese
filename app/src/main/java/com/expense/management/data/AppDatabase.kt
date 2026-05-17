@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CurrencyRate::class,
         CreditCardEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -31,6 +31,12 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var instance: AppDatabase? = null
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
+            }
+        }
 
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -71,7 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }

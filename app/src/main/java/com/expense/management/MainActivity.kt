@@ -602,6 +602,7 @@ fun mainApp() {
                                     availableCreditCards = allCreditCards,
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@composable,
+                                    viewModel = viewModel,
                                 )
                             }
                         }

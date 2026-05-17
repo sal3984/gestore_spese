@@ -111,4 +111,6 @@ dependencies {
 
     // AppCompat - Necessaria per FragmentActivity e temi
     implementation(libs.androidx.appcompat)
+
+    implementation(libs.coil.compose)
 }

@@ -12,4 +12,6 @@ data class CategoryEntity(
     val type: TransactionType,
     // Per distinguere quelle default da quelle utente
     val isCustom: Boolean = false,
+    // URI locale per immagini personalizzate
+    val imageUri: String? = null,
 )

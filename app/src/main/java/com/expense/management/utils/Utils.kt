@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,10 +38,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.RecurrenceType
@@ -157,10 +161,19 @@ fun TransactionItem(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = category.icon,
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
+                    if (category.imageUri != null) {
+                        AsyncImage(
+                            model = category.imageUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Text(
+                            text = category.icon,
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -294,4 +307,21 @@ private fun Icon(imageVector: ImageVector, contentDescription: String?, size: Dp
         modifier = Modifier.size(size),
         tint = tint,
     )
+}
+
+@Composable
+fun CategoryImage(category: CategoryEntity, size: Dp) {
+    if (category.imageUri != null) {
+        AsyncImage(
+            model = category.imageUri,
+            contentDescription = null,
+            modifier = Modifier.size(size).clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Text(
+            text = category.icon,
+            fontSize = (size.value * 0.5).sp,
+        )
+    }
 }
