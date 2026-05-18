@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.expense.management.data.BackupData
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
@@ -21,7 +22,7 @@ import com.expense.management.domain.usecase.InitializeCategoriesUseCase
 import com.expense.management.domain.usecase.ManageCreditCardUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
-import com.expense.management.ui.screens.DeleteType
+import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
 import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,17 @@ class ExpenseViewModel(
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
 ) : ViewModel() {
 
+    companion object {
+        private const val KEY_CURRENCY = "currency"
+        private const val KEY_CC_LIMIT = "cc_limit"
+        private const val KEY_CC_DELAY = "cc_delay"
+        private const val KEY_DATE_FORMAT = "date_format"
+        private const val KEY_HIDE_AMOUNT = "hide_amount"
+        private const val KEY_BIOMETRIC_ENABLED = "is_biometric_enabled"
+        private const val KEY_CC_PAYMENT_MODE = "cc_payment_mode"
+        private const val KEY_CSV_EXPORT_COLUMNS = "csv_export_columns"
+    }
+
     // Frequent Categories Caching
     private val frequentExpenses = getFrequentCategoriesUseCase(TransactionType.EXPENSE)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -63,7 +75,7 @@ class ExpenseViewModel(
         if (type == TransactionType.EXPENSE) frequentExpenses else frequentIncome
 
     // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
-    var isAppUnlocked = mutableStateOf(!(prefs?.getBoolean("is_biometric_enabled", false) ?: false))
+    var isAppUnlocked = mutableStateOf(!(prefs?.getBoolean(KEY_BIOMETRIC_ENABLED, false) ?: false))
 
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> =
@@ -81,25 +93,25 @@ class ExpenseViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
-    private val _currency = MutableStateFlow(prefs?.getString("currency", "€") ?: "€")
+    private val _currency = MutableStateFlow(prefs?.getString(KEY_CURRENCY, "€") ?: "€")
     val currency = _currency.asStateFlow()
 
-    private val _ccLimit = MutableStateFlow(prefs?.getFloat("cc_limit", 1500f) ?: 1500f)
+    private val _ccLimit = MutableStateFlow(prefs?.getFloat(KEY_CC_LIMIT, 1500f) ?: 1500f)
     val ccLimit = _ccLimit.asStateFlow()
 
-    private val _ccDelay = MutableStateFlow(prefs?.getInt("cc_delay", 1) ?: 1)
+    private val _ccDelay = MutableStateFlow(prefs?.getInt(KEY_CC_DELAY, 1) ?: 1)
     val ccDelay = _ccDelay.asStateFlow()
 
-    private val _dateFormat = MutableStateFlow(prefs?.getString("date_format", "dd/MM/yyyy") ?: "dd/MM/yyyy")
+    private val _dateFormat = MutableStateFlow(prefs?.getString(KEY_DATE_FORMAT, "dd/MM/yyyy") ?: "dd/MM/yyyy")
     val dateFormat = _dateFormat.asStateFlow()
 
-    private val _isAmountHidden = MutableStateFlow(prefs?.getBoolean("hide_amount", false) ?: false)
+    private val _isAmountHidden = MutableStateFlow(prefs?.getBoolean(KEY_HIDE_AMOUNT, false) ?: false)
     val isAmountHidden = _isAmountHidden.asStateFlow()
 
-    private val _isBiometricEnabled = MutableStateFlow(prefs?.getBoolean("is_biometric_enabled", false) ?: false)
+    private val _isBiometricEnabled = MutableStateFlow(prefs?.getBoolean(KEY_BIOMETRIC_ENABLED, false) ?: false)
     val isBiometricEnabled = _isBiometricEnabled.asStateFlow()
 
-    private val _ccPaymentMode = MutableStateFlow(prefs?.getString("cc_payment_mode", "single") ?: "single")
+    private val _ccPaymentMode = MutableStateFlow(prefs?.getString(KEY_CC_PAYMENT_MODE, "single") ?: "single")
     val ccPaymentMode = _ccPaymentMode.asStateFlow()
 
     private val _earliestMonth = MutableStateFlow(YearMonth.now())
@@ -124,7 +136,7 @@ class ExpenseViewModel(
     )
 
     private val _csvExportColumns = MutableStateFlow(
-        prefs?.getStringSet("csv_export_columns", defaultExportColumns) ?: defaultExportColumns,
+        prefs?.getStringSet(KEY_CSV_EXPORT_COLUMNS, defaultExportColumns) ?: defaultExportColumns,
     )
     val csvExportColumns = _csvExportColumns.asStateFlow()
 
@@ -220,42 +232,42 @@ class ExpenseViewModel(
     // Aggiornamento Impostazioni
     fun updateCurrency(symbol: String) {
         _currency.value = symbol
-        prefs?.edit { putString("currency", symbol) }
+        prefs?.edit { putString(KEY_CURRENCY, symbol) }
     }
 
     fun updateDateFormat(format: String) {
         _dateFormat.value = format
-        prefs?.edit { putString("date_format", format) }
+        prefs?.edit { putString(KEY_DATE_FORMAT, format) }
     }
 
     fun updateCcLimit(limit: Float) {
         _ccLimit.value = limit
-        prefs?.edit { putFloat("cc_limit", limit) }
+        prefs?.edit { putFloat(KEY_CC_LIMIT, limit) }
     }
 
     fun updateCcDelay(delay: Int) {
         _ccDelay.value = delay
-        prefs?.edit { putInt("cc_delay", delay) }
+        prefs?.edit { putInt(KEY_CC_DELAY, delay) }
     }
 
     fun updateCcPaymentMode(mode: String) {
         _ccPaymentMode.value = mode
-        prefs?.edit { putString("cc_payment_mode", mode) }
+        prefs?.edit { putString(KEY_CC_PAYMENT_MODE, mode) }
     }
 
     fun updateIsAmountHidden(isHidden: Boolean) {
         _isAmountHidden.value = isHidden
-        prefs?.edit { putBoolean("hide_amount", isHidden) }
+        prefs?.edit { putBoolean(KEY_HIDE_AMOUNT, isHidden) }
     }
 
     fun updateBiometricEnabled(isEnabled: Boolean) {
         _isBiometricEnabled.value = isEnabled
-        prefs?.edit { putBoolean("is_biometric_enabled", isEnabled) }
+        prefs?.edit { putBoolean(KEY_BIOMETRIC_ENABLED, isEnabled) }
     }
 
     fun updateCsvExportColumns(columns: Set<String>) {
         _csvExportColumns.value = columns
-        prefs?.edit { putStringSet("csv_export_columns", columns) }
+        prefs?.edit { putStringSet(KEY_CSV_EXPORT_COLUMNS, columns) }
     }
 
     fun refreshCurrencyRates() {
@@ -310,9 +322,3 @@ class ExpenseViewModel(
         return result
     }
 }
-
-data class BackupData(
-    val transactions: List<TransactionEntity>,
-    val categories: List<CategoryEntity>,
-    val creditCard: List<CreditCardEntity>?,
-)

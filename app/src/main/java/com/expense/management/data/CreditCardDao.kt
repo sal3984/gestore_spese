@@ -30,4 +30,7 @@ interface CreditCardDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllCreditCards(categories: List<CreditCardEntity>)
+
+    @Query("DELETE FROM credit_cards")
+    suspend fun deleteAll()
 }

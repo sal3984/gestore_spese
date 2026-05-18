@@ -73,24 +73,14 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.model.DeleteType
+import com.expense.management.ui.model.TransactionToDelete
 import com.expense.management.utils.TransactionItem
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.ui.text.intl.Locale as ComposeLocale
-
-// Enum per il tipo di cancellazione
-enum class DeleteType {
-    SINGLE,
-    THIS_AND_SUBSEQUENT,
-}
-
-// Data class per gestire la transazione da eliminare
-data class TransactionToDelete(
-    val transaction: TransactionEntity,
-    val isInstallment: Boolean,
-)
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable

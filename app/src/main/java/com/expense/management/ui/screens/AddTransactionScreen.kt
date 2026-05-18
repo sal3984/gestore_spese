@@ -96,6 +96,7 @@ import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.model.DeleteType
 import com.expense.management.utils.CategoryImage
 import com.expense.management.utils.DateUtils
 import com.expense.management.viewmodel.ExpenseViewModel

@@ -107,8 +107,12 @@ class CurrencyUtils(private val currencyDao: CurrencyDao) {
             "£" -> "GBP"
             "¥" -> "JPY"
             "Ft" -> "HUF"
-            // Se la stringa è già un codice a 3 lettere (es. "USD"), la restituisce così com'è,
-            // altrimenti la converte in maiuscolo per sicurezza.
+            "CHF" -> "CHF"
+            "₽" -> "RUB"
+            "₹" -> "INR"
+            "₩" -> "KRW"
+            "₪" -> "ILS"
+            "₫" -> "VND"
             else -> currencySymbol.uppercase()
         }
     }

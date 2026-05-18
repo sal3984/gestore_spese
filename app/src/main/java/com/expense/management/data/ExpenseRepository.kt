@@ -6,7 +6,7 @@ class ExpenseRepository(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
     private val currencyDao: CurrencyDao,
-    private val creditCardDao: CreditCardDao? = null,
+    private val creditCardDao: CreditCardDao,
 ) {
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()
@@ -40,7 +40,7 @@ class ExpenseRepository(
 
     suspend fun getAllCategories(): List<CategoryEntity> = categoryDao.getAllCategories()
 
-    suspend fun getAllCreditCard(): List<CreditCardEntity> = creditCardDao?.getAllCreditCards() ?: emptyList()
+    suspend fun getAllCreditCard(): List<CreditCardEntity> = creditCardDao.getAllCreditCards()
 
     suspend fun insertCategory(category: CategoryEntity) {
         categoryDao.insertCategory(category)
@@ -62,23 +62,30 @@ class ExpenseRepository(
     suspend fun getAllCurrencyRates(): List<CurrencyRate> = currencyDao.getAllRates()
 
     // Credit Cards
-    val allCreditCards: Flow<List<CreditCardEntity>>? = creditCardDao?.getAllCreditCardsFlow()
+    val allCreditCards: Flow<List<CreditCardEntity>> = creditCardDao.getAllCreditCardsFlow()
 
-    suspend fun getCreditCardById(id: String): CreditCardEntity? = creditCardDao?.getCreditCardById(id)
+    suspend fun getCreditCardById(id: String): CreditCardEntity? = creditCardDao.getCreditCardById(id)
 
     suspend fun insertCreditCard(creditCard: CreditCardEntity) {
-        creditCardDao?.insertCreditCard(creditCard)
+        creditCardDao.insertCreditCard(creditCard)
     }
 
     suspend fun updateCreditCard(creditCard: CreditCardEntity) {
-        creditCardDao?.updateCreditCard(creditCard)
+        creditCardDao.updateCreditCard(creditCard)
     }
 
     suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
-        creditCardDao?.deleteCreditCard(creditCard)
+        creditCardDao.deleteCreditCard(creditCard)
     }
 
     suspend fun insertAllCreditCard(creditCards: List<CreditCardEntity>) {
-        creditCardDao?.insertAllCreditCards(creditCards)
+        creditCardDao.insertAllCreditCards(creditCards)
     }
+
+    suspend fun getTransactionsByGroupId(groupId: String): List<TransactionEntity> =
+        transactionDao.getByGroupId(groupId)
+
+    suspend fun deleteAllTransactions() = transactionDao.deleteAll()
+    suspend fun deleteAllCategories() = categoryDao.deleteAll()
+    suspend fun deleteAllCreditCards() = creditCardDao.deleteAll()
 }

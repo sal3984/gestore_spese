@@ -9,8 +9,7 @@ class SaveTransactionUseCase(private val repository: ExpenseRepository) {
 
         if (existingTransaction != null && transaction.groupId != null && (transaction.totalInstallments ?: 1) > 1) {
             if (existingTransaction.categoryId != transaction.categoryId) {
-                val transactionsInGroup = repository.getAllTransactionsList()
-                    .filter { it.groupId == transaction.groupId }
+                val transactionsInGroup = repository.getTransactionsByGroupId(transaction.groupId)
 
                 transactionsInGroup.forEach { installment ->
                     repository.insertTransaction(installment.copy(categoryId = transaction.categoryId))

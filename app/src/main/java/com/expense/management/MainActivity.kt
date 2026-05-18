@@ -171,14 +171,14 @@ fun mainApp() {
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri: Uri? ->
-            uri?.let { BackupUtils.performRestore(context, viewModel, it) }
+            uri?.let { BackupUtils.performRestore(coroutineScope, context, viewModel, it) }
         }
 
     val backupLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/json"),
         ) { uri: Uri? ->
-            uri?.let { BackupUtils.performBackup(context, viewModel, it) }
+            uri?.let { BackupUtils.performBackup(coroutineScope, context, viewModel, it) }
         }
 
     val exportCsvLauncher =
@@ -186,16 +186,15 @@ fun mainApp() {
             contract = ActivityResultContracts.CreateDocument("text/csv"),
         ) { uri: Uri? ->
             uri?.let {
-                coroutineScope.launch {
-                    BackupUtils.performCsvExport(
-                        context = context,
-                        viewModel = viewModel,
-                        uri = it,
-                        currencySymbol = currentCurrency,
-                        dateFormat = currentDateFormat,
-                        selectedColumns = csvExportColumns,
-                    )
-                }
+                BackupUtils.performCsvExport(
+                    scope = coroutineScope,
+                    context = context,
+                    viewModel = viewModel,
+                    uri = it,
+                    currencySymbol = currentCurrency,
+                    dateFormat = currentDateFormat,
+                    selectedColumns = csvExportColumns,
+                )
             }
         }
 
