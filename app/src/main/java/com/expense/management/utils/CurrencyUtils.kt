@@ -100,20 +100,22 @@ class CurrencyUtils(private val currencyDao: CurrencyDao) {
         return currencyDao.getLastUpdateTimestamp()
     }
 
-    fun normalizeCurrencyCode(currencySymbol: String): String {
-        return when (currencySymbol) {
-            "€" -> "EUR"
-            "$" -> "USD"
-            "£" -> "GBP"
-            "¥" -> "JPY"
-            "Ft" -> "HUF"
-            "CHF" -> "CHF"
-            "₽" -> "RUB"
-            "₹" -> "INR"
-            "₩" -> "KRW"
-            "₪" -> "ILS"
-            "₫" -> "VND"
-            else -> currencySymbol.uppercase()
+    companion object {
+        fun normalizeCurrencyCode(currencySymbol: String): String {
+            return when (currencySymbol) {
+                "€" -> "EUR"
+                "$" -> "USD"
+                "£" -> "GBP"
+                "¥" -> "JPY"
+                "Ft" -> "HUF"
+                "CHF" -> "CHF"
+                "₽" -> "RUB"
+                "₹" -> "INR"
+                "₩" -> "KRW"
+                "₪" -> "ILS"
+                "₫" -> "VND"
+                else -> currencySymbol.uppercase()
+            }
         }
     }
 }

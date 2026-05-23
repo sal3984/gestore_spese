@@ -169,8 +169,8 @@ fun settingsScreen(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 // Voce Tassi di Cambio
-                val updateText = if (lastRatesUpdate != null && lastRatesUpdate!! > 0) {
-                    val date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastRatesUpdate!!), ZoneId.systemDefault())
+                val updateText = if (lastRatesUpdate != null && lastRatesUpdate > 0) {
+                    val date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastRatesUpdate), ZoneId.systemDefault())
                     val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
                     stringResource(R.string.last_update, date.format(formatter))
                 } else {

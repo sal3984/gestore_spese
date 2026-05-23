@@ -44,19 +44,6 @@ object BackupUtils {
         "DataAddebito" to "Data Addebito",
     )
 
-    private val CURRENCY_SYMBOL_TO_CODE = mapOf(
-        "€" to "EUR",
-        "$" to "USD",
-        "£" to "GBP",
-        "¥" to "JPY",
-        "CHF" to "CHF",
-        "₽" to "RUB",
-        "₹" to "INR",
-        "₩" to "KRW",
-        "₪" to "ILS",
-        "₫" to "VND",
-    )
-
     fun performCsvExport(
         scope: CoroutineScope,
         context: Context,
@@ -103,7 +90,7 @@ object BackupUtils {
                             "ImportoConvertito" -> row.add(String.format(Locale.US, "%.2f", t.amount))
                             "ImportoOriginale" -> row.add(String.format(Locale.US, "%.2f", t.originalAmount))
                             "ValutaOriginale" -> {
-                                val code = CURRENCY_SYMBOL_TO_CODE[t.originalCurrency] ?: t.originalCurrency
+                                val code = CurrencyUtils.normalizeCurrencyCode(t.originalCurrency)
                                 row.add(escapeCsvField(code))
                             }
                             "Categoria" -> row.add(

@@ -133,23 +133,25 @@ fun DashboardScreen(
     val locale = ComposeLocale.current.platformLocale
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
 
-    val currentTrans = transactions
-        .filter {
-            try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
-            } catch (_: Exception) {
-                false
+    val currentTrans = remember(transactions, currentDashboardMonth) {
+        transactions
+            .filter {
+                try {
+                    YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
+                } catch (_: Exception) {
+                    false
+                }
             }
-        }
-        .sortedByDescending { it.effectiveDate }
+            .sortedByDescending { it.effectiveDate }
+    }
 
     val groupedTransactions = remember(currentTrans) {
         currentTrans.groupBy { it.effectiveDate }
     }
 
-    val totalIncome = currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-    val totalExpense = currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-    val netBalance = totalIncome - totalExpense
+    val totalIncome = remember(currentTrans) { currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount } }
+    val totalExpense = remember(currentTrans) { currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount } }
+    val netBalance = remember(totalIncome, totalExpense) { totalIncome - totalExpense }
 
     // LIMITI NAVIGAZIONE
     val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)
@@ -401,51 +403,40 @@ fun DashboardScreen(
                         ) { page ->
                             val card = creditCards[page]
 
-                            var displayedSpent: Double
-                            var totalUtilizedForDisplay: Double
-                            var totalPaidForDisplay: Double
+                            val (displayedSpent, totalUtilizedForDisplay, totalPaidForDisplay) = remember(card.id, transactions, currentDashboardMonth) {
+                                if (card.type == CardType.REVOLVING) {
+                                    val totalUtilized = transactions
+                                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                        .sumOf { it.amount }
 
-                            if (card.type == CardType.REVOLVING) {
-                                // 1. "Quota Utilizzata": Somma CUMULATIVA di tutte le spese (expense) sulla carta.
-                                totalUtilizedForDisplay = transactions
-                                    .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                    .sumOf { it.amount }
+                                    val totalPaid = transactions
+                                        .filter {
+                                            it.creditCardId == card.id &&
+                                                it.type == TransactionType.EXPENSE &&
+                                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                                try {
+                                                    YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
+                                                } catch (_: Exception) {
+                                                    false
+                                                }
+                                        }
+                                        .sumOf { it.amount }
 
-                                // 2. "Somme Pagate": Somma CUMULATIVA di tutte le rate (expense con installmentNumber) pagate FINO AL MESE CORRENTE.
-                                val cumulativeInstallmentsPaidUpToCurrentMonth = transactions
-                                    .filter {
-                                        it.creditCardId == card.id &&
-                                            it.type == TransactionType.EXPENSE &&
-                                            it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                    Triple(totalUtilized - totalPaid, totalUtilized, totalPaid)
+                                } else {
+                                    val spent = transactions
+                                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                        .filter { t ->
                                             try {
-                                                YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
-                                            } catch (e: Exception) {
+                                                YearMonth.from(LocalDate.parse(t.date)) == currentDashboardMonth
+                                            } catch (_: Exception) {
                                                 false
                                             }
-                                    }
-                                    .sumOf { it.amount }
-
-                                totalPaidForDisplay = cumulativeInstallmentsPaidUpToCurrentMonth
-
-                                // 3. "Quota Rimanente": Il valore che si decrementa.
-                                displayedSpent = totalUtilizedForDisplay - totalPaidForDisplay
-                            } else {
-                                // Per le carte SALDO, mostra l'utilizzo nel mese corrente (che verrà addebitato il mese successivo)
-                                displayedSpent = transactions
-                                    .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                    .filter { t ->
-                                        try {
-                                            // Filtra per DATA TRANSAZIONE, non data di addebito
-                                            val transactionMonth = YearMonth.from(LocalDate.parse(t.date))
-                                            transactionMonth == currentDashboardMonth
-                                        } catch (_: Exception) {
-                                            false
                                         }
-                                    }
-                                    .sumOf { it.amount }
+                                        .sumOf { it.amount }
 
-                                totalUtilizedForDisplay = displayedSpent
-                                totalPaidForDisplay = 0.0
+                                    Triple(spent, spent, 0.0)
+                                }
                             }
 
                             val progress = if (card.limit > 0) (displayedSpent / card.limit).toFloat() else 0f

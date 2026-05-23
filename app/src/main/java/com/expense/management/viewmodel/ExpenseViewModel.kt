@@ -1,7 +1,6 @@
 package com.expense.management.viewmodel
 
 import android.content.SharedPreferences
-import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,10 +29,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -75,7 +73,12 @@ class ExpenseViewModel(
         if (type == TransactionType.EXPENSE) frequentExpenses else frequentIncome
 
     // MODIFICA: Inizializza lo stato di sblocco in base alla preferenza.
-    var isAppUnlocked = mutableStateOf(!(prefs?.getBoolean(KEY_BIOMETRIC_ENABLED, false) ?: false))
+    private val _isAppUnlocked = MutableStateFlow(!(prefs?.getBoolean(KEY_BIOMETRIC_ENABLED, false) ?: false))
+    val isAppUnlocked: StateFlow<Boolean> = _isAppUnlocked.asStateFlow()
+
+    fun unlockApp() {
+        _isAppUnlocked.value = true
+    }
 
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> =
@@ -114,8 +117,20 @@ class ExpenseViewModel(
     private val _ccPaymentMode = MutableStateFlow(prefs?.getString(KEY_CC_PAYMENT_MODE, "single") ?: "single")
     val ccPaymentMode = _ccPaymentMode.asStateFlow()
 
-    private val _earliestMonth = MutableStateFlow(YearMonth.now())
-    val earliestMonth = _earliestMonth.asStateFlow()
+    val earliestMonth: StateFlow<YearMonth> = repository.allTransactions
+        .map {
+            val minDateString = repository.getMinEffectiveDate()
+            if (minDateString != null) {
+                try {
+                    YearMonth.from(LocalDate.parse(minDateString))
+                } catch (_: Exception) {
+                    YearMonth.now()
+                }
+            } else {
+                YearMonth.now()
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), YearMonth.now())
 
     private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
     val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
@@ -143,7 +158,6 @@ class ExpenseViewModel(
     init {
         viewModelScope.launch {
             initializeCategoriesUseCase()
-            loadEarliestMonth()
             _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
             refreshCurrencyRatesData()
         }
@@ -184,22 +198,6 @@ class ExpenseViewModel(
         _currentDashboardMonth.value = month
     }
 
-    private suspend fun loadEarliestMonth() {
-        allTransactions.collectLatest { _ ->
-            val minDateString = repository.getMinEffectiveDate()
-            if (minDateString != null) {
-                try {
-                    val minDate = LocalDate.parse(minDateString)
-                    _earliestMonth.value = YearMonth.from(minDate)
-                } catch (_: Exception) {
-                    _earliestMonth.value = YearMonth.now()
-                }
-            } else {
-                _earliestMonth.value = YearMonth.now()
-            }
-        }
-    }
-
     // --- AZIONI ---
 
     fun saveTransaction(transaction: TransactionEntity) {
@@ -217,7 +215,7 @@ class ExpenseViewModel(
         }
     }
 
-    suspend fun getTransactionById(id: String): TransactionEntity? = withContext(Dispatchers.IO) { repository.getTransactionById(id) }
+    suspend fun getTransactionById(id: String): TransactionEntity? = repository.getTransactionById(id)
 
     fun searchDescriptionSuggestions(query: String) {
         viewModelScope.launch(Dispatchers.IO) {

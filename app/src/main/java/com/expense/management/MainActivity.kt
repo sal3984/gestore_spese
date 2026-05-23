@@ -132,7 +132,7 @@ fun mainApp() {
     val frequentExpenseCategories by viewModel.getFrequentCategories(TransactionType.EXPENSE).collectAsStateWithLifecycle()
     val frequentIncomeCategories by viewModel.getFrequentCategories(TransactionType.INCOME).collectAsStateWithLifecycle()
 
-    var isAuthenticated by remember { viewModel.isAppUnlocked }
+    val isAuthenticated by viewModel.isAppUnlocked.collectAsStateWithLifecycle()
 
     // Determina se ci sono transazioni
     val hasTransactions = allTransactions.isNotEmpty()
@@ -143,11 +143,11 @@ fun mainApp() {
         if (isBiometricEnabled && !isAuthenticated) {
             BiometricUtils.authenticateUser(
                 context,
-                onSuccess = { viewModel.isAppUnlocked.value = true },
+                onSuccess = { viewModel.unlockApp() },
                 onError = { /* Handle error */ },
             )
         } else {
-            viewModel.isAppUnlocked.value = true
+            viewModel.unlockApp()
         }
     }
 
@@ -161,7 +161,7 @@ fun mainApp() {
                 Button(onClick = {
                     BiometricUtils.authenticateUser(
                         context,
-                        onSuccess = { viewModel.isAppUnlocked.value = true },
+                        onSuccess = { viewModel.unlockApp() },
                         onError = { },
                     )
                 }, modifier = Modifier.padding(top = 24.dp)) {

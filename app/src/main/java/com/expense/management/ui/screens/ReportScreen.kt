@@ -92,11 +92,11 @@ private fun String.capitalizeFirstLetter(locale: java.util.Locale = Locale.getDe
     return replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
 }
 
+private val formatterCache = java.util.concurrent.ConcurrentHashMap<String, DateTimeFormatter>()
+
 private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
-    val formatters = setOf(
-        DateTimeFormatter.ISO_LOCAL_DATE,
-        DateTimeFormatter.ofPattern(dateFormat),
-    )
+    val cachedFormatter = formatterCache.getOrPut(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
+    val formatters = listOf(DateTimeFormatter.ISO_LOCAL_DATE, cachedFormatter)
     for (formatter in formatters) {
         try {
             return LocalDate.parse(dateString, formatter)
@@ -204,25 +204,23 @@ fun ReportScreen(
     }
 
     // Calcolo Bilancio Mensile (Range Selezionato)
-    val monthlyBalances: List<Pair<YearMonth, Double>> by remember(transactions, reportStartMonth, reportEndMonth) {
-        derivedStateOf {
-            val balances = mutableListOf<Pair<YearMonth, Double>>()
-            var current = reportStartMonth
-            while (!current.isAfter(reportEndMonth)) {
-                val monthlyTransactions = transactions.filter { transaction ->
-                    try {
-                        YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
-                    } catch (e: Exception) {
-                        false
-                    }
+    val monthlyBalances: List<Pair<YearMonth, Double>> = remember(transactions, reportStartMonth, reportEndMonth) {
+        val balances = mutableListOf<Pair<YearMonth, Double>>()
+        var current = reportStartMonth
+        while (!current.isAfter(reportEndMonth)) {
+            val monthlyTransactions = transactions.filter { transaction ->
+                try {
+                    YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
+                } catch (e: Exception) {
+                    false
                 }
-                val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-                val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-                balances.add(current to (income - expense))
-                current = current.plusMonths(1)
             }
-            balances
+            val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+            val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+            balances.add(current to (income - expense))
+            current = current.plusMonths(1)
         }
+        balances
     }
 
     val scrollState = rememberScrollState()

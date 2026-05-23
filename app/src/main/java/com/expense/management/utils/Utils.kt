@@ -36,8 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -227,7 +225,7 @@ fun TransactionItem(
                             Icon(
                                 imageVector = Icons.Default.Repeat,
                                 contentDescription = null,
-                                size = 14.dp,
+                                modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -295,16 +293,6 @@ fun getCategory(id: String, categories: List<CategoryEntity>): CategoryEntity {
     return categories.firstOrNull { it.id == id }
         ?: categories.firstOrNull { it.id == "other" }
         ?: CategoryEntity("other", "Altro", "❓", TransactionType.EXPENSE, false)
-}
-
-@Composable
-private fun Icon(imageVector: ImageVector, contentDescription: String?, size: Dp, tint: Color) {
-    Icon(
-        imageVector = imageVector,
-        contentDescription = contentDescription,
-        modifier = Modifier.size(size),
-        tint = tint,
-    )
 }
 
 @Composable
