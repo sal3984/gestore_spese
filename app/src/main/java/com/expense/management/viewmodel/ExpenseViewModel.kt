@@ -277,15 +277,13 @@ class ExpenseViewModel(
         }
     }
 
-    fun forceCurrencyRatesUpdate(onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val success = currencyUtils.forceUpdate()
-            if (success) {
-                _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
-                refreshCurrencyRatesData()
-            }
-            onResult(success)
+    suspend fun forceCurrencyRatesUpdateSuspend(): Boolean {
+        val success = currencyUtils.forceUpdate()
+        if (success) {
+            _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
+            refreshCurrencyRatesData()
         }
+        return success
     }
 
     private suspend fun refreshCurrencyRatesData() {

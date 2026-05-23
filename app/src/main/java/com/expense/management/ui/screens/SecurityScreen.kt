@@ -28,11 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.ui.theme.gestoreSpeseTheme
 
 @Composable
 fun securityScreen(
+    modifier: Modifier = Modifier,
     isAmountHidden: Boolean,
     isBiometricEnabled: Boolean,
     onAmountHiddenChange: (Boolean) -> Unit,
@@ -114,4 +117,20 @@ fun settingsSwitchItem(
             .clickable { onCheckedChange(!checked) }
             .padding(vertical = 4.dp),
     )
+}
+
+@Preview(showBackground = true, name = "Security Light")
+@Composable
+private fun SecurityPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        securityScreen(isAmountHidden = false, isBiometricEnabled = false, onAmountHiddenChange = {}, onBiometricEnabledChange = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Security Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SecurityPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        securityScreen(isAmountHidden = false, isBiometricEnabled = false, onAmountHiddenChange = {}, onBiometricEnabledChange = {})
+    }
 }

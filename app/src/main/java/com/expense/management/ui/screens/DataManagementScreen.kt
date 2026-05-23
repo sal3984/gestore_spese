@@ -29,11 +29,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.ui.theme.gestoreSpeseTheme
 
 @Composable
 fun DataManagementScreen(
+    modifier: Modifier = Modifier,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
@@ -119,5 +122,21 @@ fun DataManagementScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "DataManagement Light")
+@Composable
+private fun DataManagementPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        DataManagementScreen(onBackup = {}, onRestore = {}, onExportCsv = {})
+    }
+}
+
+@Preview(showBackground = true, name = "DataManagement Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DataManagementPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        DataManagementScreen(onBackup = {}, onRestore = {}, onExportCsv = {})
     }
 }

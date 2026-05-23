@@ -50,8 +50,6 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
-import com.expense.management.ui.theme.ExpenseRed
-import com.expense.management.ui.theme.IncomeGreen
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -62,6 +60,7 @@ import java.util.Locale
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun TransactionItem(
+    modifier: Modifier = Modifier,
     transaction: TransactionEntity,
     categories: List<CategoryEntity>,
     currencySymbol: String,
@@ -77,8 +76,7 @@ fun TransactionItem(
     val categoryLabel = getLocalizedCategoryLabel(category)
     val isIncome = transaction.type == TransactionType.INCOME
 
-    // Use theme colors if possible, otherwise fallback
-    val amountColor = if (isIncome) IncomeGreen else ExpenseRed
+    val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
     val formattedDate = remember(transaction.date, dateFormat) {
         try {
@@ -116,7 +114,7 @@ fun TransactionItem(
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .then(
@@ -310,16 +308,21 @@ private fun Icon(imageVector: ImageVector, contentDescription: String?, size: Dp
 }
 
 @Composable
-fun CategoryImage(category: CategoryEntity, size: Dp) {
+fun CategoryImage(
+    modifier: Modifier = Modifier,
+    category: CategoryEntity,
+    size: Dp,
+) {
     if (category.imageUri != null) {
         AsyncImage(
             model = category.imageUri,
             contentDescription = null,
-            modifier = Modifier.size(size).clip(CircleShape),
+            modifier = modifier.size(size).clip(CircleShape),
             contentScale = ContentScale.Crop,
         )
     } else {
         Text(
+            modifier = modifier,
             text = category.icon,
             fontSize = (size.value * 0.5).sp,
         )

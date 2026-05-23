@@ -39,9 +39,11 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,6 +68,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CardType
@@ -75,6 +78,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.TransactionItem
 import java.time.LocalDate
 import java.time.YearMonth
@@ -85,6 +89,7 @@ import androidx.compose.ui.text.intl.Locale as ComposeLocale
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun DashboardScreen(
+    modifier: Modifier = Modifier,
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
     currencySymbol: String,
@@ -98,7 +103,32 @@ fun DashboardScreen(
     creditCards: List<CreditCardEntity> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    isLoading: Boolean = false,
+    error: String? = null,
+    onRetry: () -> Unit = {},
 ) {
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (error != null) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(error, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+        }
+        return
+    }
+
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
@@ -225,7 +255,7 @@ fun DashboardScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = stringResource(R.string.previous_month),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
 
@@ -233,7 +263,7 @@ fun DashboardScreen(
                             currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
 
                         IconButton(
@@ -243,7 +273,7 @@ fun DashboardScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = stringResource(R.string.next_month),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
                     }
@@ -258,13 +288,13 @@ fun DashboardScreen(
                         Text(
                             stringResource(R.string.monthly_balance),
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                         )
                         Text(
                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -502,7 +532,7 @@ fun DashboardScreen(
                 }
 
                 stickyHeader {
-                    DateHeader(dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
+                    DateHeader(Modifier, dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
                 }
 
                 items(transactionsOnDate, key = { it.id }) { t ->
@@ -547,7 +577,7 @@ fun DashboardScreen(
                                     Icon(
                                         Icons.Default.Delete,
                                         contentDescription = stringResource(R.string.delete),
-                                        tint = Color.White,
+                                        tint = MaterialTheme.colorScheme.onError,
                                     )
                                 }
                             },
@@ -582,6 +612,7 @@ fun DashboardScreen(
 
 @Composable
 fun CreditCardItem(
+    modifier: Modifier = Modifier,
     name: String,
     limit: Double,
     spent: Double,
@@ -688,6 +719,7 @@ fun CreditCardItem(
 
 @Composable
 fun DateHeader(
+    modifier: Modifier = Modifier,
     dateString: String,
     dailyTotal: Double,
     currencySymbol: String,
@@ -737,5 +769,21 @@ fun DateHeader(
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard Light")
+@Composable
+private fun DashboardPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = {}, isAmountHidden = false)
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DashboardPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = {}, isAmountHidden = false)
     }
 }

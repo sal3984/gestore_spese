@@ -76,6 +76,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import com.expense.management.ui.screens.AddTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
@@ -126,6 +127,10 @@ fun mainApp() {
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle()
+    val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
+    val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
+    val frequentExpenseCategories by viewModel.getFrequentCategories(TransactionType.EXPENSE).collectAsStateWithLifecycle()
+    val frequentIncomeCategories by viewModel.getFrequentCategories(TransactionType.INCOME).collectAsStateWithLifecycle()
 
     var isAuthenticated by remember { viewModel.isAppUnlocked }
 
@@ -149,9 +154,9 @@ fun mainApp() {
     if (!isAuthenticated) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("App Bloccata", style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.app_blocked), style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Autenticati per accedere ai tuoi dati", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.authenticate_to_access), style = MaterialTheme.typography.bodyLarge)
 
                 Button(onClick = {
                     BiometricUtils.authenticateUser(
@@ -227,7 +232,7 @@ fun mainApp() {
 
                 // Dashboard mantenuta nel Drawer come "Home"
                 NavigationDrawerItem(
-                    label = { Text("Dashboard") },
+                    label = { Text(stringResource(R.string.dashboard)) },
                     selected = currentRoute == "dashboard",
                     onClick = {
                         navController.navigate("dashboard") {
@@ -284,7 +289,7 @@ fun mainApp() {
                     onClick = {
                         (context as? Activity)?.finish()
                     },
-                    icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Esci") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.exit)) },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -298,8 +303,8 @@ fun mainApp() {
                         title = {
                             val title =
                                 when (currentRoute) {
-                                    "dashboard" -> "Dashboard"
-                                    "report" -> "Report"
+                                    "dashboard" -> stringResource(R.string.dashboard)
+                                    "report" -> stringResource(R.string.report)
                                     "categories" -> stringResource(R.string.categories_title)
                                     "settings" -> stringResource(R.string.settings)
                                     "data_management" -> stringResource(R.string.data_management)
@@ -315,7 +320,7 @@ fun mainApp() {
                             IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
                                 Icon(
                                     imageVector = Icons.Default.Menu,
-                                    contentDescription = "Menu",
+                                    contentDescription = stringResource(R.string.menu),
                                 )
                             }
                         },
@@ -335,8 +340,8 @@ fun mainApp() {
                         tonalElevation = 8.dp,
                     ) {
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.DateRange, contentDescription = "Dashboard") },
-                            label = { Text("Dashboard") },
+                            icon = { Icon(Icons.Default.DateRange, contentDescription = stringResource(R.string.dashboard)) },
+                            label = { Text(stringResource(R.string.dashboard)) },
                             selected = currentRoute == "dashboard",
                             onClick = {
                                 navController.navigate("dashboard") {
@@ -345,8 +350,8 @@ fun mainApp() {
                             },
                         )
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.Download, contentDescription = "Report") },
-                            label = { Text("Report") },
+                            icon = { Icon(Icons.Default.Download, contentDescription = stringResource(R.string.report)) },
+                            label = { Text(stringResource(R.string.report)) },
                             selected = currentRoute == "report",
                             onClick = {
                                 navController.navigate("report") {
@@ -382,7 +387,7 @@ fun mainApp() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "Nuova Transazione",
+                                contentDescription = stringResource(R.string.new_transaction),
                             )
                         }
 
@@ -522,11 +527,18 @@ fun mainApp() {
                                 currentDateFormat = currentDateFormat,
                                 csvExportColumns = csvExportColumns,
                                 hasTransactions = hasTransactions,
+                                currencyRates = currencyRates,
+                                lastRatesUpdate = lastRatesUpdate,
+                                allCreditCards = allCreditCards,
+                                onRefreshCurrencyRates = { viewModel.refreshCurrencyRates() },
+                                onForceCurrencyRatesUpdate = { viewModel.forceCurrencyRatesUpdateSuspend() },
+                                onAddCreditCard = { viewModel.addCreditCard(it) },
+                                onUpdateCreditCard = { viewModel.updateCreditCard(it) },
+                                onDeleteCreditCard = { viewModel.deleteCreditCard(it) },
                                 onCurrencyChange = viewModel::updateCurrency,
                                 onDateFormatChange = viewModel::updateDateFormat,
                                 onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                                 onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
-
                             )
                         }
 
@@ -599,9 +611,10 @@ fun mainApp() {
                                     },
                                     isCC = isCreditCardArg,
                                     availableCreditCards = allCreditCards,
+                                    frequentExpenseCategories = frequentExpenseCategories,
+                                    frequentIncomeCategories = frequentIncomeCategories,
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@composable,
-                                    viewModel = viewModel,
                                 )
                             }
                         }

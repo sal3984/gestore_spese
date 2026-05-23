@@ -36,8 +36,11 @@ import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -63,12 +66,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -76,6 +79,7 @@ import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.getLocalizedCategoryLabel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -107,12 +111,38 @@ private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportScreen(
+    modifier: Modifier = Modifier,
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
     currencySymbol: String,
     dateFormat: String,
     isAmountHidden: Boolean,
+    isLoading: Boolean = false,
+    error: String? = null,
+    onRetry: () -> Unit = {},
 ) {
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (error != null) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(error, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+        }
+        return
+    }
+
     val locale = ComposeLocale.current.platformLocale
     // --- 1. STATO DEL MESE SELEZIONATO ---
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
@@ -229,7 +259,7 @@ fun ReportScreen(
                 stringResource(R.string.report_year, reportEndMonth.year),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
             )
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -238,13 +268,13 @@ fun ReportScreen(
                     Text(
                         stringResource(R.string.total_savings),
                         style = MaterialTheme.typography.titleSmall,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                     )
                     Text(
                         text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", savings)}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -253,9 +283,9 @@ fun ReportScreen(
                     contentDescription = null,
                     modifier = Modifier
                         .size(56.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
                         .padding(12.dp),
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                 )
             }
         }
@@ -401,7 +431,7 @@ fun ReportScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Nessuna spesa\nregistrata per questo mese",
+                            text = stringResource(R.string.no_expenses_for_month),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -529,10 +559,10 @@ fun ReportScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthSelector(
+    modifier: Modifier = Modifier,
     selectedMonth: YearMonth,
     onMonthSelected: (YearMonth) -> Unit,
     label: String,
-    modifier: Modifier = Modifier,
 ) {
     val locale = ComposeLocale.current.platformLocale
     var expanded by remember { mutableStateOf(false) }
@@ -591,6 +621,7 @@ fun MonthSelector(
 
 @Composable
 fun MonthlyBarChart(
+    modifier: Modifier = Modifier,
     data: List<Pair<YearMonth, Double>>,
     currencySymbol: String,
     isAmountHidden: Boolean,
@@ -699,7 +730,6 @@ fun MonthlyBarChart(
                         text = month.month.getDisplayName(TextStyle.NARROW, locale).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
-                        fontSize = 11.sp,
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
@@ -772,6 +802,7 @@ fun MonthlyBarChart(
 
 @Composable
 fun CategoryTransactionsBottomSheetContent(
+    modifier: Modifier = Modifier,
     transactionsForCategory: List<TransactionEntity>,
     category: CategoryEntity?,
     currencySymbol: String,
@@ -857,5 +888,21 @@ fun CategoryTransactionsBottomSheetContent(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Report Light")
+@Composable
+private fun ReportPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        ReportScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", isAmountHidden = false)
+    }
+}
+
+@Preview(showBackground = true, name = "Report Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ReportPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        ReportScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", isAmountHidden = false)
     }
 }

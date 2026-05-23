@@ -86,9 +86,8 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
@@ -97,9 +96,9 @@ import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.model.DeleteType
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.CategoryImage
 import com.expense.management.utils.DateUtils
-import com.expense.management.viewmodel.ExpenseViewModel
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -116,6 +115,7 @@ import androidx.compose.ui.text.intl.Locale as ComposeLocale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun AddTransactionScreen(
+    modifier: Modifier = Modifier,
     transactionToEdit: TransactionEntity?,
     currencySymbol: String,
     dateFormat: String,
@@ -131,7 +131,8 @@ fun AddTransactionScreen(
     availableCreditCards: List<CreditCardEntity> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
-    viewModel: ExpenseViewModel? = null,
+    frequentExpenseCategories: List<CategoryEntity> = emptyList(),
+    frequentIncomeCategories: List<CategoryEntity> = emptyList(),
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val locale = ComposeLocale.current.platformLocale
@@ -238,6 +239,7 @@ fun AddTransactionScreen(
     val errorPastLimitDate = stringResource(R.string.error_past_limit_date)
     val installmentLabel = stringResource(R.string.installment)
     val errorConversionFailed = stringResource(R.string.error_conversion_failed)
+    val okLabel = stringResource(R.string.ok)
 
     val selectedCard = availableCreditCards.find { it.id == creditCardId }
 
@@ -246,14 +248,14 @@ fun AddTransactionScreen(
         val originalAmount = originalAmountText.toDoubleOrNull() ?: amount
 
         if (amount <= 0 || description.isBlank()) {
-            scope.launch { snackbarHostState.showSnackbar(errorInvalidInput, "OK") }
+            scope.launch { snackbarHostState.showSnackbar(errorInvalidInput, okLabel) }
             return
         }
 
         val transactionDate = try {
             LocalDate.parse(dateStr, displayFormatter)
         } catch (e: DateTimeParseException) {
-            scope.launch { snackbarHostState.showSnackbar(errorInvalidDateFormat, "OK") }
+            scope.launch { snackbarHostState.showSnackbar(errorInvalidDateFormat, okLabel) }
             return
         }
 
@@ -264,7 +266,7 @@ fun AddTransactionScreen(
         if (transactionMonth.isBefore(limitMonth)) {
             scope.launch {
                 val formattedMonth = limitMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
-                snackbarHostState.showSnackbar(String.format(errorPastLimitDate, formattedMonth), "OK")
+                snackbarHostState.showSnackbar(String.format(errorPastLimitDate, formattedMonth), okLabel)
             }
             return
         }
@@ -596,7 +598,7 @@ fun AddTransactionScreen(
                                 stringResource(R.string.update_transaction)
                             },
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                         )
                     }
@@ -729,7 +731,7 @@ fun AddTransactionScreen(
                                         description = ""
                                         onDescriptionChange("")
                                     }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
                                     }
                                 }
                             },
@@ -875,7 +877,8 @@ fun AddTransactionScreen(
                 selectedCategoryId = selectedCategory,
                 onCategorySelected = { selectedCategory = it },
                 availableCategories = availableCategories,
-                viewModel = viewModel,
+                frequentExpenseCategories = frequentExpenseCategories,
+                frequentIncomeCategories = frequentIncomeCategories,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1495,12 +1498,11 @@ fun CategorySelector(
     selectedCategoryId: String?,
     onCategorySelected: (String) -> Unit,
     availableCategories: List<CategoryEntity>,
-    viewModel: ExpenseViewModel?,
+    frequentExpenseCategories: List<CategoryEntity> = emptyList(),
+    frequentIncomeCategories: List<CategoryEntity> = emptyList(),
 ) {
-    val frequentCategories by if (viewModel != null) {
-        viewModel.getFrequentCategories(type).collectAsStateWithLifecycle()
-    } else {
-        remember { mutableStateOf(emptyList<CategoryEntity>()) }
+    val frequentCategories = remember(type, frequentExpenseCategories, frequentIncomeCategories) {
+        if (type == TransactionType.EXPENSE) frequentExpenseCategories else frequentIncomeCategories
     }
 
     var searchQuery by remember { mutableStateOf("") }
@@ -1681,5 +1683,21 @@ fun CategoryGridItem(
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.padding(top = 4.dp),
         )
+    }
+}
+
+@Preview(showBackground = true, name = "AddTransaction Light")
+@Composable
+private fun AddTransactionPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        AddTransactionScreen(transactionToEdit = null, currencySymbol = "€", dateFormat = "dd/MM/yyyy", ccPaymentMode = "single", suggestions = emptyList(), availableCategories = emptyList(), onSave = {}, onDelete = { _, _ -> }, onBack = {}, onDescriptionChange = {})
+    }
+}
+
+@Preview(showBackground = true, name = "AddTransaction Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AddTransactionPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        AddTransactionScreen(transactionToEdit = null, currencySymbol = "€", dateFormat = "dd/MM/yyyy", ccPaymentMode = "single", suggestions = emptyList(), availableCategories = emptyList(), onSave = {}, onDelete = { _, _ -> }, onBack = {}, onDescriptionChange = {})
     }
 }

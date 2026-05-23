@@ -68,13 +68,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.CategoryImage
 import java.util.UUID
 
@@ -87,6 +88,7 @@ private val availableIcons = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryScreen(
+    modifier: Modifier = Modifier,
     categories: List<CategoryEntity>,
     onAddCategory: (CategoryEntity) -> Unit,
     onUpdateCategory: (CategoryEntity) -> Unit,
@@ -234,6 +236,7 @@ fun CategoryScreen(
 
 @Composable
 fun CategoryCard(
+    modifier: Modifier = Modifier,
     category: CategoryEntity,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -292,6 +295,7 @@ fun CategoryCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CategoryDialog(
+    modifier: Modifier = Modifier,
     type: TransactionType,
     existingCategories: List<CategoryEntity>,
     categoryToEdit: CategoryEntity? = null,
@@ -350,13 +354,13 @@ fun CategoryDialog(
                                 Icon(Icons.Default.PhotoCamera, null, tint = Color.White)
                             }
                         } else {
-                            Text(text = selectedIcon, fontSize = 40.sp)
+                            Text(text = selectedIcon, style = MaterialTheme.typography.displayMedium)
                         }
                     }
 
                     if (imageUri != null) {
                         IconButton(onClick = { imageUri = null }) {
-                            Icon(Icons.Default.Close, contentDescription = "Rimuovi immagine", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove_image), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -387,7 +391,7 @@ fun CategoryDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Icona o Emoji",
+                        text = stringResource(R.string.icon_or_emoji),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -397,7 +401,7 @@ fun CategoryDialog(
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.width(70.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center, fontSize = 18.sp),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
                     )
 
                     Button(
@@ -439,7 +443,7 @@ fun CategoryDialog(
                                     imageUri = null
                                 },
                         ) {
-                            Text(text = icon, fontSize = 20.sp)
+                            Text(text = icon, style = MaterialTheme.typography.titleLarge)
                         }
                     }
                 }
@@ -473,4 +477,20 @@ fun CategoryDialog(
             }
         },
     )
+}
+
+@Preview(showBackground = true, name = "Category Light")
+@Composable
+private fun CategoryPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Category Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun CategoryPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
+    }
 }
