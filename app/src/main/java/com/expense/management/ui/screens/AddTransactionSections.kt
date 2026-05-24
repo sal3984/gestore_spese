@@ -1,0 +1,741 @@
+package com.expense.management.ui.screens
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.expense.management.R
+import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.RecurrenceType
+import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
+import com.expense.management.utils.DateUtils
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+@Composable
+fun TypeSelector(
+    type: TransactionType,
+    onTypeChange: (TransactionType) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+    ) {
+        val expenseSelected = type == TransactionType.EXPENSE
+        SegmentedButton(
+            selected = expenseSelected,
+            onClick = { onTypeChange(TransactionType.EXPENSE) },
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            colors = SegmentedButtonDefaults.colors(
+                activeContainerColor = MaterialTheme.colorScheme.error,
+                activeContentColor = MaterialTheme.colorScheme.onError,
+                inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            Text(stringResource(R.string.expense_type), fontWeight = FontWeight.Bold)
+        }
+
+        val incomeSelected = type == TransactionType.INCOME
+        SegmentedButton(
+            selected = incomeSelected,
+            onClick = { onTypeChange(TransactionType.INCOME) },
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            colors = SegmentedButtonDefaults.colors(
+                activeContainerColor = MaterialTheme.colorScheme.primary,
+                activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            Text(stringResource(R.string.income_type), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@Composable
+fun BasicDetailsCard(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+    transactionToEdit: TransactionEntity?,
+    currencySymbol: String,
+    dateFormat: String,
+    suggestions: List<String>,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (sharedTransitionScope != null && animatedVisibilityScope != null && transactionToEdit != null) {
+                    with(sharedTransitionScope) {
+                        Modifier.sharedElement(
+                            rememberSharedContentState(key = "transaction_${transactionToEdit.id}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                        )
+                    }
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.basic_details_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            OutlinedTextField(
+                value = uiState.dateStr,
+                onValueChange = { onEvent(AddTransactionEvent.OnDateChange(it)) },
+                label = { Text(stringResource(R.string.transaction_date)) },
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { onEvent(AddTransactionEvent.OnShowDatePicker(true)) }) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
+                onExpandedChange = { onEvent(AddTransactionEvent.OnDescriptionExpandedChange(it)) },
+            ) {
+                OutlinedTextField(
+                    value = uiState.description,
+                    onValueChange = {
+                        onEvent(AddTransactionEvent.OnDescriptionChange(it))
+                        onEvent(AddTransactionEvent.OnDescriptionExpandedChange(true))
+                    },
+                    label = { Text(stringResource(R.string.description)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        if (uiState.description.isNotEmpty()) {
+                            IconButton(onClick = {
+                                onEvent(AddTransactionEvent.OnDescriptionChange(""))
+                                onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false))
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
+                            }
+                        }
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                )
+                ExposedDropdownMenu(
+                    expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
+                    onDismissRequest = { onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false)) },
+                ) {
+                    suggestions.forEach { suggestion ->
+                        DropdownMenuItem(
+                            text = { Text(text = suggestion) },
+                            onClick = {
+                                onEvent(AddTransactionEvent.OnDescriptionChange(suggestion))
+                                onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false))
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (uiState.originalCurrency == currencySymbol) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    androidx.compose.material3.TextButton(
+                        onClick = { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
+                    ) {
+                        Text(stringResource(R.string.set_original_currency))
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            AnimatedVisibility(visible = uiState.originalCurrency != currencySymbol) {
+                Card(
+                    modifier = Modifier.padding(top = 12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.originalAmountText,
+                                onValueChange = { onEvent(AddTransactionEvent.OnOriginalAmountChange(it.replace(',', '.'))) },
+                                label = { Text(stringResource(R.string.amount_original_label)) },
+                                placeholder = { Text("0.00") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            OutlinedTextField(
+                                value = uiState.originalCurrency,
+                                onValueChange = { onEvent(AddTransactionEvent.OnOriginalCurrencyChange(it.uppercase(Locale.ROOT))) },
+                                label = { Text(stringResource(R.string.currency_original_label)) },
+                                readOnly = true,
+                                trailingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                modifier = Modifier
+                                    .weight(0.7f)
+                                    .clickable { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                onEvent(AddTransactionEvent.OnConvertAmount(uiState.originalCurrency, currencySymbol, uiState.originalAmountText.toDoubleOrNull() ?: 0.0))
+                            },
+                            enabled = !uiState.isConverting && uiState.originalAmountText.isNotEmpty(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                        ) {
+                            if (uiState.isConverting) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.converting))
+                            } else {
+                                Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.convert_currency_desc))
+                            }
+                        }
+
+                        Text(
+                            text = stringResource(R.string.main_currency_hint, currencySymbol),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = uiState.amountText,
+                onValueChange = { onEvent(AddTransactionEvent.OnAmountChange(it.replace(',', '.'))) },
+                label = { Text(stringResource(R.string.amount_converted_label, currencySymbol)) },
+                placeholder = { Text("0.00") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+        }
+    }
+}
+
+@Composable
+fun RecurrenceSection(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.recurrence_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            OutlinedTextField(
+                value = when (uiState.recurrenceType) {
+                    RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
+                    RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                    RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                    RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                    RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                },
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
+                shape = RoundedCornerShape(12.dp),
+            )
+
+            AnimatedVisibility(visible = uiState.recurrenceType != RecurrenceType.NONE) {
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text(
+                        text = stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Slider(
+                        value = uiState.recurrenceLimit.toFloat(),
+                        onValueChange = { onEvent(AddTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
+                        valueRange = 2f..60f,
+                        steps = 58,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text(
+                        text = stringResource(R.string.recurrence_occurrences_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaymentMethodSection(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+    isEditing: Boolean,
+    transactionToEdit: TransactionEntity?,
+    availableCreditCards: List<CreditCardEntity>,
+    isCC: Boolean = false,
+) {
+    AnimatedVisibility(
+        visible = isCC
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.payment_method_label),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+
+                if (availableCreditCards.isNotEmpty()) {
+                    OutlinedTextField(
+                        value = availableCreditCards.find { it.id == uiState.creditCardId }?.name ?: stringResource(R.string.select_credit_card),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.credit_card)) },
+                        trailingIcon = {
+                            IconButton(onClick = { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) }) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) },
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (!isEditing) {
+                                Modifier.clickable { onEvent(AddTransactionEvent.OnCreditCardToggle(!uiState.isCreditCard)) }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = uiState.isCreditCard,
+                        onCheckedChange = { if (!isEditing) onEvent(AddTransactionEvent.OnCreditCardToggle(it)) },
+                        enabled = !isEditing,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(stringResource(R.string.use_credit_card_label), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = stringResource(R.string.credit_card_payment_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                val showInstallmentCheckbox = !isEditing && !uiState.isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)
+                AnimatedVisibility(visible = showInstallmentCheckbox) {
+                    Column {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (!isEditing) {
+                                        Modifier.clickable { onEvent(AddTransactionEvent.OnIsInstallmentChange(!uiState.isInstallment)) }
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = uiState.isInstallment,
+                                onCheckedChange = { onEvent(AddTransactionEvent.OnIsInstallmentChange(it)) },
+                                enabled = !isEditing,
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                Text(
+                                    text = stringResource(R.string.installment_payment_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InstallmentSection(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+    isEditing: Boolean,
+    transactionToEdit: TransactionEntity?,
+    currencySymbol: String,
+    dateFormat: String,
+    availableCreditCards: List<CreditCardEntity>,
+) {
+    val showSection = (uiState.isCreditCard || uiState.isInstallment) && (uiState.type == TransactionType.EXPENSE || uiState.type == TransactionType.INCOME)
+    AnimatedVisibility(visible = showSection) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    RoundedCornerShape(16.dp),
+                )
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant,
+                    RoundedCornerShape(16.dp),
+                )
+                .padding(20.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.payment_options),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            if (uiState.isInstallment) {
+                if (!isEditing) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                    ) {
+                        SegmentedButton(
+                            selected = uiState.calculationMode == "installments",
+                            onClick = { onEvent(AddTransactionEvent.OnCalculationModeChange("installments")) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        ) {
+                            Text(stringResource(R.string.calc_mode_installments))
+                        }
+                        SegmentedButton(
+                            selected = uiState.calculationMode == "amount",
+                            onClick = { onEvent(AddTransactionEvent.OnCalculationModeChange("amount")) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        ) {
+                            Text(stringResource(R.string.calc_mode_amount))
+                        }
+                    }
+                }
+
+                if (uiState.calculationMode == "installments" || isEditing) {
+                    Text(stringResource(R.string.number_of_installments, uiState.installmentsCount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Slider(
+                        value = uiState.installmentsCount.toFloat(),
+                        onValueChange = { onEvent(AddTransactionEvent.OnInstallmentsCountChange(it.toInt())) },
+                        valueRange = 2f..12f,
+                        steps = 10,
+                        enabled = !isEditing,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    val amount = uiState.amountText.toDoubleOrNull() ?: 0.0
+                    if (amount > 0 && uiState.installmentsCount > 0) {
+                        val amountPerInstallment = amount / uiState.installmentsCount
+                        Text(
+                            text = stringResource(R.string.calc_amount_per_installment, String.format(Locale.US, "%.2f %s", amountPerInstallment, currencySymbol)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = uiState.installmentAmountText,
+                        onValueChange = { onEvent(AddTransactionEvent.OnInstallmentAmountChange(it.replace(',', '.'))) },
+                        label = { Text(stringResource(R.string.installment_amount_label)) },
+                        placeholder = { Text("0.00") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+
+                    val totalAmount = uiState.amountText.toDoubleOrNull() ?: 0.0
+                    val installmentAmount = uiState.installmentAmountText.toDoubleOrNull() ?: 0.0
+                    if (totalAmount > 0 && installmentAmount > 0) {
+                        val calculatedInstallments = kotlin.math.ceil(totalAmount / installmentAmount).toInt()
+                        Text(
+                            text = stringResource(R.string.number_of_installments, calculatedInstallments),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (!isEditing || (isEditing && uiState.isCreditCard)) {
+                    AnimatedVisibility(visible = uiState.isCreditCard) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onEvent(AddTransactionEvent.OnApplyCcDelayChange(!uiState.applyCcDelayToInstallments)) }
+                                    .padding(vertical = 8.dp),
+                            ) {
+                                Checkbox(
+                                    checked = uiState.applyCcDelayToInstallments,
+                                    onCheckedChange = { onEvent(AddTransactionEvent.OnApplyCcDelayChange(it)) },
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = stringResource(R.string.apply_cc_delay),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        text = if (uiState.applyCcDelayToInstallments) {
+                                            stringResource(R.string.cc_delay_installment_message_on)
+                                        } else {
+                                            stringResource(R.string.cc_delay_installment_message_off)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+
+                if (!isEditing || (isEditing && !uiState.isCreditCard && uiState.isInstallment)) {
+                    OutlinedTextField(
+                        value = uiState.installmentStartDateStr,
+                        onValueChange = { onEvent(AddTransactionEvent.OnInstallmentStartDateChange(it)) },
+                        label = { Text(stringResource(R.string.first_installment_date)) },
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = { onEvent(AddTransactionEvent.OnShowInstallmentDatePicker(true)) }) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    Text(
+                        stringResource(R.string.first_installment_date_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            } else if (uiState.isCreditCard && !uiState.isInstallment) {
+                val selectedCard = remember(uiState.creditCardId, availableCreditCards) {
+                    availableCreditCards.find { it.id == uiState.creditCardId }
+                }
+                val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
+                val effectiveDate = try {
+                    if (transactionToEdit != null && transactionToEdit.effectiveDate.isNotEmpty()) {
+                        transactionToEdit.effectiveDate
+                    } else {
+                        val tDate = LocalDate.parse(uiState.dateStr, displayFormatter)
+                        if (selectedCard != null) {
+                            DateUtils.calculateEffectiveDate(tDate, selectedCard)
+                        } else {
+                            tDate.plusMonths(1).withDayOfMonth(15).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                        }
+                    }
+                } catch (e: Exception) {
+                    ""
+                }
+
+                val formattedEffectiveDate = try {
+                    LocalDate.parse(effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE).format(displayFormatter)
+                } catch (e: Exception) {
+                    effectiveDate
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(stringResource(R.string.expected_debit_date), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(formattedEffectiveDate, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Text(
+                    stringResource(R.string.expected_debit_date_calc, if (selectedCard != null) selectedCard.paymentDay else 15),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SaveButton(
+    isEditing: Boolean,
+    onSave: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = 16.dp,
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp),
+        ) {
+            Button(
+                onClick = onSave,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(4.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (isEditing) stringResource(R.string.update_transaction) else stringResource(R.string.save_transaction),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
