@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -70,7 +71,7 @@ fun PaymentMethodSettingsScreen(
     allPaymentMethods: List<PaymentMethodEntity>,
     legacyCreditCards: List<CreditCardEntity>,
     onNavigateBack: () -> Unit,
-    onAdd: (PaymentMethodEntity) -> Unit,
+    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int) -> Unit,
     onDelete: (String) -> Unit,
     onEditPaymentMethod: (PaymentMethodEntity, PaymentMethodDetails) -> Unit,
     onLoadDetails: suspend (String) -> PaymentMethodDetails?,
@@ -175,7 +176,7 @@ fun PaymentMethodSettingsScreen(
     if (showAddDialog) {
         AddPaymentMethodDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { provider, name ->
+            onConfirm = { provider, name, closingDay, _, paymentDay ->
                 val newMethod = PaymentMethodEntity(
                     id = java.util.UUID.randomUUID().toString(),
                     name = name,
@@ -184,7 +185,7 @@ fun PaymentMethodSettingsScreen(
                     issuer = null,
                     currency = null,
                 )
-                onAdd(newMethod)
+                onAdd(newMethod, closingDay, paymentDay)
                 showAddDialog = false
             },
         )
@@ -219,6 +220,7 @@ fun PaymentMethodSettingsScreen(
         var editLimitText by remember(card) { mutableStateOf(card.limit.toString()) }
         var editClosingDayText by remember(card) { mutableStateOf(card.closingDay.toString()) }
         var editPaymentDayText by remember(card) { mutableStateOf(card.paymentDay.toString()) }
+        var isLastDayOfMonth by remember(card) { mutableStateOf(card.closingDay >= 31) }
 
         AlertDialog(
             onDismissRequest = { editingLegacyCard = null },
@@ -240,13 +242,28 @@ fun PaymentMethodSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = editClosingDayText,
-                        onValueChange = { editClosingDayText = it },
-                        label = { Text("Giorno Chiusura") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = editClosingDayText,
+                            onValueChange = {
+                                editClosingDayText = it
+                                if (it.isNotEmpty()) isLastDayOfMonth = false
+                            },
+                            label = { Text("Giorno Chiusura") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            enabled = !isLastDayOfMonth,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Checkbox(
+                            checked = isLastDayOfMonth,
+                            onCheckedChange = {
+                                isLastDayOfMonth = it
+                                if (it) editClosingDayText = ""
+                            },
+                        )
+                        Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = editPaymentDayText,
@@ -260,7 +277,7 @@ fun PaymentMethodSettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     val limit = editLimitText.toDoubleOrNull() ?: return@TextButton
-                    val closingDay = editClosingDayText.toIntOrNull() ?: return@TextButton
+                    val closingDay = if (isLastDayOfMonth) 31 else (editClosingDayText.toIntOrNull() ?: return@TextButton)
                     val paymentDay = editPaymentDayText.toIntOrNull() ?: return@TextButton
                     onUpdateLegacyCard(card.copy(name = editName, limit = limit, closingDay = closingDay, paymentDay = paymentDay))
                     editingLegacyCard = null
@@ -307,10 +324,16 @@ private fun paymentMethodListItem(
 @Composable
 private fun AddPaymentMethodDialog(
     onDismiss: () -> Unit,
-    onConfirm: (PaymentProvider, String) -> Unit,
+    onConfirm: (PaymentProvider, String, Int, Boolean, Int) -> Unit,
 ) {
     var selectedProvider by remember { mutableStateOf(PaymentProvider.CREDIT_CARD_SALDO) }
     var name by remember { mutableStateOf("") }
+    var limitText by remember { mutableStateOf("1000") }
+    var closingDayText by remember { mutableStateOf("") }
+    var paymentDayText by remember { mutableStateOf("") }
+    var isLastDayOfMonth by remember { mutableStateOf(true) }
+    val isCreditCard = selectedProvider == PaymentProvider.CREDIT_CARD_SALDO ||
+        selectedProvider == PaymentProvider.CREDIT_CARD_REVOLVING
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -347,13 +370,55 @@ private fun AddPaymentMethodDialog(
                         }
                     }
                 }
+
+                if (isCreditCard) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    OutlinedTextField(
+                        value = limitText,
+                        onValueChange = { limitText = it },
+                        label = { Text("Limite") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = closingDayText,
+                            onValueChange = {
+                                closingDayText = it
+                                if (it.isNotEmpty()) isLastDayOfMonth = false
+                            },
+                            label = { Text("Giorno Chiusura") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            enabled = !isLastDayOfMonth,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Checkbox(
+                            checked = isLastDayOfMonth,
+                            onCheckedChange = { isLastDayOfMonth = it },
+                        )
+                        Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = paymentDayText,
+                        onValueChange = { paymentDayText = it },
+                        label = { Text("Giorno Addebito") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onConfirm(selectedProvider, name)
+                        val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: 31)
+                        val paymentDay = paymentDayText.toIntOrNull() ?: 15
+                        onConfirm(selectedProvider, name, closingDay, isLastDayOfMonth, paymentDay)
                     }
                 },
                 enabled = name.isNotBlank(),
@@ -395,6 +460,9 @@ private fun EditPaymentMethodDialog(
             var limitText by remember(details) { mutableStateOf(if (details != null) details.limit.toString() else "0") }
             var closingDayText by remember(details) { mutableStateOf(if (details != null) details.closingDay.toString() else "0") }
             var paymentDayText by remember(details) { mutableStateOf(if (details != null) details.paymentDay.toString() else "0") }
+            var isLastDayOfMonth by remember(details) {
+                mutableStateOf(details?.closingDay == null || details.closingDay >= 31)
+            }
 
             AlertDialog(
                 onDismissRequest = onDismiss,
@@ -407,15 +475,36 @@ private fun EditPaymentMethodDialog(
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = limitText, onValueChange = { limitText = it }, label = { Text("Limite") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(value = closingDayText, onValueChange = { closingDayText = it }, label = { Text("Giorno Chiusura") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = closingDayText,
+                                onValueChange = {
+                                    closingDayText = it
+                                    if (it.isNotEmpty()) isLastDayOfMonth = false
+                                },
+                                label = { Text("Giorno Chiusura") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                enabled = !isLastDayOfMonth,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Checkbox(
+                                checked = isLastDayOfMonth,
+                                onCheckedChange = {
+                                    isLastDayOfMonth = it
+                                    if (it) closingDayText = ""
+                                },
+                            )
+                            Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text("Giorno Pagamento") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text("Giorno Addebito") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = {
                         val limit = limitText.toDoubleOrNull() ?: return@TextButton
-                        val closingDay = closingDayText.toIntOrNull() ?: return@TextButton
+                        val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: return@TextButton)
                         val paymentDay = paymentDayText.toIntOrNull() ?: return@TextButton
                         onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay))
                     }) { Text("Salva") }

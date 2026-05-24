@@ -573,7 +573,7 @@ fun mainApp() {
                                 allPaymentMethods = allPaymentMethods,
                                 legacyCreditCards = allCreditCards,
                                 onNavigateBack = { navController.popBackStack() },
-                                onAdd = { viewModel.addPaymentMethod(it) },
+                                onAdd = { method, closingDay, paymentDay -> viewModel.addPaymentMethod(method, closingDay, paymentDay) },
                                 onDelete = { viewModel.deletePaymentMethod(it) },
                                 onEditPaymentMethod = { method, details ->
                                     viewModel.updatePaymentMethodWithDetails(method, details)

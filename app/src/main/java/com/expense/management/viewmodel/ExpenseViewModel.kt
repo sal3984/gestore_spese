@@ -271,7 +271,11 @@ class ExpenseViewModel(
     }
 
     // GESTIONE METODI DI PAGAMENTO
-    fun addPaymentMethod(paymentMethod: PaymentMethodEntity) {
+    fun addPaymentMethod(
+        paymentMethod: PaymentMethodEntity,
+        closingDay: Int = 0,
+        paymentDay: Int = 0,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             managePaymentMethodUseCase.add(paymentMethod)
             if (
@@ -287,8 +291,8 @@ class ExpenseViewModel(
                             CreditCardType.REVOLVING.name
                         },
                         limit = 0.0,
-                        closingDay = 0,
-                        paymentDay = 0,
+                        closingDay = closingDay,
+                        paymentDay = paymentDay,
                     ),
                 )
             }
