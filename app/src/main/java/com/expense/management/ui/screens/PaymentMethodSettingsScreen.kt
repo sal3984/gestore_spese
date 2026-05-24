@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,20 +41,25 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.PaymentMethodEntity
+import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
 import java.util.Locale
 
@@ -66,11 +72,15 @@ fun PaymentMethodSettingsScreen(
     onNavigateBack: () -> Unit,
     onAdd: (PaymentMethodEntity) -> Unit,
     onDelete: (String) -> Unit,
+    onEditPaymentMethod: (PaymentMethodEntity, PaymentMethodDetails) -> Unit,
+    onLoadDetails: suspend (String) -> PaymentMethodDetails?,
     onAddLegacyCard: (CreditCardEntity) -> Unit,
     onUpdateLegacyCard: (CreditCardEntity) -> Unit,
     onDeleteLegacyCard: (CreditCardEntity) -> Unit,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingMethod by remember { mutableStateOf<PaymentMethodEntity?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -147,7 +157,7 @@ fun PaymentMethodSettingsScreen(
                                 icon = providerIcon(provider),
                                 title = method.name,
                                 subtitle = method.issuer ?: providerLabel(provider),
-                                onEdit = { /* TODO: edit payment method details */ },
+                                onEdit = { editingMethod = method },
                                 onDelete = { onDelete(method.id) },
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -175,6 +185,29 @@ fun PaymentMethodSettingsScreen(
                 )
                 onAdd(newMethod)
                 showAddDialog = false
+            },
+        )
+    }
+
+    // Edit Payment Method Dialog
+    editingMethod?.let { method ->
+        var currentDetails by remember { mutableStateOf<PaymentMethodDetails?>(null) }
+        LaunchedEffect(method.id) {
+            currentDetails = onLoadDetails(method.id)
+        }
+        val provider = try {
+            PaymentProvider.valueOf(method.provider)
+        } catch (_: Exception) {
+            null
+        } ?: return@let
+        EditPaymentMethodDialog(
+            provider = provider,
+            currentDetails = currentDetails,
+            onDismiss = { editingMethod = null },
+            onSave = { name, details ->
+                val updatedMethod = method.copy(name = name)
+                onEditPaymentMethod(updatedMethod, details)
+                editingMethod = null
             },
         )
     }
@@ -272,6 +305,186 @@ private fun AddPaymentMethodDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Composable
+private fun EditPaymentMethodDialog(
+    provider: PaymentProvider,
+    currentDetails: PaymentMethodDetails?,
+    onDismiss: () -> Unit,
+    onSave: (String, PaymentMethodDetails) -> Unit,
+) {
+    var name by remember(currentDetails) {
+        mutableStateOf(
+            currentDetails?.let {
+                when (it) {
+                    is PaymentMethodDetails.CreditCard -> it.name
+                    is PaymentMethodDetails.Revolut -> it.name
+                    is PaymentMethodDetails.Satispay -> it.name
+                    is PaymentMethodDetails.Paypal -> it.name
+                    is PaymentMethodDetails.Klarna -> it.name
+                }
+            } ?: "",
+        )
+    }
+
+    when (provider) {
+        PaymentProvider.CREDIT_CARD_SALDO,
+        PaymentProvider.CREDIT_CARD_REVOLVING,
+        -> {
+            val cardType = if (provider == PaymentProvider.CREDIT_CARD_SALDO) CreditCardType.SALDO else CreditCardType.REVOLVING
+            val details = currentDetails as? PaymentMethodDetails.CreditCard
+            var limitText by remember(details) { mutableStateOf(if (details != null) details.limit.toString() else "0") }
+            var closingDayText by remember(details) { mutableStateOf(if (details != null) details.closingDay.toString() else "0") }
+            var paymentDayText by remember(details) { mutableStateOf(if (details != null) details.paymentDay.toString() else "0") }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = cardType.name, onValueChange = {}, readOnly = true, label = { Text("Tipo Carta") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = limitText, onValueChange = { limitText = it }, label = { Text("Limite") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = closingDayText, onValueChange = { closingDayText = it }, label = { Text("Giorno Chiusura") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text("Giorno Pagamento") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val limit = limitText.toDoubleOrNull() ?: return@TextButton
+                        val closingDay = closingDayText.toIntOrNull() ?: return@TextButton
+                        val paymentDay = paymentDayText.toIntOrNull() ?: return@TextButton
+                        onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay))
+                    }) { Text("Salva") }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+            )
+        }
+
+        PaymentProvider.REVOLUT -> {
+            val details = currentDetails as? PaymentMethodDetails.Revolut
+            var currencyText by remember(details) { mutableStateOf(details?.currency ?: "EUR") }
+            var ibanText by remember(details) { mutableStateOf(details?.iban ?: "") }
+            var accountNumberText by remember(details) { mutableStateOf(details?.accountNumber ?: "") }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = currencyText, onValueChange = { currencyText = it }, label = { Text("Valuta") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = ibanText, onValueChange = { ibanText = it }, label = { Text("IBAN") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = accountNumberText, onValueChange = { accountNumberText = it }, label = { Text("Numero Conto") }, modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onSave(name, PaymentMethodDetails.Revolut(name, currencyText, ibanText.ifBlank { null }, accountNumberText.ifBlank { null }))
+                    }) { Text("Salva") }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+            )
+        }
+
+        PaymentProvider.SATISPAY -> {
+            val details = currentDetails as? PaymentMethodDetails.Satispay
+            var weeklyBudgetText by remember(details) { mutableStateOf(if (details != null) details.weeklyBudget.toString() else "0") }
+            var sddDayText by remember(details) { mutableStateOf(if (details != null) details.sddDay.toString() else "1") }
+            var ibanText by remember(details) { mutableStateOf(details?.iban ?: "") }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = weeklyBudgetText, onValueChange = { weeklyBudgetText = it }, label = { Text("Budget Settimanale") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = sddDayText, onValueChange = { sddDayText = it }, label = { Text("Giorno SDD") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = ibanText, onValueChange = { ibanText = it }, label = { Text("IBAN") }, modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val weeklyBudget = weeklyBudgetText.toDoubleOrNull() ?: return@TextButton
+                        val sddDay = sddDayText.toIntOrNull() ?: return@TextButton
+                        onSave(name, PaymentMethodDetails.Satispay(name, weeklyBudget, sddDay, ibanText.ifBlank { null }))
+                    }) { Text("Salva") }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+            )
+        }
+
+        PaymentProvider.PAYPAL -> {
+            val details = currentDetails as? PaymentMethodDetails.Paypal
+            var emailText by remember(details) { mutableStateOf(details?.email ?: "") }
+            var bnplCountText by remember(details) { mutableStateOf(if (details != null) details.bnplInstallmentCount.toString() else "3") }
+            var bnplCycleText by remember(details) { mutableStateOf(if (details != null) details.bnplCycleDays.toString() else "14") }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = emailText, onValueChange = { emailText = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = bnplCountText, onValueChange = { bnplCountText = it }, label = { Text("Rate BNPL") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = bnplCycleText, onValueChange = { bnplCycleText = it }, label = { Text("Giorni Ciclo BNPL") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val count = bnplCountText.toIntOrNull() ?: return@TextButton
+                        val cycle = bnplCycleText.toIntOrNull() ?: return@TextButton
+                        onSave(name, PaymentMethodDetails.Paypal(name, emailText, count, cycle))
+                    }) { Text("Salva") }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+            )
+        }
+
+        PaymentProvider.KLARNA -> {
+            val details = currentDetails as? PaymentMethodDetails.Klarna
+            var bnplCountText by remember(details) { mutableStateOf(if (details != null) details.bnplInstallmentCount.toString() else "4") }
+            var bnplCycleText by remember(details) { mutableStateOf(if (details != null) details.bnplCycleDays.toString() else "30") }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = bnplCountText, onValueChange = { bnplCountText = it }, label = { Text("Rate BNPL") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = bnplCycleText, onValueChange = { bnplCycleText = it }, label = { Text("Giorni Ciclo BNPL") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val count = bnplCountText.toIntOrNull() ?: return@TextButton
+                        val cycle = bnplCycleText.toIntOrNull() ?: return@TextButton
+                        onSave(name, PaymentMethodDetails.Klarna(name, count, cycle))
+                    }) { Text("Salva") }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+            )
+        }
+    }
 }
 
 private fun providerLabel(provider: PaymentProvider): String {

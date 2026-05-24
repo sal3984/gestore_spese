@@ -289,7 +289,7 @@ class AddTransactionSaveUseCase {
                     totalInstallments = finalInstallmentsCount,
                     groupId = groupId,
                     creditCardId = uiState.creditCardId,
-                    paymentMethodId = uiState.creditCardId,
+                    paymentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                 ),
             )
         }
@@ -393,7 +393,7 @@ class AddTransactionSaveUseCase {
                     effectiveDate = effectiveDate,
                     groupId = groupId,
                     creditCardId = if (uiState.isCreditCard) uiState.creditCardId else null,
-                    paymentMethodId = if (uiState.isCreditCard) uiState.creditCardId else null,
+                    paymentMethodId = uiState.selectedPaymentMethodId ?: (if (uiState.isCreditCard) uiState.creditCardId else null),
                     recurrenceType = uiState.recurrenceType,
                     recurrenceLimit = uiState.recurrenceLimit,
                 ),

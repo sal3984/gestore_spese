@@ -18,8 +18,11 @@ import com.expense.management.data.SatispayDetailEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -225,10 +228,53 @@ class ExpenseViewModel(
         }
     }
 
+    // DATI DETTAGLIO PAYPAL
+    val allPaypalDetails: StateFlow<List<PaypalDetailEntity>> =
+        repository.allPaypalDetails
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // DATI DETTAGLIO KLARNA
+    val allKlarnaDetails: StateFlow<List<KlarnaDetailEntity>> =
+        repository.allKlarnaDetails
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // PROIEZIONI BNPL
+    private val _bnplProjections = MutableStateFlow<List<BnplProjection>>(emptyList())
+    val bnplProjections: StateFlow<List<BnplProjection>> = _bnplProjections.asStateFlow()
+
+    fun refreshBnplProjections(targetMonth: YearMonth) {
+        val useCase = CalculateBnplProjectionsUseCase()
+        _bnplProjections.value = useCase.execute(
+            allTransactions = allTransactions.value,
+            allPaymentMethods = allPaymentMethods.value,
+            paypalDetails = allPaypalDetails.value,
+            klarnaDetails = allKlarnaDetails.value,
+            targetMonth = targetMonth,
+        )
+    }
+
     // GESTIONE METODI DI PAGAMENTO
     fun addPaymentMethod(paymentMethod: PaymentMethodEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             managePaymentMethodUseCase.add(paymentMethod)
+            if (
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+            ) {
+                repository.insertCreditCardDetail(
+                    CreditCardDetailEntity(
+                        paymentMethodId = paymentMethod.id,
+                        cardType = if (paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO.name) {
+                            CreditCardType.SALDO.name
+                        } else {
+                            CreditCardType.REVOLVING.name
+                        },
+                        limit = 0.0,
+                        closingDay = 0,
+                        paymentDay = 0,
+                    ),
+                )
+            }
         }
     }
 
@@ -284,6 +330,111 @@ class ExpenseViewModel(
 
     suspend fun insertKlarnaDetail(detail: KlarnaDetailEntity) {
         repository.insertKlarnaDetail(detail)
+    }
+
+    suspend fun getPaymentMethodDetails(method: PaymentMethodEntity): PaymentMethodDetails? {
+        return when (PaymentProvider.valueOf(method.provider)) {
+            PaymentProvider.CREDIT_CARD_SALDO,
+            PaymentProvider.CREDIT_CARD_REVOLVING,
+            -> {
+                repository.getCreditCardDetail(method.id)?.let {
+                    PaymentMethodDetails.CreditCard(
+                        name = method.name,
+                        cardType = CreditCardType.valueOf(it.cardType),
+                        limit = it.limit,
+                        closingDay = it.closingDay,
+                        paymentDay = it.paymentDay,
+                    )
+                }
+            }
+            PaymentProvider.REVOLUT -> {
+                repository.getRevolutDetail(method.id)?.let {
+                    PaymentMethodDetails.Revolut(
+                        name = method.name,
+                        currency = it.currency,
+                        iban = it.iban,
+                        accountNumber = it.accountNumber,
+                    )
+                }
+            }
+            PaymentProvider.SATISPAY -> {
+                repository.getSatispayDetail(method.id)?.let {
+                    PaymentMethodDetails.Satispay(
+                        name = method.name,
+                        weeklyBudget = it.weeklyBudget,
+                        sddDay = it.sddDay,
+                        iban = it.iban,
+                    )
+                }
+            }
+            PaymentProvider.PAYPAL -> {
+                repository.getPaypalDetail(method.id)?.let {
+                    PaymentMethodDetails.Paypal(
+                        name = method.name,
+                        email = it.email,
+                        bnplInstallmentCount = it.bnplInstallmentCount,
+                        bnplCycleDays = it.bnplCycleDays,
+                    )
+                }
+            }
+            PaymentProvider.KLARNA -> {
+                repository.getKlarnaDetail(method.id)?.let {
+                    PaymentMethodDetails.Klarna(
+                        name = method.name,
+                        bnplInstallmentCount = it.bnplInstallmentCount,
+                        bnplCycleDays = it.bnplCycleDays,
+                    )
+                }
+            }
+        }
+    }
+
+    fun updatePaymentMethodWithDetails(method: PaymentMethodEntity, details: PaymentMethodDetails) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.update(method)
+            when (details) {
+                is PaymentMethodDetails.CreditCard -> repository.insertCreditCardDetail(
+                    CreditCardDetailEntity(
+                        paymentMethodId = method.id,
+                        cardType = details.cardType.name,
+                        limit = details.limit,
+                        closingDay = details.closingDay,
+                        paymentDay = details.paymentDay,
+                    ),
+                )
+                is PaymentMethodDetails.Revolut -> repository.insertRevolutDetail(
+                    RevolutDetailEntity(
+                        paymentMethodId = method.id,
+                        currency = details.currency,
+                        iban = details.iban,
+                        accountNumber = details.accountNumber,
+                    ),
+                )
+                is PaymentMethodDetails.Satispay -> repository.insertSatispayDetail(
+                    SatispayDetailEntity(
+                        paymentMethodId = method.id,
+                        weeklyBudget = details.weeklyBudget,
+                        sddDay = details.sddDay,
+                        iban = details.iban,
+                    ),
+                )
+                is PaymentMethodDetails.Paypal -> repository.insertPaypalDetail(
+                    PaypalDetailEntity(
+                        paymentMethodId = method.id,
+                        email = details.email,
+                        bnplInstallmentCount = details.bnplInstallmentCount,
+                        bnplCycleDays = details.bnplCycleDays,
+                    ),
+                )
+                is PaymentMethodDetails.Klarna -> repository.insertKlarnaDetail(
+                    KlarnaDetailEntity(
+                        paymentMethodId = method.id,
+                        bnplInstallmentCount = details.bnplInstallmentCount,
+                        bnplCycleDays = details.bnplCycleDays,
+                    ),
+                )
+            }
+        }
     }
 
     fun addCategory(category: CategoryEntity) {

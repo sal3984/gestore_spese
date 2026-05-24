@@ -77,6 +77,7 @@ class ExpenseRepository(
 
     suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
         transactionDao.nullifyCreditCardId(creditCard.id)
+        transactionDao.nullifyPaymentMethodId(creditCard.id)
         creditCardDao.deleteCreditCard(creditCard)
     }
 
@@ -96,6 +97,16 @@ class ExpenseRepository(
 
     suspend fun getAllPaymentMethods(): List<PaymentMethodEntity> = paymentMethodDao.getAllPaymentMethods()
 
+    suspend fun getAllCreditCardDetails(): List<CreditCardDetailEntity> = paymentMethodDao.getAllCreditCardDetails()
+
+    suspend fun getAllRevolutDetails(): List<RevolutDetailEntity> = paymentMethodDao.getAllRevolutDetails()
+
+    suspend fun getAllSatispayDetails(): List<SatispayDetailEntity> = paymentMethodDao.getAllSatispayDetails()
+
+    suspend fun getAllPaypalDetails(): List<PaypalDetailEntity> = paymentMethodDao.getAllPaypalDetails()
+
+    suspend fun getAllKlarnaDetails(): List<KlarnaDetailEntity> = paymentMethodDao.getAllKlarnaDetails()
+
     suspend fun getPaymentMethodById(id: String): PaymentMethodEntity? = paymentMethodDao.getPaymentMethodById(id)
 
     suspend fun insertPaymentMethod(paymentMethod: PaymentMethodEntity) {
@@ -103,6 +114,7 @@ class ExpenseRepository(
     }
 
     suspend fun deletePaymentMethod(id: String) {
+        transactionDao.nullifyPaymentMethodId(id)
         transactionDao.nullifyCreditCardId(id)
         paymentMethodDao.deletePaymentMethod(id)
     }
@@ -123,6 +135,12 @@ class ExpenseRepository(
 
     val allCreditCardDetails: Flow<List<CreditCardDetailEntity>> =
         paymentMethodDao.getAllCreditCardDetailsFlow()
+
+    val allPaypalDetails: Flow<List<PaypalDetailEntity>> =
+        paymentMethodDao.getAllPaypalDetailsFlow()
+
+    val allKlarnaDetails: Flow<List<KlarnaDetailEntity>> =
+        paymentMethodDao.getAllKlarnaDetailsFlow()
 
     suspend fun insertRevolutDetail(detail: RevolutDetailEntity) {
         paymentMethodDao.insertRevolutDetail(detail)

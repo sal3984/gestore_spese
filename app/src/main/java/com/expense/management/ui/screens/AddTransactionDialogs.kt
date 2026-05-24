@@ -20,8 +20,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
+import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.DeleteType
 import java.time.Instant
 import java.time.LocalDate
@@ -81,6 +83,38 @@ fun CreditCardDialog(
                             .clickable {
                                 onCardSelected(card.id, card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING)
                             }
+                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+fun PaymentMethodPickerDialog(
+    allPaymentMethods: List<PaymentMethodEntity>,
+    currentMethodId: String?,
+    onMethodSelected: (methodId: String, isCreditCard: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.payment_method_label)) },
+        text = {
+            Column {
+                allPaymentMethods.forEach { method ->
+                    val isCreditCard = method.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
+                        method.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                    Text(
+                        text = method.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (method.id == currentMethodId) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onMethodSelected(method.id, isCreditCard) }
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))

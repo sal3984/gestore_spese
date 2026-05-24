@@ -13,6 +13,7 @@ data class AddTransactionUiState(
     val isCreditCard: Boolean = false,
     val creditCardId: String? = null,
     val showCreditCardDialog: Boolean = false,
+    val selectedPaymentMethodId: String? = null,
     val originalAmountText: String = "",
     val originalCurrency: String = "",
     val showCurrencyDialog: Boolean = false,
@@ -43,6 +44,7 @@ sealed interface AddTransactionEvent {
     data class OnCreditCardToggle(val isCreditCard: Boolean) : AddTransactionEvent
     data class OnCreditCardIdChange(val creditCardId: String?) : AddTransactionEvent
     data class OnShowCreditCardDialog(val show: Boolean) : AddTransactionEvent
+    data class OnPaymentMethodSelected(val paymentMethodId: String?, val isCreditCard: Boolean) : AddTransactionEvent
     data class OnOriginalAmountChange(val amount: String) : AddTransactionEvent
     data class OnOriginalCurrencyChange(val currency: String) : AddTransactionEvent
     data class OnShowCurrencyDialog(val show: Boolean) : AddTransactionEvent

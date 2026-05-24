@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -75,6 +76,7 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
@@ -101,6 +103,7 @@ fun DashboardScreen(
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
     creditCards: List<ActiveCreditCard> = emptyList(),
+    bnplProjections: List<BnplProjection> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     isLoading: Boolean = false,
@@ -391,6 +394,51 @@ fun DashboardScreen(
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
+
+                    // Card Debiti Previsti BNPL
+                    if (bnplProjections.isNotEmpty()) {
+                        val totalBnplDebt = bnplProjections.sumOf { it.totalExpected }
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Payment,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Debiti Previsti (BNPL)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalBnplDebt)}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                bnplProjections.forEach { proj ->
+                                    Text(
+                                        text = "${proj.methodName}: ${proj.installments.size} rate",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     // Card Carte di Credito
                     if (creditCards.isNotEmpty()) {

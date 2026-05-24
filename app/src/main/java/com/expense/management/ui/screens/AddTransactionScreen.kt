@@ -61,6 +61,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
@@ -96,6 +97,7 @@ fun AddTransactionScreen(
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
     isCC: Boolean = false,
     activeCreditCards: List<ActiveCreditCard> = emptyList(),
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     frequentExpenseCategories: List<CategoryEntity> = emptyList(),
@@ -119,6 +121,7 @@ fun AddTransactionScreen(
                     ?: "food",
                 isCreditCard = transactionToEdit?.isCreditCard ?: isCC,
                 creditCardId = transactionToEdit?.creditCardId ?: activeCreditCards.firstOrNull()?.id,
+                selectedPaymentMethodId = transactionToEdit?.paymentMethodId,
                 originalAmountText = transactionToEdit?.originalAmount?.toString() ?: "",
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1,
@@ -228,6 +231,11 @@ fun AddTransactionScreen(
             is AddTransactionEvent.OnCreditCardToggle -> uiState = uiState.copy(isCreditCard = event.isCreditCard)
             is AddTransactionEvent.OnCreditCardIdChange -> uiState = uiState.copy(creditCardId = event.creditCardId)
             is AddTransactionEvent.OnShowCreditCardDialog -> uiState = uiState.copy(showCreditCardDialog = event.show)
+            is AddTransactionEvent.OnPaymentMethodSelected -> uiState = uiState.copy(
+                selectedPaymentMethodId = event.paymentMethodId,
+                isCreditCard = event.isCreditCard,
+                creditCardId = if (event.isCreditCard) event.paymentMethodId else null,
+            )
             is AddTransactionEvent.OnOriginalAmountChange -> uiState = uiState.copy(originalAmountText = event.amount)
             is AddTransactionEvent.OnOriginalCurrencyChange -> uiState = uiState.copy(originalCurrency = event.currency)
             is AddTransactionEvent.OnShowCurrencyDialog -> uiState = uiState.copy(showCurrencyDialog = event.show)
@@ -341,6 +349,7 @@ fun AddTransactionScreen(
             suggestions = suggestions,
             availableCategories = availableCategories,
             activeCreditCards = activeCreditCards,
+            allPaymentMethods = allPaymentMethods,
             frequentExpenseCategories = frequentExpenseCategories,
             frequentIncomeCategories = frequentIncomeCategories,
             sharedTransitionScope = sharedTransitionScope,
@@ -358,7 +367,26 @@ fun AddTransactionScreen(
         )
     }
 
-    if (uiState.showCreditCardDialog && activeCreditCards.isNotEmpty()) {
+    if (uiState.showCreditCardDialog && allPaymentMethods.isNotEmpty()) {
+        PaymentMethodPickerDialog(
+            allPaymentMethods = allPaymentMethods,
+            currentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
+            onMethodSelected = { methodId, isCreditCard ->
+                handleEvent(AddTransactionEvent.OnPaymentMethodSelected(methodId, isCreditCard))
+                handleEvent(
+                    AddTransactionEvent.OnIsInstallmentChange(
+                        if (isCreditCard) {
+                            activeCreditCards.find { it.id == methodId }?.cardType == CreditCardType.REVOLVING
+                        } else {
+                            false
+                        },
+                    ),
+                )
+                handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
+            },
+            onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
+        )
+    } else if (uiState.showCreditCardDialog && activeCreditCards.isNotEmpty()) {
         CreditCardDialog(
             activeCreditCards = activeCreditCards,
             currentCardId = uiState.creditCardId,
@@ -429,6 +457,7 @@ private fun AddTransactionContent(
     suggestions: List<String>,
     availableCategories: List<CategoryEntity>,
     activeCreditCards: List<ActiveCreditCard>,
+    allPaymentMethods: List<PaymentMethodEntity>,
     frequentExpenseCategories: List<CategoryEntity>,
     frequentIncomeCategories: List<CategoryEntity>,
     sharedTransitionScope: SharedTransitionScope?,
@@ -500,6 +529,7 @@ private fun AddTransactionContent(
             isEditing = isEditing,
             transactionToEdit = transactionToEdit,
             activeCreditCards = activeCreditCards,
+            allPaymentMethods = allPaymentMethods,
             isCC = isCC,
         )
 

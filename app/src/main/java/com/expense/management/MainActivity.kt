@@ -136,6 +136,7 @@ fun mainApp() {
     val frequentIncomeCategories by viewModel.getFrequentCategories(TransactionType.INCOME).collectAsStateWithLifecycle()
 
     val isAuthenticated by viewModel.isAppUnlocked.collectAsStateWithLifecycle()
+    val bnplProjections by viewModel.bnplProjections.collectAsStateWithLifecycle()
 
     // Determina se ci sono transazioni
     val hasTransactions = allTransactions.isNotEmpty()
@@ -152,6 +153,10 @@ fun mainApp() {
         } else {
             viewModel.unlockApp()
         }
+    }
+
+    LaunchedEffect(currentDashboardMonth) {
+        viewModel.refreshBnplProjections(currentDashboardMonth)
     }
 
     if (!isAuthenticated) {
@@ -465,6 +470,7 @@ fun mainApp() {
                                 },
                                 isAmountHidden = isAmountHidden,
                                 creditCards = activeCreditCards,
+                                bnplProjections = bnplProjections,
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = this@composable,
                             )
@@ -569,6 +575,14 @@ fun mainApp() {
                                 onNavigateBack = { navController.popBackStack() },
                                 onAdd = { viewModel.addPaymentMethod(it) },
                                 onDelete = { viewModel.deletePaymentMethod(it) },
+                                onEditPaymentMethod = { method, details ->
+                                    viewModel.updatePaymentMethodWithDetails(method, details)
+                                },
+                                onLoadDetails = { id ->
+                                    viewModel.allPaymentMethods.value.find { it.id == id }?.let { method ->
+                                        viewModel.getPaymentMethodDetails(method)
+                                    }
+                                },
                                 onAddLegacyCard = { viewModel.addCreditCard(it) },
                                 onUpdateLegacyCard = { viewModel.updateCreditCard(it) },
                                 onDeleteLegacyCard = { viewModel.deleteCreditCard(it) },
@@ -644,6 +658,7 @@ fun mainApp() {
                                     },
                                     isCC = isCreditCardArg,
                                     activeCreditCards = activeCreditCards,
+                                    allPaymentMethods = allPaymentMethods,
                                     frequentExpenseCategories = frequentExpenseCategories,
                                     frequentIncomeCategories = frequentIncomeCategories,
                                     sharedTransitionScope = this@SharedTransitionLayout,
