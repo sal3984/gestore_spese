@@ -10,9 +10,11 @@ import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
 import com.expense.management.domain.usecase.GetCreditCardsUseCase
 import com.expense.management.domain.usecase.GetFrequentCategoriesUseCase
+import com.expense.management.domain.usecase.GetPaymentMethodsUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.InitializeCategoriesUseCase
 import com.expense.management.domain.usecase.ManageCreditCardUseCase
+import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.utils.CurrencyUtils
@@ -26,6 +28,7 @@ class ExpenseViewModelFactory(private val context: Context) : ViewModelProvider.
                 db.categoryDao(),
                 db.currencyDao(),
                 db.creditCardDao(),
+                db.paymentMethodDao(),
             )
             val currencyUtils = CurrencyUtils(db.currencyDao())
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
@@ -42,6 +45,8 @@ class ExpenseViewModelFactory(private val context: Context) : ViewModelProvider.
                 initializeCategoriesUseCase = InitializeCategoriesUseCase(repository),
                 getCreditCardsUseCase = GetCreditCardsUseCase(repository),
                 manageCreditCardUseCase = ManageCreditCardUseCase(repository),
+                getPaymentMethodsUseCase = GetPaymentMethodsUseCase(repository),
+                managePaymentMethodUseCase = ManagePaymentMethodUseCase(repository),
                 getBackupDataUseCase = GetBackupDataUseCase(repository),
                 restoreDataUseCase = RestoreDataUseCase(repository),
                 getFrequentCategoriesUseCase = GetFrequentCategoriesUseCase(repository),

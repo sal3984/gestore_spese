@@ -265,6 +265,7 @@
     <string name="all_categories">All Categories</string>
     <string name="no_categories_found">No categories found</string>
     <string name="search_results">Search Results</string>
+    <string name="show_all_categories">Show All Categories</string>
     <string name="payment_method_label">Payment Method</string>
     <string name="use_credit_card_label">Use Credit Card</string>
     <string name="image">Image</string>
@@ -280,4 +281,12 @@
     <string name="icon_or_emoji">Icon or Emoji</string>
     <string name="no_expenses_for_month">No expenses recorded for this month</string>
     <string name="retry">Retry</string>
+    <string name="payment_methods">Payment Methods</string>
+    <string name="add_payment_method">Add Payment Method</string>
+    <string name="credit_cards">Credit Cards</string>
+    <string name="no_payment_methods">No payment methods configured</string>
+    <string name="payment_method_name">Payment Method Name</string>
+    <string name="provider">Provider</string>
+    <string name="add">Add</string>
+    <string name="manage_payment_methods">Manage Payment Methods</string>
 </resources>

@@ -56,10 +56,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.utils.DateUtils
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -375,42 +377,65 @@ fun PaymentMethodSection(
     onEvent: (AddTransactionEvent) -> Unit,
     isEditing: Boolean,
     transactionToEdit: TransactionEntity?,
-    availableCreditCards: List<CreditCardEntity>,
+    activeCreditCards: List<ActiveCreditCard>,
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
     isCC: Boolean = false,
 ) {
-    AnimatedVisibility(
-        visible = isCC,
+    val nonCardMethods = allPaymentMethods.filter {
+        it.provider != PaymentProvider.CREDIT_CARD_SALDO.name &&
+            it.provider != PaymentProvider.CREDIT_CARD_REVOLVING.name
+    }
+    val showNonCardSection = nonCardMethods.isNotEmpty()
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(2.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.payment_method_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.payment_method_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
 
-                if (availableCreditCards.isNotEmpty()) {
-                    OutlinedTextField(
-                        value = availableCreditCards.find { it.id == uiState.creditCardId }?.name ?: stringResource(R.string.select_credit_card),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.credit_card)) },
-                        trailingIcon = {
-                            IconButton(onClick = { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) },
-                    )
+            // Generic payment method selector (all providers + legacy fallback)
+            if (allPaymentMethods.isNotEmpty() || activeCreditCards.isNotEmpty()) {
+                val selectedName = when {
+                    uiState.selectedPaymentMethodId != null ->
+                        allPaymentMethods.find { it.id == uiState.selectedPaymentMethodId }?.name
+                            ?: activeCreditCards.find { it.id == uiState.selectedPaymentMethodId }?.name
+                    uiState.creditCardId != null ->
+                        activeCreditCards.find { it.id == uiState.creditCardId }?.name
+                            ?: allPaymentMethods.find { it.id == uiState.creditCardId }?.name
+                    else -> null
                 }
+                OutlinedTextField(
+                    value = selectedName ?: stringResource(R.string.select_credit_card),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.payment_method_label)) },
+                    trailingIcon = {
+                        IconButton(onClick = { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) }) {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) },
+                )
+            }
 
+            // Credit card toggle checkbox (only visible when a credit card is selected)
+            val selectedMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId
+            val isCreditCardSelected = selectedMethodId != null &&
+                allPaymentMethods.find { it.id == selectedMethodId }?.let {
+                    it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
+                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                } ?: uiState.isCreditCard
+
+            AnimatedVisibility(visible = isCreditCardSelected || uiState.isCreditCard) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -439,41 +464,41 @@ fun PaymentMethodSection(
                         )
                     }
                 }
+            }
 
-                val showInstallmentCheckbox = !isEditing && !uiState.isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)
-                AnimatedVisibility(visible = showInstallmentCheckbox) {
-                    Column {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (!isEditing) {
-                                        Modifier.clickable { onEvent(AddTransactionEvent.OnIsInstallmentChange(!uiState.isInstallment)) }
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = uiState.isInstallment,
-                                onCheckedChange = { onEvent(AddTransactionEvent.OnIsInstallmentChange(it)) },
-                                enabled = !isEditing,
+            val showInstallmentCheckbox = !isEditing && !uiState.isCreditCard || (isEditing && transactionToEdit?.totalInstallments != null && transactionToEdit.totalInstallments > 1 && !transactionToEdit.isCreditCard)
+            AnimatedVisibility(visible = showInstallmentCheckbox) {
+                Column {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (!isEditing) {
+                                    Modifier.clickable { onEvent(AddTransactionEvent.OnIsInstallmentChange(!uiState.isInstallment)) }
+                                } else {
+                                    Modifier
+                                },
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                                Text(
-                                    text = stringResource(R.string.installment_payment_hint),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = uiState.isInstallment,
+                            onCheckedChange = { onEvent(AddTransactionEvent.OnIsInstallmentChange(it)) },
+                            enabled = !isEditing,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = stringResource(R.string.installment_payment_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -490,7 +515,7 @@ fun InstallmentSection(
     transactionToEdit: TransactionEntity?,
     currencySymbol: String,
     dateFormat: String,
-    availableCreditCards: List<CreditCardEntity>,
+    activeCreditCards: List<ActiveCreditCard>,
 ) {
     val showSection = (uiState.isCreditCard || uiState.isInstallment) && (uiState.type == TransactionType.EXPENSE || uiState.type == TransactionType.INCOME)
     AnimatedVisibility(visible = showSection) {
@@ -649,8 +674,8 @@ fun InstallmentSection(
                     )
                 }
             } else if (uiState.isCreditCard && !uiState.isInstallment) {
-                val selectedCard = remember(uiState.creditCardId, availableCreditCards) {
-                    availableCreditCards.find { it.id == uiState.creditCardId }
+                val selectedCard = remember(uiState.creditCardId, activeCreditCards) {
+                    activeCreditCards.find { it.id == uiState.creditCardId }
                 }
                 val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
                 val effectiveDate = try {
@@ -659,7 +684,10 @@ fun InstallmentSection(
                     } else {
                         val tDate = LocalDate.parse(uiState.dateStr, displayFormatter)
                         if (selectedCard != null) {
-                            DateUtils.calculateEffectiveDate(tDate, selectedCard)
+                            DateUtils.calculateEffectiveDate(
+                                tDate,
+                                DateUtils.CardDateInfo(selectedCard.closingDay, selectedCard.paymentDay),
+                            )
                         } else {
                             tDate.plusMonths(1).withDayOfMonth(15).format(DateTimeFormatter.ISO_LOCAL_DATE)
                         }

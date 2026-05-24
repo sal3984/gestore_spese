@@ -265,6 +265,7 @@
     <string name="all_categories">Tutte le Categorie</string>
     <string name="no_categories_found">Nessuna categoria trovata</string>
     <string name="search_results">Risultati della ricerca</string>
+    <string name="show_all_categories">Mostra tutte le categorie</string>
     <string name="payment_method_label">Metodo di Pagamento</string>
     <string name="use_credit_card_label">Usa Carta di Credito</string>
     <string name="image">Imm.</string>
@@ -280,4 +281,12 @@
     <string name="icon_or_emoji">Icona o Emoji</string>
     <string name="no_expenses_for_month">Nessuna spesa registrata per questo mese</string>
     <string name="retry">Riprova</string>
+    <string name="payment_methods">Metodi di Pagamento</string>
+    <string name="add_payment_method">Aggiungi Metodo di Pagamento</string>
+    <string name="credit_cards">Carte di Credito</string>
+    <string name="no_payment_methods">Nessun metodo di pagamento configurato</string>
+    <string name="payment_method_name">Nome Metodo di Pagamento</string>
+    <string name="provider">Fornitore</string>
+    <string name="add">Aggiungi</string>
+    <string name="manage_payment_methods">Gestisci Metodi di Pagamento</string>
 </resources>

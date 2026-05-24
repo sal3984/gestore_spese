@@ -5,20 +5,36 @@ import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.BackupData
+import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CreditCardDetailEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
+import com.expense.management.data.DebitCardDetailEntity
 import com.expense.management.data.ExpenseRepository
+import com.expense.management.data.KlarnaDetailEntity
+import com.expense.management.data.PaymentMethodEntity
+import com.expense.management.data.PaypalDetailEntity
+import com.expense.management.data.RevolutDetailEntity
+import com.expense.management.data.SatispayDetailEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.PaymentMethodDetails
+import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
 import com.expense.management.domain.usecase.GetCreditCardsUseCase
 import com.expense.management.domain.usecase.GetFrequentCategoriesUseCase
+import com.expense.management.domain.usecase.GetPaymentMethodsUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.InitializeCategoriesUseCase
 import com.expense.management.domain.usecase.ManageCreditCardUseCase
+import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.ui.model.DeleteType
@@ -29,6 +45,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -46,6 +63,8 @@ class ExpenseViewModel(
     private val initializeCategoriesUseCase: InitializeCategoriesUseCase,
     private val getCreditCardsUseCase: GetCreditCardsUseCase,
     private val manageCreditCardUseCase: ManageCreditCardUseCase,
+    private val getPaymentMethodsUseCase: GetPaymentMethodsUseCase,
+    private val managePaymentMethodUseCase: ManagePaymentMethodUseCase,
     private val getBackupDataUseCase: GetBackupDataUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
@@ -94,6 +113,51 @@ class ExpenseViewModel(
     val allCreditCards: StateFlow<List<CreditCardEntity>> =
         getCreditCardsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // DATI METODI DI PAGAMENTO
+    val allPaymentMethods: StateFlow<List<PaymentMethodEntity>> =
+        getPaymentMethodsUseCase()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // CARTE DI CREDITO ATTIVE: unisce nuovo sistema (payment_methods + credit_card_details)
+    // e legacy (allCreditCards) per garantire visibilità anche dopo restore da vecchio backup
+    val activeCreditCards: StateFlow<List<ActiveCreditCard>> =
+        combine(allPaymentMethods, repository.allCreditCardDetails, allCreditCards) { methods, details, legacyCards ->
+            val newCards = methods
+                .filter {
+                    it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
+                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                }
+                .mapNotNull { method ->
+                    val detail = details.find { it.paymentMethodId == method.id }
+                    detail?.let {
+                        ActiveCreditCard(
+                            id = method.id,
+                            name = method.name,
+                            provider = PaymentProvider.valueOf(method.provider),
+                            cardType = CreditCardType.valueOf(it.cardType),
+                            limit = it.limit,
+                            closingDay = it.closingDay,
+                            paymentDay = it.paymentDay,
+                        )
+                    }
+                }
+            val existingIds = newCards.map { it.id }.toSet()
+            val fallbackCards = legacyCards
+                .filter { it.id !in existingIds }
+                .map { card ->
+                    ActiveCreditCard(
+                        id = card.id,
+                        name = card.name,
+                        provider = if (card.type == CardType.SALDO) PaymentProvider.CREDIT_CARD_SALDO else PaymentProvider.CREDIT_CARD_REVOLVING,
+                        cardType = if (card.type == CardType.SALDO) CreditCardType.SALDO else CreditCardType.REVOLVING,
+                        limit = card.limit,
+                        closingDay = card.closingDay,
+                        paymentDay = card.paymentDay,
+                    )
+                }
+            newCards + fallbackCards
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs?.getString(KEY_CURRENCY, "€") ?: "€")
@@ -179,6 +243,249 @@ class ExpenseViewModel(
     fun deleteCreditCard(creditCard: CreditCardEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             manageCreditCardUseCase.delete(creditCard)
+        }
+    }
+
+    // DATI DETTAGLIO PAYPAL
+    val allPaypalDetails: StateFlow<List<PaypalDetailEntity>> =
+        repository.allPaypalDetails
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // DATI DETTAGLIO KLARNA
+    val allKlarnaDetails: StateFlow<List<KlarnaDetailEntity>> =
+        repository.allKlarnaDetails
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // PROIEZIONI BNPL
+    private val _bnplProjections = MutableStateFlow<List<BnplProjection>>(emptyList())
+    val bnplProjections: StateFlow<List<BnplProjection>> = _bnplProjections.asStateFlow()
+
+    fun refreshBnplProjections(targetMonth: YearMonth) {
+        val useCase = CalculateBnplProjectionsUseCase()
+        _bnplProjections.value = useCase.execute(
+            allTransactions = allTransactions.value,
+            allPaymentMethods = allPaymentMethods.value,
+            paypalDetails = allPaypalDetails.value,
+            klarnaDetails = allKlarnaDetails.value,
+            targetMonth = targetMonth,
+        )
+    }
+
+    // GESTIONE METODI DI PAGAMENTO
+    fun addPaymentMethod(
+        paymentMethod: PaymentMethodEntity,
+        closingDay: Int = 0,
+        paymentDay: Int = 0,
+        debitIssuer: String? = null,
+        debitCardNumber: String? = null,
+        debitNotes: String? = null,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.add(paymentMethod)
+            if (
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+            ) {
+                repository.insertCreditCardDetail(
+                    CreditCardDetailEntity(
+                        paymentMethodId = paymentMethod.id,
+                        cardType = if (paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO.name) {
+                            CreditCardType.SALDO.name
+                        } else {
+                            CreditCardType.REVOLVING.name
+                        },
+                        limit = 0.0,
+                        closingDay = closingDay,
+                        paymentDay = paymentDay,
+                    ),
+                )
+            } else if (paymentMethod.provider == PaymentProvider.DEBIT_CARD.name) {
+                repository.insertDebitCardDetail(
+                    DebitCardDetailEntity(
+                        paymentMethodId = paymentMethod.id,
+                        issuer = debitIssuer,
+                        cardNumber = debitCardNumber,
+                        notes = debitNotes,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun updatePaymentMethod(paymentMethod: PaymentMethodEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.update(paymentMethod)
+        }
+    }
+
+    fun deletePaymentMethod(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.delete(id)
+        }
+    }
+
+    suspend fun getPaymentMethodById(id: String): PaymentMethodEntity? =
+        managePaymentMethodUseCase.getPaymentMethodById(id)
+
+    suspend fun getAllPaymentMethods(): List<PaymentMethodEntity> =
+        managePaymentMethodUseCase.getAllPaymentMethods()
+
+    // DETTAGLI METODI DI PAGAMENTO
+    suspend fun getCreditCardDetail(paymentMethodId: String): CreditCardDetailEntity? =
+        repository.getCreditCardDetail(paymentMethodId)
+
+    suspend fun insertCreditCardDetail(detail: CreditCardDetailEntity) {
+        repository.insertCreditCardDetail(detail)
+    }
+
+    suspend fun getRevolutDetail(paymentMethodId: String): RevolutDetailEntity? =
+        repository.getRevolutDetail(paymentMethodId)
+
+    suspend fun insertRevolutDetail(detail: RevolutDetailEntity) {
+        repository.insertRevolutDetail(detail)
+    }
+
+    suspend fun getSatispayDetail(paymentMethodId: String): SatispayDetailEntity? =
+        repository.getSatispayDetail(paymentMethodId)
+
+    suspend fun insertSatispayDetail(detail: SatispayDetailEntity) {
+        repository.insertSatispayDetail(detail)
+    }
+
+    suspend fun getPaypalDetail(paymentMethodId: String): PaypalDetailEntity? =
+        repository.getPaypalDetail(paymentMethodId)
+
+    suspend fun insertPaypalDetail(detail: PaypalDetailEntity) {
+        repository.insertPaypalDetail(detail)
+    }
+
+    suspend fun getKlarnaDetail(paymentMethodId: String): KlarnaDetailEntity? =
+        repository.getKlarnaDetail(paymentMethodId)
+
+    suspend fun insertKlarnaDetail(detail: KlarnaDetailEntity) {
+        repository.insertKlarnaDetail(detail)
+    }
+
+    suspend fun getPaymentMethodDetails(method: PaymentMethodEntity): PaymentMethodDetails? {
+        return when (PaymentProvider.valueOf(method.provider)) {
+            PaymentProvider.CREDIT_CARD_SALDO,
+            PaymentProvider.CREDIT_CARD_REVOLVING,
+            -> {
+                repository.getCreditCardDetail(method.id)?.let {
+                    PaymentMethodDetails.CreditCard(
+                        name = method.name,
+                        cardType = CreditCardType.valueOf(it.cardType),
+                        limit = it.limit,
+                        closingDay = it.closingDay,
+                        paymentDay = it.paymentDay,
+                    )
+                }
+            }
+            PaymentProvider.DEBIT_CARD -> {
+                repository.getDebitCardDetail(method.id)?.let {
+                    PaymentMethodDetails.DebitCard(
+                        name = method.name,
+                        issuer = it.issuer,
+                        cardNumber = it.cardNumber,
+                        notes = it.notes,
+                    )
+                }
+            }
+            PaymentProvider.REVOLUT -> {
+                repository.getRevolutDetail(method.id)?.let {
+                    PaymentMethodDetails.Revolut(
+                        name = method.name,
+                        currency = it.currency,
+                        iban = it.iban,
+                        accountNumber = it.accountNumber,
+                    )
+                }
+            }
+            PaymentProvider.SATISPAY -> {
+                repository.getSatispayDetail(method.id)?.let {
+                    PaymentMethodDetails.Satispay(
+                        name = method.name,
+                        weeklyBudget = it.weeklyBudget,
+                        sddDay = it.sddDay,
+                        iban = it.iban,
+                    )
+                }
+            }
+            PaymentProvider.PAYPAL -> {
+                repository.getPaypalDetail(method.id)?.let {
+                    PaymentMethodDetails.Paypal(
+                        name = method.name,
+                        email = it.email,
+                        bnplInstallmentCount = it.bnplInstallmentCount,
+                        bnplCycleDays = it.bnplCycleDays,
+                    )
+                }
+            }
+            PaymentProvider.KLARNA -> {
+                repository.getKlarnaDetail(method.id)?.let {
+                    PaymentMethodDetails.Klarna(
+                        name = method.name,
+                        bnplInstallmentCount = it.bnplInstallmentCount,
+                        bnplCycleDays = it.bnplCycleDays,
+                    )
+                }
+            }
+        }
+    }
+
+    fun updatePaymentMethodWithDetails(method: PaymentMethodEntity, details: PaymentMethodDetails) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.update(method)
+            when (details) {
+                is PaymentMethodDetails.CreditCard -> repository.insertCreditCardDetail(
+                    CreditCardDetailEntity(
+                        paymentMethodId = method.id,
+                        cardType = details.cardType.name,
+                        limit = details.limit,
+                        closingDay = details.closingDay,
+                        paymentDay = details.paymentDay,
+                    ),
+                )
+                is PaymentMethodDetails.Revolut -> repository.insertRevolutDetail(
+                    RevolutDetailEntity(
+                        paymentMethodId = method.id,
+                        currency = details.currency,
+                        iban = details.iban,
+                        accountNumber = details.accountNumber,
+                    ),
+                )
+                is PaymentMethodDetails.Satispay -> repository.insertSatispayDetail(
+                    SatispayDetailEntity(
+                        paymentMethodId = method.id,
+                        weeklyBudget = details.weeklyBudget,
+                        sddDay = details.sddDay,
+                        iban = details.iban,
+                    ),
+                )
+                is PaymentMethodDetails.Paypal -> repository.insertPaypalDetail(
+                    PaypalDetailEntity(
+                        paymentMethodId = method.id,
+                        email = details.email,
+                        bnplInstallmentCount = details.bnplInstallmentCount,
+                        bnplCycleDays = details.bnplCycleDays,
+                    ),
+                )
+                is PaymentMethodDetails.Klarna -> repository.insertKlarnaDetail(
+                    KlarnaDetailEntity(
+                        paymentMethodId = method.id,
+                        bnplInstallmentCount = details.bnplInstallmentCount,
+                        bnplCycleDays = details.bnplCycleDays,
+                    ),
+                )
+                is PaymentMethodDetails.DebitCard -> repository.insertDebitCardDetail(
+                    DebitCardDetailEntity(
+                        paymentMethodId = method.id,
+                        issuer = details.issuer,
+                        cardNumber = details.cardNumber,
+                        notes = details.notes,
+                    ),
+                )
+            }
         }
     }
 

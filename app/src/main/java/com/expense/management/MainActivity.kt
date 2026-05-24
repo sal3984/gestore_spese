@@ -80,6 +80,7 @@ import com.expense.management.data.TransactionType
 import com.expense.management.ui.screens.AddTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
+import com.expense.management.ui.screens.PaymentMethodSettingsScreen
 import com.expense.management.ui.screens.ReportScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.screens.securityScreen
@@ -127,12 +128,15 @@ fun mainApp() {
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle()
+    val activeCreditCards by viewModel.activeCreditCards.collectAsStateWithLifecycle()
+    val allPaymentMethods by viewModel.allPaymentMethods.collectAsStateWithLifecycle()
     val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
     val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
     val frequentExpenseCategories by viewModel.getFrequentCategories(TransactionType.EXPENSE).collectAsStateWithLifecycle()
     val frequentIncomeCategories by viewModel.getFrequentCategories(TransactionType.INCOME).collectAsStateWithLifecycle()
 
     val isAuthenticated by viewModel.isAppUnlocked.collectAsStateWithLifecycle()
+    val bnplProjections by viewModel.bnplProjections.collectAsStateWithLifecycle()
 
     // Determina se ci sono transazioni
     val hasTransactions = allTransactions.isNotEmpty()
@@ -149,6 +153,10 @@ fun mainApp() {
         } else {
             viewModel.unlockApp()
         }
+    }
+
+    LaunchedEffect(currentDashboardMonth) {
+        viewModel.refreshBnplProjections(currentDashboardMonth)
     }
 
     if (!isAuthenticated) {
@@ -209,7 +217,7 @@ fun mainApp() {
     // AGGIORNAMENTO ROUTES: Categorie spostato nella BottomBar
     val bottomNavRoutes = listOf("dashboard", "report", "categories")
     // Drawer Routes mantiene solo le sezioni di configurazione/gestione
-    val drawerRoutes = listOf("data_management", "security", "settings")
+    val drawerRoutes = listOf("data_management", "security", "payment_methods", "settings")
 
     val isBottomBarVisible = currentRoute in bottomNavRoutes
     val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
@@ -269,6 +277,17 @@ fun mainApp() {
                 )
 
                 NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.payment_methods)) },
+                    selected = currentRoute == "payment_methods",
+                    onClick = {
+                        navController.navigate("payment_methods")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                )
+
+                NavigationDrawerItem(
                     label = { Text(stringResource(R.string.settings)) },
                     selected = currentRoute == "settings",
                     onClick = {
@@ -309,6 +328,7 @@ fun mainApp() {
                                     "settings" -> stringResource(R.string.settings)
                                     "data_management" -> stringResource(R.string.data_management)
                                     "security" -> stringResource(R.string.security_usability)
+                                    "payment_methods" -> stringResource(R.string.payment_methods)
                                     else -> stringResource(R.string.app_name)
                                 }
                             Text(
@@ -449,9 +469,11 @@ fun mainApp() {
                                     navController.navigate("add_transaction/$transactionId")
                                 },
                                 isAmountHidden = isAmountHidden,
-                                creditCards = allCreditCards,
+                                creditCards = activeCreditCards,
+                                bnplProjections = bnplProjections,
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = this@composable,
+                                allPaymentMethods = allPaymentMethods,
                             )
                         }
 
@@ -466,6 +488,7 @@ fun mainApp() {
                                 currencySymbol = currentCurrency,
                                 dateFormat = currentDateFormat,
                                 isAmountHidden = isAmountHidden,
+                                allPaymentMethods = allPaymentMethods,
                             )
                         }
 
@@ -543,6 +566,32 @@ fun mainApp() {
                         }
 
                         composable(
+                            "payment_methods",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            PaymentMethodSettingsScreen(
+                                currentCurrency = currentCurrency,
+                                allPaymentMethods = allPaymentMethods,
+                                legacyCreditCards = allCreditCards,
+                                onNavigateBack = { navController.popBackStack() },
+                                onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes -> viewModel.addPaymentMethod(method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes) },
+                                onDelete = { viewModel.deletePaymentMethod(it) },
+                                onEditPaymentMethod = { method, details ->
+                                    viewModel.updatePaymentMethodWithDetails(method, details)
+                                },
+                                onLoadDetails = { id ->
+                                    viewModel.allPaymentMethods.value.find { it.id == id }?.let { method ->
+                                        viewModel.getPaymentMethodDetails(method)
+                                    }
+                                },
+                                onAddLegacyCard = { viewModel.addCreditCard(it) },
+                                onUpdateLegacyCard = { viewModel.updateCreditCard(it) },
+                                onDeleteLegacyCard = { viewModel.deleteCreditCard(it) },
+                            )
+                        }
+
+                        composable(
                             route = "add_transaction/{transactionId}?isCreditCard={isCreditCard}",
                             arguments =
                             listOf(
@@ -610,7 +659,8 @@ fun mainApp() {
                                         viewModel.updateCurrencyRate(amount, from, to)
                                     },
                                     isCC = isCreditCardArg,
-                                    availableCreditCards = allCreditCards,
+                                    activeCreditCards = activeCreditCards,
+                                    allPaymentMethods = allPaymentMethods,
                                     frequentExpenseCategories = frequentExpenseCategories,
                                     frequentIncomeCategories = frequentIncomeCategories,
                                     sharedTransitionScope = this@SharedTransitionLayout,

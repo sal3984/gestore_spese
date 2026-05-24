@@ -1,20 +1,17 @@
 package com.expense.management.utils
 
-import com.expense.management.data.CreditCardEntity
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 object DateUtils {
 
-    /**
-     * Calcola la data di addebito effettiva per una transazione con carta di credito.
-     *
-     * @param transactionDate La data in cui è avvenuta la transazione.
-     * @param card La carta di credito usata, che contiene i dettagli su chiusura e pagamento.
-     * @return La data di addebito calcolata come stringa in formato ISO (YYYY-MM-DD).
-     */
-    fun calculateEffectiveDate(transactionDate: LocalDate, card: CreditCardEntity): String {
+    data class CardDateInfo(
+        val closingDay: Int,
+        val paymentDay: Int,
+    )
+
+    fun calculateEffectiveDate(transactionDate: LocalDate, card: CardDateInfo): String {
         // Se la carta non ha giorni specifici, si addebita subito (nessun ritardo)
         if (card.closingDay <= 0 || card.paymentDay <= 0) {
             return transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -22,10 +19,12 @@ object DateUtils {
 
         val closingDay = card.closingDay
         val paymentDay = card.paymentDay
+        val transactionYearMonth = YearMonth.from(transactionDate)
+        val effectiveClosing = closingDay.coerceAtMost(transactionYearMonth.lengthOfMonth())
 
-        var paymentMonth = YearMonth.from(transactionDate)
+        var paymentMonth = transactionYearMonth
 
-        if (transactionDate.dayOfMonth >= closingDay) {
+        if (transactionDate.dayOfMonth >= effectiveClosing) {
             paymentMonth = paymentMonth.plusMonths(1)
         }
 

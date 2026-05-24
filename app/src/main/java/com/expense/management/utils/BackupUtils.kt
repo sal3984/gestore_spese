@@ -196,7 +196,8 @@ object BackupUtils {
 
                     viewModel.restoreData(normalizedBackupData)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, context.getString(R.string.restore_success, (normalizedBackupData.transactions ?: emptyList()).size, (normalizedBackupData.categories ?: emptyList()).size, normalizedBackupData.creditCard?.size ?: 0), Toast.LENGTH_SHORT).show()
+                        val methodCount = normalizedBackupData.paymentMethods?.size ?: normalizedBackupData.creditCard?.size ?: 0
+                        Toast.makeText(context, context.getString(R.string.restore_success, (normalizedBackupData.transactions ?: emptyList()).size, (normalizedBackupData.categories ?: emptyList()).size, methodCount), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {

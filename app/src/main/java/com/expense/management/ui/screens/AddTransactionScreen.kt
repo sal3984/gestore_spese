@@ -40,6 +40,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -60,12 +61,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.usecase.AddTransactionSaveResult
 import com.expense.management.domain.usecase.AddTransactionSaveUseCase
 import com.expense.management.ui.model.DeleteType
@@ -95,7 +97,8 @@ fun AddTransactionScreen(
     onDescriptionChange: (String) -> Unit,
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
     isCC: Boolean = false,
-    availableCreditCards: List<CreditCardEntity> = emptyList(),
+    activeCreditCards: List<ActiveCreditCard> = emptyList(),
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     frequentExpenseCategories: List<CategoryEntity> = emptyList(),
@@ -118,7 +121,8 @@ fun AddTransactionScreen(
                     ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
                     ?: "food",
                 isCreditCard = transactionToEdit?.isCreditCard ?: isCC,
-                creditCardId = transactionToEdit?.creditCardId ?: availableCreditCards.firstOrNull()?.id,
+                creditCardId = transactionToEdit?.creditCardId ?: activeCreditCards.firstOrNull()?.id,
+                selectedPaymentMethodId = transactionToEdit?.paymentMethodId,
                 originalAmountText = transactionToEdit?.originalAmount?.toString() ?: "",
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1,
@@ -135,7 +139,7 @@ fun AddTransactionScreen(
                     LocalDate.now().format(displayFormatter)
                 },
                 installmentStartDateStr = if (transactionToEdit == null && isCC) {
-                    val defaultCard = availableCreditCards.firstOrNull()
+                    val defaultCard = activeCreditCards.firstOrNull()
                     val paymentDay = (defaultCard?.paymentDay ?: 15).coerceIn(1, 28)
                     LocalDate.now().plusMonths(1).withDayOfMonth(paymentDay).format(displayFormatter)
                 } else {
@@ -150,10 +154,10 @@ fun AddTransactionScreen(
             uiState = uiState.copy(isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1)
         } else {
             if (uiState.isCreditCard) {
-                val selectedCard = availableCreditCards.find { it.id == uiState.creditCardId }
+                val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
                 uiState = uiState.copy(
                     isInstallment = if (selectedCard != null) {
-                        selectedCard.type == CardType.REVOLVING
+                        selectedCard.cardType == CreditCardType.REVOLVING
                     } else {
                         ccPaymentMode == "installment"
                     },
@@ -170,6 +174,7 @@ fun AddTransactionScreen(
     val installmentLabel = stringResource(R.string.installment)
     val errorConversionFailed = stringResource(R.string.error_conversion_failed)
     val okLabel = stringResource(R.string.ok)
+    val errorNoCardSelected = stringResource(R.string.no_credit_card_selected)
 
     val saveUseCase = remember { AddTransactionSaveUseCase() }
 
@@ -179,7 +184,7 @@ fun AddTransactionScreen(
                 uiState = uiState,
                 transactionToEdit = transactionToEdit,
                 availableCategories = availableCategories,
-                availableCreditCards = availableCreditCards,
+                activeCreditCards = activeCreditCards,
                 dateFormat = dateFormat,
                 locale = locale,
                 installmentLabel = installmentLabel,
@@ -200,7 +205,7 @@ fun AddTransactionScreen(
                         val formattedMonth = result.message.removePrefix("error_past_limit_date:")
                         String.format(errorPastLimitDate, formattedMonth)
                     }
-                    result.message == "error_no_card_selected" -> "Nessuna carta selezionata. Crea o seleziona una carta di credito."
+                    result.message == "error_no_card_selected" -> errorNoCardSelected
                     else -> result.message
                 }
                 scope.launch { snackbarHostState.showSnackbar(message, okLabel) }
@@ -227,6 +232,11 @@ fun AddTransactionScreen(
             is AddTransactionEvent.OnCreditCardToggle -> uiState = uiState.copy(isCreditCard = event.isCreditCard)
             is AddTransactionEvent.OnCreditCardIdChange -> uiState = uiState.copy(creditCardId = event.creditCardId)
             is AddTransactionEvent.OnShowCreditCardDialog -> uiState = uiState.copy(showCreditCardDialog = event.show)
+            is AddTransactionEvent.OnPaymentMethodSelected -> uiState = uiState.copy(
+                selectedPaymentMethodId = event.paymentMethodId,
+                isCreditCard = event.isCreditCard,
+                creditCardId = if (event.isCreditCard) event.paymentMethodId else null,
+            )
             is AddTransactionEvent.OnOriginalAmountChange -> uiState = uiState.copy(originalAmountText = event.amount)
             is AddTransactionEvent.OnOriginalCurrencyChange -> uiState = uiState.copy(originalCurrency = event.currency)
             is AddTransactionEvent.OnShowCurrencyDialog -> uiState = uiState.copy(showCurrencyDialog = event.show)
@@ -339,7 +349,8 @@ fun AddTransactionScreen(
             dateFormat = dateFormat,
             suggestions = suggestions,
             availableCategories = availableCategories,
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
+            allPaymentMethods = allPaymentMethods,
             frequentExpenseCategories = frequentExpenseCategories,
             frequentIncomeCategories = frequentIncomeCategories,
             sharedTransitionScope = sharedTransitionScope,
@@ -357,17 +368,52 @@ fun AddTransactionScreen(
         )
     }
 
-    if (uiState.showCreditCardDialog && availableCreditCards.isNotEmpty()) {
-        CreditCardDialog(
-            availableCreditCards = availableCreditCards,
-            currentCardId = uiState.creditCardId,
-            onCardSelected = { cardId, isRevolving ->
-                handleEvent(AddTransactionEvent.OnCreditCardIdChange(cardId))
-                handleEvent(AddTransactionEvent.OnIsInstallmentChange(isRevolving))
-                handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
-            },
-            onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
-        )
+    if (uiState.showCreditCardDialog) {
+        val legacyAsPaymentMethods = remember(activeCreditCards, allPaymentMethods) {
+            activeCreditCards
+                .filter { card -> allPaymentMethods.none { it.id == card.id } }
+                .map { card ->
+                    PaymentMethodEntity(
+                        id = card.id,
+                        name = card.name,
+                        provider = card.provider.name,
+                        isActive = true,
+                    )
+                }
+        }
+        val allMethodsForDialog = allPaymentMethods + legacyAsPaymentMethods
+
+        if (allMethodsForDialog.isNotEmpty()) {
+            PaymentMethodPickerDialog(
+                allPaymentMethods = allMethodsForDialog,
+                currentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
+                onMethodSelected = { methodId, isCreditCard ->
+                    handleEvent(AddTransactionEvent.OnPaymentMethodSelected(methodId, isCreditCard))
+                    handleEvent(
+                        AddTransactionEvent.OnIsInstallmentChange(
+                            if (isCreditCard) {
+                                activeCreditCards.find { it.id == methodId }?.cardType == CreditCardType.REVOLVING
+                            } else {
+                                false
+                            },
+                        ),
+                    )
+                    handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
+                },
+                onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
+            )
+        } else if (activeCreditCards.isNotEmpty()) {
+            CreditCardDialog(
+                activeCreditCards = activeCreditCards,
+                currentCardId = uiState.creditCardId,
+                onCardSelected = { cardId, isRevolving ->
+                    handleEvent(AddTransactionEvent.OnCreditCardIdChange(cardId))
+                    handleEvent(AddTransactionEvent.OnIsInstallmentChange(isRevolving))
+                    handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
+                },
+                onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
+            )
+        }
     }
 
     if (uiState.showRecurrenceTypeDialog) {
@@ -427,7 +473,8 @@ private fun AddTransactionContent(
     dateFormat: String,
     suggestions: List<String>,
     availableCategories: List<CategoryEntity>,
-    availableCreditCards: List<CreditCardEntity>,
+    activeCreditCards: List<ActiveCreditCard>,
+    allPaymentMethods: List<PaymentMethodEntity>,
     frequentExpenseCategories: List<CategoryEntity>,
     frequentIncomeCategories: List<CategoryEntity>,
     sharedTransitionScope: SharedTransitionScope?,
@@ -498,7 +545,8 @@ private fun AddTransactionContent(
             onEvent = onEvent,
             isEditing = isEditing,
             transactionToEdit = transactionToEdit,
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
+            allPaymentMethods = allPaymentMethods,
             isCC = isCC,
         )
 
@@ -511,7 +559,7 @@ private fun AddTransactionContent(
             transactionToEdit = transactionToEdit,
             currencySymbol = currencySymbol,
             dateFormat = dateFormat,
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
         )
     }
 }
@@ -530,6 +578,7 @@ fun CategorySelector(
     }
 
     var searchQuery by remember { mutableStateOf("") }
+    var showAllDialog by remember { mutableStateOf(false) }
     val filteredCategories = remember(availableCategories, type, searchQuery) {
         availableCategories.filter { it.type == type && it.label.contains(searchQuery, ignoreCase = true) }
     }
@@ -564,6 +613,28 @@ fun CategorySelector(
             ),
         )
 
+        if (searchQuery.isEmpty()) {
+            val selectedCategory = remember(selectedCategoryId, availableCategories) {
+                availableCategories.find { it.id == selectedCategoryId }
+            }
+            if (selectedCategory != null && selectedCategory.type == type) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp),
+                ) {
+                    CategoryImage(category = selectedCategory, size = 20.dp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        selectedCategory.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         if (frequentCategories.isNotEmpty() && searchQuery.isEmpty()) {
             Text(
                 text = stringResource(R.string.frequent_categories),
@@ -592,44 +663,76 @@ fun CategorySelector(
             HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
         }
 
-        Text(
-            text = if (searchQuery.isEmpty()) stringResource(R.string.all_categories) else stringResource(R.string.search_results),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
-        )
+        if (searchQuery.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.search_results),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+            )
+            CategoryGrid(
+                categories = filteredCategories,
+                selectedCategoryId = selectedCategoryId,
+                onCategorySelected = onCategorySelected,
+            )
+        } else {
+            TextButton(
+                onClick = { showAllDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.show_all_categories))
+            }
+        }
+    }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-            if (filteredCategories.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.no_categories_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                val chunks = remember(filteredCategories) { filteredCategories.chunked(4) }
-                Column(
+    if (showAllDialog) {
+        CategoryPickerDialog(
+            type = type,
+            availableCategories = availableCategories,
+            selectedCategoryId = selectedCategoryId,
+            onCategorySelected = { id ->
+                onCategorySelected(id)
+                showAllDialog = false
+            },
+            onDismiss = { showAllDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun CategoryGrid(
+    categories: List<CategoryEntity>,
+    selectedCategoryId: String?,
+    onCategorySelected: (String) -> Unit,
+) {
+    if (categories.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+            Text(stringResource(R.string.no_categories_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        val chunks = remember(categories) { categories.chunked(4) }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            chunks.forEach { rowCategories ->
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    chunks.forEach { rowCategories ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            rowCategories.forEach { category ->
-                                key(category.id) {
-                                    CategoryGridItem(
-                                        modifier = Modifier.weight(1f),
-                                        category = category,
-                                        isSelected = selectedCategoryId == category.id,
-                                        onClick = { onCategorySelected(category.id) },
-                                    )
-                                }
-                            }
-                            if (rowCategories.size < 4) {
-                                repeat(4 - rowCategories.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
+                    rowCategories.forEach { category ->
+                        key(category.id) {
+                            CategoryGridItem(
+                                modifier = Modifier.weight(1f),
+                                category = category,
+                                isSelected = selectedCategoryId == category.id,
+                                onClick = { onCategorySelected(category.id) },
+                            )
+                        }
+                    }
+                    if (rowCategories.size < 4) {
+                        repeat(4 - rowCategories.size) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }

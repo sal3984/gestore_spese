@@ -14,8 +14,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CategoryEntity::class,
         CurrencyRate::class,
         CreditCardEntity::class,
+        PaymentMethodEntity::class,
+        CreditCardDetailEntity::class,
+        RevolutDetailEntity::class,
+        SatispayDetailEntity::class,
+        PaypalDetailEntity::class,
+        KlarnaDetailEntity::class,
+        DebitCardDetailEntity::class,
     ],
-    version = 9,
+    version = 13,
     exportSchema = false,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -28,9 +35,148 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun creditCardDao(): CreditCardDao
 
+    abstract fun paymentMethodDao(): PaymentMethodDao
+
     companion object {
         @Volatile
         private var instance: AppDatabase? = null
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `payment_methods` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `provider` TEXT NOT NULL,
+                        `isActive` INTEGER NOT NULL DEFAULT 1,
+                        `issuer` TEXT DEFAULT NULL,
+                        `currency` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                """,
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `credit_card_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `cardType` TEXT NOT NULL,
+                        `limit` REAL NOT NULL,
+                        `closingDay` INTEGER NOT NULL DEFAULT 0,
+                        `paymentDay` INTEGER NOT NULL DEFAULT 0,
+                        `interestRate` REAL DEFAULT NULL,
+                        `issuer` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `revolut_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `currency` TEXT NOT NULL DEFAULT 'EUR',
+                        `iban` TEXT DEFAULT NULL,
+                        `accountNumber` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `satispay_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `weeklyBudget` REAL NOT NULL,
+                        `sddDay` INTEGER NOT NULL DEFAULT 1,
+                        `iban` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `paypal_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `email` TEXT NOT NULL,
+                        `bnplInstallmentCount` INTEGER NOT NULL DEFAULT 3,
+                        `bnplCycleDays` INTEGER NOT NULL DEFAULT 14,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `klarna_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `bnplInstallmentCount` INTEGER NOT NULL DEFAULT 4,
+                        `bnplCycleDays` INTEGER NOT NULL DEFAULT 30,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `payment_methods` (`id`, `name`, `provider`, `isActive`, `issuer`, `currency`)
+                    SELECT `id`, `name`,
+                        CASE WHEN `type` = 'SALDO' THEN 'CREDIT_CARD_SALDO' ELSE 'CREDIT_CARD_REVOLVING' END,
+                        1, NULL, NULL
+                    FROM `credit_cards`
+                """,
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `credit_card_details` (`paymentMethodId`, `cardType`, `limit`, `closingDay`, `paymentDay`, `interestRate`, `issuer`)
+                    SELECT `id`, `type`, `limit`, `closingDay`, `paymentDay`, NULL, NULL
+                    FROM `credit_cards`
+                """,
+                )
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `paymentMethodId` TEXT DEFAULT NULL")
+                db.execSQL("UPDATE `transactions` SET `paymentMethodId` = `creditCardId` WHERE `creditCardId` IS NOT NULL")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    INSERT INTO `credit_card_details` (`paymentMethodId`, `cardType`, `limit`, `closingDay`, `paymentDay`)
+                    SELECT pm.`id`,
+                        CASE WHEN pm.`provider` = 'CREDIT_CARD_SALDO' THEN 'SALDO' ELSE 'REVOLVING' END,
+                        0.0, 0, 0
+                    FROM `payment_methods` pm
+                    LEFT JOIN `credit_card_details` ccd ON pm.`id` = ccd.`paymentMethodId`
+                    WHERE (pm.`provider` = 'CREDIT_CARD_SALDO' OR pm.`provider` = 'CREDIT_CARD_REVOLVING')
+                        AND ccd.`paymentMethodId` IS NULL
+                """,
+                )
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `debit_card_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `issuer` TEXT DEFAULT NULL,
+                        `cardNumber` TEXT DEFAULT NULL,
+                        `notes` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+            }
+        }
 
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -77,7 +223,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }

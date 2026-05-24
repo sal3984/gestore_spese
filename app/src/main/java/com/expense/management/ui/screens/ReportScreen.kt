@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.theme.gestoreSpeseTheme
@@ -120,6 +121,7 @@ fun ReportScreen(
     isLoading: Boolean = false,
     error: String? = null,
     onRetry: () -> Unit = {},
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
 ) {
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -548,6 +550,7 @@ fun ReportScreen(
                     currencySymbol = currencySymbol,
                     isAmountHidden = isAmountHidden,
                     dateFormat = dateFormat,
+                    allPaymentMethods = allPaymentMethods,
                 )
             }
         }
@@ -806,6 +809,7 @@ fun CategoryTransactionsBottomSheetContent(
     currencySymbol: String,
     isAmountHidden: Boolean,
     dateFormat: String,
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
 ) {
     val locale = ComposeLocale.current.platformLocale
     val categoryName = category?.let { getLocalizedCategoryLabel(it) } ?: stringResource(R.string.cat_other)
@@ -868,12 +872,27 @@ fun CategoryTransactionsBottomSheetContent(
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.SemiBold,
                                 )
-                                Text(
-                                    text = LocalDate.parse(transaction.date, DateTimeFormatter.ISO_LOCAL_DATE)
-                                        .format(DateTimeFormatter.ofPattern(dateFormat, locale)),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                val paymentMethodName = remember(transaction.paymentMethodId, allPaymentMethods) {
+                                    transaction.paymentMethodId?.let { id ->
+                                        allPaymentMethods.find { it.id == id }?.name
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = LocalDate.parse(transaction.date, DateTimeFormatter.ISO_LOCAL_DATE)
+                                            .format(DateTimeFormatter.ofPattern(dateFormat, locale)),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    if (paymentMethodName != null) {
+                                        Text(
+                                            " · $paymentMethodName",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.tertiary,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                    }
+                                }
                             }
                             Text(
                                 text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", transaction.amount)}",

@@ -1,11 +1,11 @@
 package com.expense.management.domain.usecase
 
-import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.screens.AddTransactionUiState
 import com.expense.management.utils.DateUtils
 import java.time.LocalDate
@@ -29,7 +29,7 @@ class AddTransactionSaveUseCase {
         uiState: AddTransactionUiState,
         transactionToEdit: TransactionEntity?,
         availableCategories: List<CategoryEntity>,
-        availableCreditCards: List<CreditCardEntity>,
+        activeCreditCards: List<ActiveCreditCard>,
         dateFormat: String,
         locale: Locale,
         installmentLabel: String = "installment",
@@ -64,8 +64,8 @@ class AddTransactionSaveUseCase {
         val transactionId = transactionToEdit?.id ?: UUID.randomUUID().toString()
 
         if (uiState.isInstallment && uiState.isCreditCard) {
-            val selectedCard = availableCreditCards.find { it.id == uiState.creditCardId }
-            if (selectedCard != null && selectedCard.type != CardType.REVOLVING) {
+            val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
+            if (selectedCard != null && selectedCard.cardType != CreditCardType.REVOLVING) {
                 return AddTransactionSaveResult.Error("error_card_does_not_support_installments")
             }
         }
@@ -90,7 +90,7 @@ class AddTransactionSaveUseCase {
                 buildInstallmentTransactions(
                     uiState = uiState,
                     availableCategories = availableCategories,
-                    availableCreditCards = availableCreditCards,
+                    activeCreditCards = activeCreditCards,
                     displayFormatter = displayFormatter,
                     amount = amount,
                     originalAmount = originalAmount,
@@ -107,7 +107,7 @@ class AddTransactionSaveUseCase {
                 buildRecurrenceTransactions(
                     uiState = uiState,
                     availableCategories = availableCategories,
-                    availableCreditCards = availableCreditCards,
+                    activeCreditCards = activeCreditCards,
                     displayFormatter = displayFormatter,
                     transactionDate = transactionDate,
                     amount = amount,
@@ -117,12 +117,15 @@ class AddTransactionSaveUseCase {
                 )
             }
             else -> {
-                val selectedCard = availableCreditCards.find { it.id == uiState.creditCardId }
+                val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
                 if (selectedCard == null && uiState.isCreditCard) {
                     return AddTransactionSaveResult.Error("error_no_card_selected")
                 }
                 val settlementDate = if (uiState.isCreditCard && selectedCard != null) {
-                    DateUtils.calculateEffectiveDate(transactionDate, selectedCard)
+                    DateUtils.calculateEffectiveDate(
+                        transactionDate,
+                        DateUtils.CardDateInfo(selectedCard.closingDay, selectedCard.paymentDay),
+                    )
                 } else {
                     transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 }
@@ -139,7 +142,7 @@ class AddTransactionSaveUseCase {
                 buildSingleTransaction(
                     uiState = uiState,
                     availableCategories = availableCategories,
-                    availableCreditCards = availableCreditCards,
+                    activeCreditCards = activeCreditCards,
                     dateToSave = dateToSave,
                     amount = amount,
                     originalAmount = originalAmount,
@@ -159,7 +162,7 @@ class AddTransactionSaveUseCase {
     private fun buildInstallmentTransactions(
         uiState: AddTransactionUiState,
         availableCategories: List<CategoryEntity>,
-        availableCreditCards: List<CreditCardEntity>,
+        activeCreditCards: List<ActiveCreditCard>,
         displayFormatter: DateTimeFormatter,
         amount: Double,
         originalAmount: Double,
@@ -175,9 +178,12 @@ class AddTransactionSaveUseCase {
 
         for (i in 0 until finalInstallmentsCount) {
             val installmentDate = startInstallmentDate.plusMonths(i.toLong())
-            val selectedCard = availableCreditCards.find { it.id == uiState.creditCardId }
+            val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
             val settlementDate = if (uiState.isCreditCard && selectedCard != null) {
-                DateUtils.calculateEffectiveDate(installmentDate, selectedCard)
+                DateUtils.calculateEffectiveDate(
+                    installmentDate,
+                    DateUtils.CardDateInfo(selectedCard.closingDay, selectedCard.paymentDay),
+                )
             } else {
                 installmentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
             }
@@ -259,6 +265,7 @@ class AddTransactionSaveUseCase {
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = installmentDateToSave,
                                 creditCardId = null,
+                                paymentMethodId = null,
                                 groupId = groupId,
                             ),
                         )
@@ -282,6 +289,7 @@ class AddTransactionSaveUseCase {
                     totalInstallments = finalInstallmentsCount,
                     groupId = groupId,
                     creditCardId = uiState.creditCardId,
+                    paymentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                 ),
             )
         }
@@ -291,7 +299,7 @@ class AddTransactionSaveUseCase {
     private fun buildRecurrenceTransactions(
         uiState: AddTransactionUiState,
         availableCategories: List<CategoryEntity>,
-        availableCreditCards: List<CreditCardEntity>,
+        activeCreditCards: List<ActiveCreditCard>,
         displayFormatter: DateTimeFormatter,
         transactionDate: LocalDate,
         amount: Double,
@@ -303,9 +311,12 @@ class AddTransactionSaveUseCase {
         var currentOccurrenceDate = transactionDate
 
         for (count in 0 until uiState.recurrenceLimit) {
-            val selectedCard = availableCreditCards.find { it.id == uiState.creditCardId }
+            val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
             val settlementDate = if (uiState.isCreditCard && selectedCard != null) {
-                DateUtils.calculateEffectiveDate(currentOccurrenceDate, selectedCard)
+                DateUtils.calculateEffectiveDate(
+                    currentOccurrenceDate,
+                    DateUtils.CardDateInfo(selectedCard.closingDay, selectedCard.paymentDay),
+                )
             } else {
                 currentOccurrenceDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
             }
@@ -338,6 +349,7 @@ class AddTransactionSaveUseCase {
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = settlementDate,
                                 creditCardId = null,
+                                paymentMethodId = null,
                                 groupId = groupId,
                             ),
                         )
@@ -359,6 +371,7 @@ class AddTransactionSaveUseCase {
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = occurrenceDateStr,
                                 creditCardId = null,
+                                paymentMethodId = null,
                                 groupId = groupId,
                             ),
                         )
@@ -380,6 +393,7 @@ class AddTransactionSaveUseCase {
                     effectiveDate = effectiveDate,
                     groupId = groupId,
                     creditCardId = if (uiState.isCreditCard) uiState.creditCardId else null,
+                    paymentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                     recurrenceType = uiState.recurrenceType,
                     recurrenceLimit = uiState.recurrenceLimit,
                 ),
@@ -399,7 +413,7 @@ class AddTransactionSaveUseCase {
     private fun buildSingleTransaction(
         uiState: AddTransactionUiState,
         availableCategories: List<CategoryEntity>,
-        availableCreditCards: List<CreditCardEntity>,
+        activeCreditCards: List<ActiveCreditCard>,
         dateToSave: String,
         amount: Double,
         originalAmount: Double,
@@ -408,7 +422,7 @@ class AddTransactionSaveUseCase {
         settlementDate: String,
         effectiveDate: String,
         commonGroupId: String?,
-        selectedCard: CreditCardEntity?,
+        selectedCard: ActiveCreditCard?,
     ): List<TransactionEntity> {
         val result = mutableListOf<TransactionEntity>()
 
@@ -431,6 +445,7 @@ class AddTransactionSaveUseCase {
                             originalCurrency = uiState.originalCurrency,
                             effectiveDate = settlementDate,
                             creditCardId = null,
+                            paymentMethodId = null,
                             groupId = commonGroupId,
                         ),
                     )
@@ -452,6 +467,7 @@ class AddTransactionSaveUseCase {
                             originalCurrency = uiState.originalCurrency,
                             effectiveDate = dateToSave,
                             creditCardId = null,
+                            paymentMethodId = null,
                             groupId = commonGroupId,
                         ),
                     )
@@ -475,6 +491,7 @@ class AddTransactionSaveUseCase {
                 totalInstallments = transactionToEdit?.totalInstallments,
                 groupId = commonGroupId,
                 creditCardId = if (uiState.isCreditCard) uiState.creditCardId else null,
+                paymentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                 recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
                 recurrenceLimit = transactionToEdit?.recurrenceLimit,
             ),

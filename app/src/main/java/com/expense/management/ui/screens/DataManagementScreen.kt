@@ -2,6 +2,7 @@ package com.expense.management.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -95,29 +96,59 @@ fun DataManagementScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(
-                        onClick = onBackup,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
-                    ) {
-                        Icon(Icons.Default.CloudUpload, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.backup), style = MaterialTheme.typography.labelLarge)
-                    }
+                BoxWithConstraints {
+                    if (maxWidth > 340.dp) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Button(
+                                onClick = onBackup,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).height(56.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                            ) {
+                                Icon(Icons.Default.CloudUpload, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.backup), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                            }
 
-                    Button(
-                        onClick = onRestore,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
-                    ) {
-                        Icon(Icons.Default.CloudDownload, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.restore), style = MaterialTheme.typography.labelLarge)
+                            Button(
+                                onClick = onRestore,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).height(56.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                            ) {
+                                Icon(Icons.Default.CloudDownload, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.restore), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = onBackup,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                            ) {
+                                Icon(Icons.Default.CloudUpload, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.backup), style = MaterialTheme.typography.labelLarge)
+                            }
+
+                            Button(
+                                onClick = onRestore,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                            ) {
+                                Icon(Icons.Default.CloudDownload, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.restore), style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
                     }
                 }
             }

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,11 +72,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
 import com.expense.management.ui.theme.gestoreSpeseTheme
@@ -100,12 +103,14 @@ fun DashboardScreen(
     onDelete: (String, DeleteType) -> Unit,
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
-    creditCards: List<CreditCardEntity> = emptyList(),
+    creditCards: List<ActiveCreditCard> = emptyList(),
+    bnplProjections: List<BnplProjection> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     isLoading: Boolean = false,
     error: String? = null,
     onRetry: () -> Unit = {},
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
 ) {
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -392,6 +397,51 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
+                    // Card Debiti Previsti BNPL
+                    if (bnplProjections.isNotEmpty()) {
+                        val totalBnplDebt = bnplProjections.sumOf { it.totalExpected }
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Payment,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Debiti Previsti (BNPL)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalBnplDebt)}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                bnplProjections.forEach { proj ->
+                                    Text(
+                                        text = "${proj.methodName}: ${proj.installments.size} rate",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Card Carte di Credito
                     if (creditCards.isNotEmpty()) {
                         val pagerState = rememberPagerState(pageCount = { creditCards.size })
@@ -404,7 +454,7 @@ fun DashboardScreen(
                             val card = creditCards[page]
 
                             val (displayedSpent, totalUtilizedForDisplay, totalPaidForDisplay) = remember(card.id, transactions, currentDashboardMonth) {
-                                if (card.type == CardType.REVOLVING) {
+                                if (card.cardType == CreditCardType.REVOLVING) {
                                     val totalUtilized = transactions
                                         .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
                                         .sumOf { it.amount }
@@ -448,7 +498,7 @@ fun DashboardScreen(
                                 progress = progress,
                                 currencySymbol = currencySymbol,
                                 isAmountHidden = isAmountHidden,
-                                type = card.type,
+                                type = card.cardType,
                                 totalUtilized = totalUtilizedForDisplay,
                                 totalPaid = totalPaidForDisplay,
                                 locale = locale,
@@ -590,6 +640,7 @@ fun DashboardScreen(
                                         locale = locale,
                                         sharedTransitionScope = sharedTransitionScope,
                                         animatedVisibilityScope = animatedVisibilityScope,
+                                        allPaymentMethods = allPaymentMethods,
                                     )
                                 }
                             },
@@ -610,7 +661,7 @@ fun CreditCardItem(
     progress: Float,
     currencySymbol: String,
     isAmountHidden: Boolean,
-    type: CardType,
+    type: CreditCardType,
     totalUtilized: Double = 0.0,
     totalPaid: Double = 0.0,
     locale: Locale = Locale.getDefault(),
@@ -633,7 +684,7 @@ fun CreditCardItem(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (type == CardType.REVOLVING) {
+                    if (type == CreditCardType.REVOLVING) {
                         Text(
                             stringResource(R.string.installment_plan),
                             style = MaterialTheme.typography.labelSmall,
@@ -654,7 +705,7 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (type == CardType.REVOLVING) {
+            if (type == CreditCardType.REVOLVING) {
                 Text(
                     text = stringResource(R.string.revolving_utilized_label),
                     style = MaterialTheme.typography.bodyMedium,
@@ -693,7 +744,7 @@ fun CreditCardItem(
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    text = if (isAmountHidden) "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",
+                    text = if (isAmountHidden) "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
