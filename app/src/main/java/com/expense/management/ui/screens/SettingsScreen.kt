@@ -103,7 +103,6 @@ fun settingsScreen(
     onDateFormatChange: (String) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
-    onNavigateToPaymentMethods: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -180,18 +179,6 @@ fun settingsScreen(
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- SEZIONE GESTIONE PAGAMENTI ---
-        paymentMethodsSection(
-            currentCurrency = currentCurrency,
-            allCreditCards = allCreditCards,
-            onAddCreditCard = onAddCreditCard,
-            onUpdateCreditCard = onUpdateCreditCard,
-            onDeleteCreditCard = onDeleteCreditCard,
-            onNavigateToFullScreen = onNavigateToPaymentMethods,
-        )
 
         Spacer(modifier = Modifier.height(32.dp))
 

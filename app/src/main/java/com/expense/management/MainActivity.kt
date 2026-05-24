@@ -211,7 +211,7 @@ fun mainApp() {
     // AGGIORNAMENTO ROUTES: Categorie spostato nella BottomBar
     val bottomNavRoutes = listOf("dashboard", "report", "categories")
     // Drawer Routes mantiene solo le sezioni di configurazione/gestione
-    val drawerRoutes = listOf("data_management", "security", "settings")
+    val drawerRoutes = listOf("data_management", "security", "payment_methods", "settings")
 
     val isBottomBarVisible = currentRoute in bottomNavRoutes
     val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
@@ -271,6 +271,17 @@ fun mainApp() {
                 )
 
                 NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.payment_methods)) },
+                    selected = currentRoute == "payment_methods",
+                    onClick = {
+                        navController.navigate("payment_methods")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                )
+
+                NavigationDrawerItem(
                     label = { Text(stringResource(R.string.settings)) },
                     selected = currentRoute == "settings",
                     onClick = {
@@ -311,6 +322,7 @@ fun mainApp() {
                                     "settings" -> stringResource(R.string.settings)
                                     "data_management" -> stringResource(R.string.data_management)
                                     "security" -> stringResource(R.string.security_usability)
+                                    "payment_methods" -> stringResource(R.string.payment_methods)
                                     else -> stringResource(R.string.app_name)
                                 }
                             Text(
@@ -541,7 +553,6 @@ fun mainApp() {
                                 onDateFormatChange = viewModel::updateDateFormat,
                                 onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                                 onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
-                                onNavigateToPaymentMethods = { navController.navigate("payment_methods") },
                             )
                         }
 
