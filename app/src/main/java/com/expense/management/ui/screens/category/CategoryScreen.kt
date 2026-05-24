@@ -1,5 +1,7 @@
 package com.expense.management.ui.screens.category
 
+import android.app.Activity
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -79,6 +81,8 @@ import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.CategoryImage
 import com.expense.management.utils.deleteImageFile
 import com.expense.management.utils.saveImageToInternalStorage
+import com.yalantis.ucrop.UCrop
+import java.io.File
 import java.util.UUID
 
 private val availableIcons = listOf(
@@ -321,14 +325,35 @@ fun CategoryDialog(
     val context = LocalContext.current
     val oldImageUri = categoryToEdit?.imageUri
 
+    var lastPickedUri by remember { mutableStateOf<String?>(null) }
+
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val croppedUri = UCrop.getOutput(result.data!!)
+            imageUri = croppedUri?.toString() ?: lastPickedUri
+        } else if (result.resultCode == UCrop.RESULT_ERROR) {
+            lastPickedUri?.let { original ->
+                saveImageToInternalStorage(context, original)?.let { imageUri = it }
+            }
+        }
+        lastPickedUri = null
+    }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri != null) {
-            val savedUri = saveImageToInternalStorage(context, uri.toString())
-            if (savedUri != null) {
-                imageUri = savedUri
-            }
+            lastPickedUri = uri.toString()
+            val dir = File(context.filesDir, "category_images")
+            if (!dir.exists()) dir.mkdirs()
+            val destFile = File(dir, "cat_${UUID.randomUUID()}.jpg")
+            val uCrop = UCrop.of(uri, Uri.fromFile(destFile))
+                .withAspectRatio(1f, 1f)
+                .withMaxResultSize(512, 512)
+            val intent = uCrop.getIntent(context)
+            cropLauncher.launch(intent)
         }
     }
 

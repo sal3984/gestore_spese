@@ -114,6 +114,9 @@ dependencies {
 
     implementation(libs.coil.compose)
 
+    // Image Cropper (uCrop)
+    implementation(libs.ucrop)
+
     // Play Services Wearable (per WearableDataListenerService)
     implementation(libs.play.services.wearable)
 }
