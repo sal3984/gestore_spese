@@ -10,4 +10,5 @@ data class BackupData(
     val satispayDetails: List<SatispayDetailEntity>? = null,
     val paypalDetails: List<PaypalDetailEntity>? = null,
     val klarnaDetails: List<KlarnaDetailEntity>? = null,
+    val debitCardDetails: List<DebitCardDetailEntity>? = null,
 )

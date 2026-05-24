@@ -9,6 +9,13 @@ sealed class PaymentMethodDetails {
         val paymentDay: Int,
     ) : PaymentMethodDetails()
 
+    data class DebitCard(
+        val name: String,
+        val issuer: String?,
+        val cardNumber: String?,
+        val notes: String?,
+    ) : PaymentMethodDetails()
+
     data class Revolut(
         val name: String,
         val currency: String,

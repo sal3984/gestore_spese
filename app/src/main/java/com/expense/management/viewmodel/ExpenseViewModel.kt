@@ -10,6 +10,7 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardDetailEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
+import com.expense.management.data.DebitCardDetailEntity
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.KlarnaDetailEntity
 import com.expense.management.data.PaymentMethodEntity
@@ -275,6 +276,9 @@ class ExpenseViewModel(
         paymentMethod: PaymentMethodEntity,
         closingDay: Int = 0,
         paymentDay: Int = 0,
+        debitIssuer: String? = null,
+        debitCardNumber: String? = null,
+        debitNotes: String? = null,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             managePaymentMethodUseCase.add(paymentMethod)
@@ -293,6 +297,15 @@ class ExpenseViewModel(
                         limit = 0.0,
                         closingDay = closingDay,
                         paymentDay = paymentDay,
+                    ),
+                )
+            } else if (paymentMethod.provider == PaymentProvider.DEBIT_CARD.name) {
+                repository.insertDebitCardDetail(
+                    DebitCardDetailEntity(
+                        paymentMethodId = paymentMethod.id,
+                        issuer = debitIssuer,
+                        cardNumber = debitCardNumber,
+                        notes = debitNotes,
                     ),
                 )
             }
@@ -365,6 +378,16 @@ class ExpenseViewModel(
                         limit = it.limit,
                         closingDay = it.closingDay,
                         paymentDay = it.paymentDay,
+                    )
+                }
+            }
+            PaymentProvider.DEBIT_CARD -> {
+                repository.getDebitCardDetail(method.id)?.let {
+                    PaymentMethodDetails.DebitCard(
+                        name = method.name,
+                        issuer = it.issuer,
+                        cardNumber = it.cardNumber,
+                        notes = it.notes,
                     )
                 }
             }
@@ -452,6 +475,14 @@ class ExpenseViewModel(
                         paymentMethodId = method.id,
                         bnplInstallmentCount = details.bnplInstallmentCount,
                         bnplCycleDays = details.bnplCycleDays,
+                    ),
+                )
+                is PaymentMethodDetails.DebitCard -> repository.insertDebitCardDetail(
+                    DebitCardDetailEntity(
+                        paymentMethodId = method.id,
+                        issuer = details.issuer,
+                        cardNumber = details.cardNumber,
+                        notes = details.notes,
                     ),
                 )
             }

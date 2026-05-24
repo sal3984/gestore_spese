@@ -83,4 +83,13 @@ interface PaymentMethodDao {
 
     @Query("SELECT * FROM klarna_details")
     suspend fun getAllKlarnaDetails(): List<KlarnaDetailEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDebitCardDetail(detail: DebitCardDetailEntity)
+
+    @Query("SELECT * FROM debit_card_details WHERE paymentMethodId = :paymentMethodId")
+    suspend fun getDebitCardDetail(paymentMethodId: String): DebitCardDetailEntity?
+
+    @Query("SELECT * FROM debit_card_details")
+    suspend fun getAllDebitCardDetails(): List<DebitCardDetailEntity>
 }

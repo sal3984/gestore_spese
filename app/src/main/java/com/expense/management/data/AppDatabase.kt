@@ -20,8 +20,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SatispayDetailEntity::class,
         PaypalDetailEntity::class,
         KlarnaDetailEntity::class,
+        DebitCardDetailEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = false,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -160,6 +161,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `debit_card_details` (
+                        `paymentMethodId` TEXT NOT NULL,
+                        `issuer` TEXT DEFAULT NULL,
+                        `cardNumber` TEXT DEFAULT NULL,
+                        `notes` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`paymentMethodId`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON DELETE CASCADE
+                    )
+                """,
+                )
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -205,7 +223,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }

@@ -68,7 +68,7 @@ fun PaymentMethodSettingsScreen(
     allPaymentMethods: List<PaymentMethodEntity>,
     legacyCreditCards: List<CreditCardEntity>,
     onNavigateBack: () -> Unit,
-    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int) -> Unit,
+    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int, debitIssuer: String?, debitCardNumber: String?, debitNotes: String?) -> Unit,
     onDelete: (String) -> Unit,
     onEditPaymentMethod: (PaymentMethodEntity, PaymentMethodDetails) -> Unit,
     onLoadDetails: suspend (String) -> PaymentMethodDetails?,
@@ -161,7 +161,7 @@ fun PaymentMethodSettingsScreen(
     if (showAddDialog) {
         AddPaymentMethodDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { provider, name, closingDay, _, paymentDay ->
+            onConfirm = { provider, name, closingDay, _, paymentDay, debitIssuer, debitCardNumber, debitNotes ->
                 val newMethod = PaymentMethodEntity(
                     id = java.util.UUID.randomUUID().toString(),
                     name = name,
@@ -170,7 +170,7 @@ fun PaymentMethodSettingsScreen(
                     issuer = null,
                     currency = null,
                 )
-                onAdd(newMethod, closingDay, paymentDay)
+                onAdd(newMethod, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes)
                 showAddDialog = false
             },
         )
@@ -211,7 +211,7 @@ fun PaymentMethodSettingsScreen(
             onDismissRequest = { editingLegacyCard = null },
             title = { Text("Modifica Carta") },
             text = {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     OutlinedTextField(
                         value = editName,
                         onValueChange = { editName = it },
@@ -228,18 +228,6 @@ fun PaymentMethodSettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = editClosingDayText,
-                            onValueChange = {
-                                editClosingDayText = it
-                                if (it.isNotEmpty()) isLastDayOfMonth = false
-                            },
-                            label = { Text("Giorno Chiusura") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            enabled = !isLastDayOfMonth,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
                         Checkbox(
                             checked = isLastDayOfMonth,
                             onCheckedChange = {
@@ -249,7 +237,19 @@ fun PaymentMethodSettingsScreen(
                         )
                         Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    if (!isLastDayOfMonth) {
+                        OutlinedTextField(
+                            value = editClosingDayText,
+                            onValueChange = {
+                                editClosingDayText = it
+                                if (it.isNotEmpty()) isLastDayOfMonth = false
+                            },
+                            label = { Text("Giorno Chiusura") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                     OutlinedTextField(
                         value = editPaymentDayText,
                         onValueChange = { editPaymentDayText = it },
@@ -309,7 +309,7 @@ private fun paymentMethodListItem(
 @Composable
 private fun AddPaymentMethodDialog(
     onDismiss: () -> Unit,
-    onConfirm: (PaymentProvider, String, Int, Boolean, Int) -> Unit,
+    onConfirm: (PaymentProvider, String, Int, Boolean, Int, String?, String?, String?) -> Unit,
 ) {
     var selectedProvider by remember { mutableStateOf(PaymentProvider.CREDIT_CARD_SALDO) }
     var name by remember { mutableStateOf("") }
@@ -317,14 +317,18 @@ private fun AddPaymentMethodDialog(
     var closingDayText by remember { mutableStateOf("") }
     var paymentDayText by remember { mutableStateOf("") }
     var isLastDayOfMonth by remember { mutableStateOf(true) }
+    var debitIssuer by remember { mutableStateOf("") }
+    var debitCardNumber by remember { mutableStateOf("") }
+    var debitNotes by remember { mutableStateOf("") }
     val isCreditCard = selectedProvider == PaymentProvider.CREDIT_CARD_SALDO ||
         selectedProvider == PaymentProvider.CREDIT_CARD_REVOLVING
+    val isDebitCard = selectedProvider == PaymentProvider.DEBIT_CARD
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.add_payment_method)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -368,6 +372,13 @@ private fun AddPaymentMethodDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = isLastDayOfMonth,
+                            onCheckedChange = { isLastDayOfMonth = it },
+                        )
+                        Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (!isLastDayOfMonth) {
                         OutlinedTextField(
                             value = closingDayText,
                             onValueChange = {
@@ -376,22 +387,38 @@ private fun AddPaymentMethodDialog(
                             },
                             label = { Text("Giorno Chiusura") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            enabled = !isLastDayOfMonth,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Checkbox(
-                            checked = isLastDayOfMonth,
-                            onCheckedChange = { isLastDayOfMonth = it },
-                        )
-                        Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = paymentDayText,
                         onValueChange = { paymentDayText = it },
                         label = { Text("Giorno Addebito") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                if (isDebitCard) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    OutlinedTextField(
+                        value = debitIssuer,
+                        onValueChange = { debitIssuer = it },
+                        label = { Text("Istituto / Banca") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    )
+                    OutlinedTextField(
+                        value = debitCardNumber,
+                        onValueChange = { debitCardNumber = it },
+                        label = { Text("Numero Carta") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    )
+                    OutlinedTextField(
+                        value = debitNotes,
+                        onValueChange = { debitNotes = it },
+                        label = { Text("Note") },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -403,7 +430,16 @@ private fun AddPaymentMethodDialog(
                     if (name.isNotBlank()) {
                         val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: 31)
                         val paymentDay = paymentDayText.toIntOrNull() ?: 15
-                        onConfirm(selectedProvider, name, closingDay, isLastDayOfMonth, paymentDay)
+                        onConfirm(
+                            selectedProvider,
+                            name,
+                            closingDay,
+                            isLastDayOfMonth,
+                            paymentDay,
+                            debitIssuer.ifBlank { null },
+                            debitCardNumber.ifBlank { null },
+                            debitNotes.ifBlank { null },
+                        )
                     }
                 },
                 enabled = name.isNotBlank(),
@@ -427,6 +463,7 @@ private fun EditPaymentMethodDialog(
             currentDetails?.let {
                 when (it) {
                     is PaymentMethodDetails.CreditCard -> it.name
+                    is PaymentMethodDetails.DebitCard -> it.name
                     is PaymentMethodDetails.Revolut -> it.name
                     is PaymentMethodDetails.Satispay -> it.name
                     is PaymentMethodDetails.Paypal -> it.name
@@ -453,7 +490,7 @@ private fun EditPaymentMethodDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(providerLabel(provider)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = cardType.name, onValueChange = {}, readOnly = true, label = { Text("Tipo Carta") }, modifier = Modifier.fillMaxWidth())
@@ -461,18 +498,6 @@ private fun EditPaymentMethodDialog(
                         OutlinedTextField(value = limitText, onValueChange = { limitText = it }, label = { Text("Limite") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = closingDayText,
-                                onValueChange = {
-                                    closingDayText = it
-                                    if (it.isNotEmpty()) isLastDayOfMonth = false
-                                },
-                                label = { Text("Giorno Chiusura") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                enabled = !isLastDayOfMonth,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Checkbox(
                                 checked = isLastDayOfMonth,
                                 onCheckedChange = {
@@ -482,7 +507,19 @@ private fun EditPaymentMethodDialog(
                             )
                             Text("Fine Mese", style = MaterialTheme.typography.bodySmall)
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        if (!isLastDayOfMonth) {
+                            OutlinedTextField(
+                                value = closingDayText,
+                                onValueChange = {
+                                    closingDayText = it
+                                    if (it.isNotEmpty()) isLastDayOfMonth = false
+                                },
+                                label = { Text("Giorno Chiusura") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                         OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text("Giorno Addebito") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                     }
                 },
@@ -492,6 +529,35 @@ private fun EditPaymentMethodDialog(
                         val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: return@TextButton)
                         val paymentDay = paymentDayText.toIntOrNull() ?: return@TextButton
                         onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay))
+                    }) { Text("Salva") }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+            )
+        }
+
+        PaymentProvider.DEBIT_CARD -> {
+            val details = currentDetails as? PaymentMethodDetails.DebitCard
+            var issuerText by remember(details) { mutableStateOf(details?.issuer ?: "") }
+            var cardNumberText by remember(details) { mutableStateOf(details?.cardNumber ?: "") }
+            var notesText by remember(details) { mutableStateOf(details?.notes ?: "") }
+
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = issuerText, onValueChange = { issuerText = it }, label = { Text("Istituto / Banca") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = cardNumberText, onValueChange = { cardNumberText = it }, label = { Text("Numero Carta") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = notesText, onValueChange = { notesText = it }, label = { Text("Note") }, modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onSave(name, PaymentMethodDetails.DebitCard(name, issuerText.ifBlank { null }, cardNumberText.ifBlank { null }, notesText.ifBlank { null }))
                     }) { Text("Salva") }
                 },
                 dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
@@ -508,7 +574,7 @@ private fun EditPaymentMethodDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(providerLabel(provider)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = currencyText, onValueChange = { currencyText = it }, label = { Text("Valuta") }, modifier = Modifier.fillMaxWidth())
@@ -537,7 +603,7 @@ private fun EditPaymentMethodDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(providerLabel(provider)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = weeklyBudgetText, onValueChange = { weeklyBudgetText = it }, label = { Text("Budget Settimanale") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
@@ -568,7 +634,7 @@ private fun EditPaymentMethodDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(providerLabel(provider)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = emailText, onValueChange = { emailText = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
@@ -598,7 +664,7 @@ private fun EditPaymentMethodDialog(
                 onDismissRequest = onDismiss,
                 title = { Text(providerLabel(provider)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nome") }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = bnplCountText, onValueChange = { bnplCountText = it }, label = { Text("Rate BNPL") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
@@ -623,6 +689,7 @@ private fun providerLabel(provider: PaymentProvider): String {
     return when (provider) {
         PaymentProvider.CREDIT_CARD_SALDO -> "Carta di Credito (Saldo)"
         PaymentProvider.CREDIT_CARD_REVOLVING -> "Carta di Credito (Revolving)"
+        PaymentProvider.DEBIT_CARD -> "Bancomat / Carta Ricaricabile"
         PaymentProvider.REVOLUT -> "Revolut"
         PaymentProvider.SATISPAY -> "Satispay"
         PaymentProvider.PAYPAL -> "PayPal"
@@ -634,6 +701,7 @@ private fun providerIcon(provider: PaymentProvider): ImageVector {
     return when (provider) {
         PaymentProvider.CREDIT_CARD_SALDO -> Icons.Default.CreditCard
         PaymentProvider.CREDIT_CARD_REVOLVING -> Icons.Default.CreditCard
+        PaymentProvider.DEBIT_CARD -> Icons.Default.CreditCard
         PaymentProvider.REVOLUT -> Icons.Default.Savings
         PaymentProvider.SATISPAY -> Icons.Default.Star
         PaymentProvider.PAYPAL -> Icons.Default.Payment

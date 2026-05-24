@@ -73,6 +73,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
@@ -109,6 +110,7 @@ fun DashboardScreen(
     isLoading: Boolean = false,
     error: String? = null,
     onRetry: () -> Unit = {},
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
 ) {
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -638,6 +640,7 @@ fun DashboardScreen(
                                         locale = locale,
                                         sharedTransitionScope = sharedTransitionScope,
                                         animatedVisibilityScope = animatedVisibilityScope,
+                                        allPaymentMethods = allPaymentMethods,
                                     )
                                 }
                             },

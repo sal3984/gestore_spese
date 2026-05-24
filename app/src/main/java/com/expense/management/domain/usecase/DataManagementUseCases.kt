@@ -19,6 +19,7 @@ class GetBackupDataUseCase(private val repository: ExpenseRepository) {
         satispayDetails = repository.getAllSatispayDetails(),
         paypalDetails = repository.getAllPaypalDetails(),
         klarnaDetails = repository.getAllKlarnaDetails(),
+        debitCardDetails = repository.getAllDebitCardDetails(),
     )
 }
 
@@ -48,6 +49,9 @@ class RestoreDataUseCase(private val repository: ExpenseRepository) {
             }
             backupData.klarnaDetails?.let { details ->
                 details.forEach { repository.insertKlarnaDetail(it) }
+            }
+            backupData.debitCardDetails?.let { details ->
+                details.forEach { repository.insertDebitCardDetail(it) }
             }
         }
 

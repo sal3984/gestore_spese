@@ -107,6 +107,8 @@ class ExpenseRepository(
 
     suspend fun getAllKlarnaDetails(): List<KlarnaDetailEntity> = paymentMethodDao.getAllKlarnaDetails()
 
+    suspend fun getAllDebitCardDetails(): List<DebitCardDetailEntity> = paymentMethodDao.getAllDebitCardDetails()
+
     suspend fun getPaymentMethodById(id: String): PaymentMethodEntity? = paymentMethodDao.getPaymentMethodById(id)
 
     suspend fun insertPaymentMethod(paymentMethod: PaymentMethodEntity) {
@@ -169,4 +171,11 @@ class ExpenseRepository(
 
     suspend fun getKlarnaDetail(paymentMethodId: String): KlarnaDetailEntity? =
         paymentMethodDao.getKlarnaDetail(paymentMethodId)
+
+    suspend fun insertDebitCardDetail(detail: DebitCardDetailEntity) {
+        paymentMethodDao.insertDebitCardDetail(detail)
+    }
+
+    suspend fun getDebitCardDetail(paymentMethodId: String): DebitCardDetailEntity? =
+        paymentMethodDao.getDebitCardDetail(paymentMethodId)
 }

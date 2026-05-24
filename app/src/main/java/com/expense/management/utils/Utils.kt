@@ -48,6 +48,7 @@ import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
@@ -75,6 +76,7 @@ fun TransactionItem(
     locale: Locale = Locale.getDefault(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
 ) {
     val category = getCategory(transaction.categoryId, categories)
     val categoryLabel = getLocalizedCategoryLabel(category)
@@ -197,6 +199,21 @@ fun TransactionItem(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium,
+                        )
+                    }
+
+                    val paymentMethodName = remember(transaction.paymentMethodId, allPaymentMethods) {
+                        transaction.paymentMethodId?.let { id ->
+                            allPaymentMethods.find { it.id == id }?.name
+                        }
+                    }
+                    if (paymentMethodName != null) {
+                        Text(
+                            paymentMethodName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(top = 2.dp),
                         )
                     }
 

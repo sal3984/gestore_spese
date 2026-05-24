@@ -473,6 +473,7 @@ fun mainApp() {
                                 bnplProjections = bnplProjections,
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = this@composable,
+                                allPaymentMethods = allPaymentMethods,
                             )
                         }
 
@@ -487,6 +488,7 @@ fun mainApp() {
                                 currencySymbol = currentCurrency,
                                 dateFormat = currentDateFormat,
                                 isAmountHidden = isAmountHidden,
+                                allPaymentMethods = allPaymentMethods,
                             )
                         }
 
@@ -573,7 +575,7 @@ fun mainApp() {
                                 allPaymentMethods = allPaymentMethods,
                                 legacyCreditCards = allCreditCards,
                                 onNavigateBack = { navController.popBackStack() },
-                                onAdd = { method, closingDay, paymentDay -> viewModel.addPaymentMethod(method, closingDay, paymentDay) },
+                                onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes -> viewModel.addPaymentMethod(method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes) },
                                 onDelete = { viewModel.deletePaymentMethod(it) },
                                 onEditPaymentMethod = { method, details ->
                                     viewModel.updatePaymentMethodWithDetails(method, details)
