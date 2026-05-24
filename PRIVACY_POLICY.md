@@ -1,77 +1,79 @@
-# Privacy Policy - Gestore Spese
+# Privacy Policy — Gestore Spese / Expense Manager
 
-**Ultimo aggiornamento:** [08/12/2025]
+**Last updated:** 24 May 2026
 
-Questa Informativa sulla Privacy descrive come l'applicazione "Gestore Spese" gestisce i tuoi dati. Rispettiamo la tua privacy e ci impegniamo a proteggere le tue informazioni personali.
+## Data Collection and Storage
 
-## 1. Raccolta e Utilizzo dei Dati
-L'applicazione è progettata per funzionare principalmente offline. I dati finanziari inseriti (transazioni, categorie, ecc.) sono salvati in un database locale sul tuo dispositivo.
+Gestore Spese ("the App") is a personal expense tracking application. The App **does not collect, transmit, or share any personal data** with third parties.
 
-**Lo sviluppatore non raccoglie, trasmette o ha accesso ai tuoi dati personali o finanziari.** Nessun dato personale viene inviato a server gestiti dallo sviluppatore.
+### What data is stored
 
-## 2. Accesso a Internet
-L'applicazione utilizza la connessione internet esclusivamente per:
-*   Scaricare i tassi di cambio giornalieri forniti dalla Banca Centrale Europea (BCE).
-*   Questa operazione avviene in modo anonimo e non comporta l'invio di alcun dato personale dell'utente.
+All data is stored **exclusively on your device** in a local SQLite database (Room):
 
-## 3. Dati Biometrici
-L'applicazione utilizza l'autenticazione biometrica (impronta digitale o riconoscimento facciale) per proteggere l'accesso ai tuoi dati.
+| Data | Purpose | Storage |
+|---|---|---|
+| Transactions (amount, description, date, category) | Expense/income tracking | Local device only |
+| Categories (name, icon, image) | Transaction categorization | Local device only |
+| Credit card configurations | Card management features | Local device only |
+| Currency exchange rates | Multi-currency conversion | Local device only |
+| App preferences (currency, date format, CC settings) | User experience customization | Local device only |
+| Category images | Custom category icon display | Local device's internal storage |
 
-*   **Come viene utilizzata:** Utilizziamo le API standard di Android (`androidx.biometric`) per delegare l'autenticazione al sistema operativo.
-*   **Archiviazione:** L'applicazione **NON raccoglie, archivia, memorizza o condivide** i tuoi dati biometrici.
-*   **Funzionamento:** L'app riceve solo una notifica di "successo" o "fallimento" dal sistema operativo Android una volta completata la verifica. I dati biometrici grezzi rimangono protetti all'interno dell'hardware di sicurezza del tuo dispositivo (Secure Enclave/TEE).
+### Biometric authentication
 
-## 4. File e Backup
-L'applicazione consente di esportare dati (CSV) e creare backup completi (JSON).
+The App may use your device's biometric API (fingerprint, face recognition) **solely for local app unlock**. No biometric data is ever stored or transmitted by the App.
 
-*   **Permessi:** L'app utilizza il sistema di selezione file di Android (Storage Access Framework). L'utente sceglie esplicitamente dove salvare il file (memoria interna o servizi cloud come Google Drive).
-*   **Accesso:** L'app ha accesso in lettura/scrittura solo ai file specifici selezionati dall'utente per le operazioni di backup o ripristino.
-*   **Destinazione:** I file di backup rimangono sotto il controllo esclusivo dell'utente. Lo sviluppatore non ha accesso a questi file.
+### Wear OS companion
 
-## 5. Permessi Richiesti
-*   `INTERNET`: Necessario per scaricare i tassi di cambio aggiornati.
-*   `USE_BIOMETRIC`: Necessario per verificare l'identità dell'utente tramite i sensori del dispositivo.
-*   Accesso allo Storage (tramite SAF): Necessario per leggere/scrivere i file di backup e export scelti dall'utente.
+When using the Wear OS companion app, transaction data is sent from the watch to the phone **only via Google Play Services Wearable APIs**. This communication is encrypted by the platform and occurs exclusively between your paired devices.
 
-## 6. Contatti
-Per domande riguardanti questa privacy policy, puoi contattare lo sviluppatore a: [Inserisci la tua Email]
+### Third-party services
+
+The App makes the following network requests:
+
+1. **European Central Bank (ECB) exchange rate feed** — Used exclusively to download daily currency exchange rates. No user data is included in this request.
+2. **Google Play Services** — Standard Android/Wear OS API calls (no personal data transmitted).
+
+The App uses the following third-party libraries:
+
+- **Coil** — Loads images from local URIs. No network image loading.
+- **uCrop** — Image cropping interface. Processes images entirely on-device.
+- **Gson** — Local JSON serialization for backup files.
+
+### Backup files
+
+JSON and CSV backup files are created **only when you explicitly request them** and are saved to the location **you choose** on your device or cloud storage. These files contain your full transaction history and should be handled with care.
+
+### Data deletion
+
+You can delete all data at any time by:
+1. Uninstalling the App — this removes the entire local database and stored images.
+2. Using the App's delete functions — individual transactions, categories, or credit cards.
+3. Clearing the App's data from Android system settings.
+
+### Permissions
+
+The App may request the following permissions:
+
+| Permission | Purpose |
+|---|---|
+| `USE_BIOMETRIC` | Optional app unlock via fingerprint/face |
+| `INTERNET` | Downloading ECB exchange rates |
+| `READ_MEDIA_IMAGES` (Android 13+) / `READ_EXTERNAL_STORAGE` (Android 12-) | Selecting images for categories |
+| Wearable data sync | Wear OS communication |
+
+### Children's privacy
+
+The App is not directed at children under the age of 13. It does not knowingly collect any personal information from children.
+
+### Changes to this policy
+
+Updates to this privacy policy will be reflected in the App's repository and in the next app update.
+
+### Contact
+
+For questions about this privacy policy, open an issue at the project repository or contact the developer directly.
 
 ---
 
-# Privacy Policy - Expense Manager (Gestore Spese)
-
-**Last Updated:** [04/12/2025]
-
-This Privacy Policy describes how the "Gestore Spese" application handles your data. We respect your privacy and are committed to protecting your personal information.
-
-## 1. Data Collection and Usage
-The application is designed to work primarily offline. The financial data you enter (transactions, categories, etc.) is saved in a local database on your device.
-
-**The developer does not collect, transmit, or have access to your personal or financial data.** No personal data is sent to servers managed by the developer.
-
-## 2. Internet Access
-The application uses the internet connection exclusively to:
-*   Download daily exchange rates provided by the European Central Bank (ECB).
-*   This operation is performed anonymously and does not involve sending any of the user's personal data.
-
-## 3. Biometric Data
-The application uses biometric authentication (fingerprint or facial recognition) to protect access to your data.
-
-*   **How it is used:** We use standard Android APIs (`androidx.biometric`) to delegate authentication to the operating system.
-*   **Storage:** The application **does NOT collect, archive, store, or share** your biometric data.
-*   **Operation:** The app only receives a "success" or "failure" notification from the Android operating system once verification is complete. Raw biometric data remains protected within your device's security hardware (Secure Enclave/TEE).
-
-## 4. Files and Backup
-The application allows you to export data (CSV) and create full backups (JSON).
-
-*   **Permissions:** The app uses the Android file selection system (Storage Access Framework). The user explicitly chooses where to save the file (internal storage or cloud services like Google Drive).
-*   **Access:** The app has read/write access only to the specific files selected by the user for backup or restore operations.
-*   **Destination:** Backup files remain under the exclusive control of the user. The developer has no access to these files.
-
-## 5. Required Permissions
-*   `INTERNET`: Required to download updated exchange rates.
-*   `USE_BIOMETRIC`: Required to verify the user's identity via the device sensors.
-*   Storage Access (via SAF): Required to read/write the backup and export files chosen by the user.
-
-## 6. Contact
-For questions regarding this privacy policy, you can contact the developer at: alsampognaro@gmail.com
+**Summary:** Your data stays on your device. Always.
