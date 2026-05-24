@@ -265,6 +265,7 @@
     <string name="all_categories">Tutte le Categorie</string>
     <string name="no_categories_found">Nessuna categoria trovata</string>
     <string name="search_results">Risultati della ricerca</string>
+    <string name="show_all_categories">Mostra tutte le categorie</string>
     <string name="payment_method_label">Metodo di Pagamento</string>
     <string name="use_credit_card_label">Usa Carta di Credito</string>
     <string name="image">Imm.</string>

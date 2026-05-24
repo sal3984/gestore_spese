@@ -1,9 +1,14 @@
 package com.expense.management.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -14,15 +19,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.data.CategoryEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
+import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.DeleteType
 import java.time.Instant
@@ -310,5 +318,61 @@ fun DeleteDialog(
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
             }
         },
+    )
+}
+
+@Composable
+fun CategoryPickerDialog(
+    type: TransactionType,
+    availableCategories: List<CategoryEntity>,
+    selectedCategoryId: String?,
+    onCategorySelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val categories = remember(availableCategories, type) {
+        availableCategories.filter { it.type == type }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.all_categories)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                val chunks = remember(categories) { categories.chunked(3) }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    chunks.forEach { rowCategories ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowCategories.forEach { category ->
+                                key(category.id) {
+                                    CategoryGridItem(
+                                        modifier = Modifier.weight(1f),
+                                        category = category,
+                                        isSelected = selectedCategoryId == category.id,
+                                        onClick = {
+                                            onCategorySelected(category.id)
+                                            onDismiss()
+                                        },
+                                    )
+                                }
+                            }
+                            if (rowCategories.size < 3) {
+                                repeat(3 - rowCategories.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

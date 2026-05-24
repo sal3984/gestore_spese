@@ -265,6 +265,7 @@
     <string name="all_categories">All Categories</string>
     <string name="no_categories_found">No categories found</string>
     <string name="search_results">Search Results</string>
+    <string name="show_all_categories">Show All Categories</string>
     <string name="payment_method_label">Payment Method</string>
     <string name="use_credit_card_label">Use Credit Card</string>
     <string name="image">Image</string>

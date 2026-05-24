@@ -40,6 +40,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -577,6 +578,7 @@ fun CategorySelector(
     }
 
     var searchQuery by remember { mutableStateOf("") }
+    var showAllDialog by remember { mutableStateOf(false) }
     val filteredCategories = remember(availableCategories, type, searchQuery) {
         availableCategories.filter { it.type == type && it.label.contains(searchQuery, ignoreCase = true) }
     }
@@ -639,44 +641,76 @@ fun CategorySelector(
             HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
         }
 
-        Text(
-            text = if (searchQuery.isEmpty()) stringResource(R.string.all_categories) else stringResource(R.string.search_results),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
-        )
+        if (searchQuery.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.search_results),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+            )
+            CategoryGrid(
+                categories = filteredCategories,
+                selectedCategoryId = selectedCategoryId,
+                onCategorySelected = onCategorySelected,
+            )
+        } else {
+            TextButton(
+                onClick = { showAllDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.show_all_categories))
+            }
+        }
+    }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-            if (filteredCategories.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.no_categories_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                val chunks = remember(filteredCategories) { filteredCategories.chunked(4) }
-                Column(
+    if (showAllDialog) {
+        CategoryPickerDialog(
+            type = type,
+            availableCategories = availableCategories,
+            selectedCategoryId = selectedCategoryId,
+            onCategorySelected = { id ->
+                onCategorySelected(id)
+                showAllDialog = false
+            },
+            onDismiss = { showAllDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun CategoryGrid(
+    categories: List<CategoryEntity>,
+    selectedCategoryId: String?,
+    onCategorySelected: (String) -> Unit,
+) {
+    if (categories.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+            Text(stringResource(R.string.no_categories_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        val chunks = remember(categories) { categories.chunked(4) }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            chunks.forEach { rowCategories ->
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    chunks.forEach { rowCategories ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            rowCategories.forEach { category ->
-                                key(category.id) {
-                                    CategoryGridItem(
-                                        modifier = Modifier.weight(1f),
-                                        category = category,
-                                        isSelected = selectedCategoryId == category.id,
-                                        onClick = { onCategorySelected(category.id) },
-                                    )
-                                }
-                            }
-                            if (rowCategories.size < 4) {
-                                repeat(4 - rowCategories.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
+                    rowCategories.forEach { category ->
+                        key(category.id) {
+                            CategoryGridItem(
+                                modifier = Modifier.weight(1f),
+                                category = category,
+                                isSelected = selectedCategoryId == category.id,
+                                onClick = { onCategorySelected(category.id) },
+                            )
+                        }
+                    }
+                    if (rowCategories.size < 4) {
+                        repeat(4 - rowCategories.size) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
