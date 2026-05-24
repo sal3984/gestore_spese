@@ -39,9 +39,11 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,6 +68,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.CardType
@@ -73,6 +76,9 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.model.DeleteType
+import com.expense.management.ui.model.TransactionToDelete
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.TransactionItem
 import java.time.LocalDate
 import java.time.YearMonth
@@ -80,21 +86,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
-// Enum per il tipo di cancellazione
-enum class DeleteType {
-    SINGLE,
-    THIS_AND_SUBSEQUENT,
-}
-
-// Data class per gestire la transazione da eliminare
-data class TransactionToDelete(
-    val transaction: TransactionEntity,
-    val isInstallment: Boolean,
-)
-
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun DashboardScreen(
+    modifier: Modifier = Modifier,
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
     currencySymbol: String,
@@ -108,28 +103,55 @@ fun DashboardScreen(
     creditCards: List<CreditCardEntity> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    isLoading: Boolean = false,
+    error: String? = null,
+    onRetry: () -> Unit = {},
 ) {
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (error != null) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(error, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+        }
+        return
+    }
+
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
 
-    val currentTrans = transactions
-        .filter {
-            try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
-            } catch (_: Exception) {
-                false
+    val currentTrans = remember(transactions, currentDashboardMonth) {
+        transactions
+            .filter {
+                try {
+                    YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
+                } catch (_: Exception) {
+                    false
+                }
             }
-        }
-        .sortedByDescending { it.effectiveDate }
+            .sortedByDescending { it.effectiveDate }
+    }
 
     val groupedTransactions = remember(currentTrans) {
         currentTrans.groupBy { it.effectiveDate }
     }
 
-    val totalIncome = currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-    val totalExpense = currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-    val netBalance = totalIncome - totalExpense
+    val totalIncome = remember(currentTrans) { currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount } }
+    val totalExpense = remember(currentTrans) { currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount } }
+    val netBalance = remember(totalIncome, totalExpense) { totalIncome - totalExpense }
 
     // LIMITI NAVIGAZIONE
     val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)
@@ -235,7 +257,7 @@ fun DashboardScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = stringResource(R.string.previous_month),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
 
@@ -243,7 +265,7 @@ fun DashboardScreen(
                             currentDashboardMonth.format(monthFormatter).replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() },
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
 
                         IconButton(
@@ -253,7 +275,7 @@ fun DashboardScreen(
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = stringResource(R.string.next_month),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
                     }
@@ -268,13 +290,13 @@ fun DashboardScreen(
                         Text(
                             stringResource(R.string.monthly_balance),
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                         )
                         Text(
                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -381,51 +403,40 @@ fun DashboardScreen(
                         ) { page ->
                             val card = creditCards[page]
 
-                            var displayedSpent: Double
-                            var totalUtilizedForDisplay: Double
-                            var totalPaidForDisplay: Double
+                            val (displayedSpent, totalUtilizedForDisplay, totalPaidForDisplay) = remember(card.id, transactions, currentDashboardMonth) {
+                                if (card.type == CardType.REVOLVING) {
+                                    val totalUtilized = transactions
+                                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                        .sumOf { it.amount }
 
-                            if (card.type == CardType.REVOLVING) {
-                                // 1. "Quota Utilizzata": Somma CUMULATIVA di tutte le spese (expense) sulla carta.
-                                totalUtilizedForDisplay = transactions
-                                    .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                    .sumOf { it.amount }
+                                    val totalPaid = transactions
+                                        .filter {
+                                            it.creditCardId == card.id &&
+                                                it.type == TransactionType.EXPENSE &&
+                                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                                try {
+                                                    YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
+                                                } catch (_: Exception) {
+                                                    false
+                                                }
+                                        }
+                                        .sumOf { it.amount }
 
-                                // 2. "Somme Pagate": Somma CUMULATIVA di tutte le rate (expense con installmentNumber) pagate FINO AL MESE CORRENTE.
-                                val cumulativeInstallmentsPaidUpToCurrentMonth = transactions
-                                    .filter {
-                                        it.creditCardId == card.id &&
-                                            it.type == TransactionType.EXPENSE &&
-                                            it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                    Triple(totalUtilized - totalPaid, totalUtilized, totalPaid)
+                                } else {
+                                    val spent = transactions
+                                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                                        .filter { t ->
                                             try {
-                                                YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
-                                            } catch (e: Exception) {
+                                                YearMonth.from(LocalDate.parse(t.date)) == currentDashboardMonth
+                                            } catch (_: Exception) {
                                                 false
                                             }
-                                    }
-                                    .sumOf { it.amount }
-
-                                totalPaidForDisplay = cumulativeInstallmentsPaidUpToCurrentMonth
-
-                                // 3. "Quota Rimanente": Il valore che si decrementa.
-                                displayedSpent = totalUtilizedForDisplay - totalPaidForDisplay
-                            } else {
-                                // Per le carte SALDO, mostra l'utilizzo nel mese corrente (che verrà addebitato il mese successivo)
-                                displayedSpent = transactions
-                                    .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                    .filter { t ->
-                                        try {
-                                            // Filtra per DATA TRANSAZIONE, non data di addebito
-                                            val transactionMonth = YearMonth.from(LocalDate.parse(t.date))
-                                            transactionMonth == currentDashboardMonth
-                                        } catch (_: Exception) {
-                                            false
                                         }
-                                    }
-                                    .sumOf { it.amount }
+                                        .sumOf { it.amount }
 
-                                totalUtilizedForDisplay = displayedSpent
-                                totalPaidForDisplay = 0.0
+                                    Triple(spent, spent, 0.0)
+                                }
                             }
 
                             val progress = if (card.limit > 0) (displayedSpent / card.limit).toFloat() else 0f
@@ -512,7 +523,7 @@ fun DashboardScreen(
                 }
 
                 stickyHeader {
-                    DateHeader(dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
+                    DateHeader(Modifier, dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
                 }
 
                 items(transactionsOnDate, key = { it.id }) { t ->
@@ -557,7 +568,7 @@ fun DashboardScreen(
                                     Icon(
                                         Icons.Default.Delete,
                                         contentDescription = stringResource(R.string.delete),
-                                        tint = Color.White,
+                                        tint = MaterialTheme.colorScheme.onError,
                                     )
                                 }
                             },
@@ -592,6 +603,7 @@ fun DashboardScreen(
 
 @Composable
 fun CreditCardItem(
+    modifier: Modifier = Modifier,
     name: String,
     limit: Double,
     spent: Double,
@@ -698,6 +710,7 @@ fun CreditCardItem(
 
 @Composable
 fun DateHeader(
+    modifier: Modifier = Modifier,
     dateString: String,
     dailyTotal: Double,
     currencySymbol: String,
@@ -747,5 +760,21 @@ fun DateHeader(
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard Light")
+@Composable
+private fun DashboardPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = {}, isAmountHidden = false)
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DashboardPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = {}, isAmountHidden = false)
     }
 }

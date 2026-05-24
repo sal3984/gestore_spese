@@ -268,4 +268,16 @@
     <string name="payment_method_label">Metodo di Pagamento</string>
     <string name="use_credit_card_label">Usa Carta di Credito</string>
     <string name="image">Imm.</string>
+    <string name="clear">Cancella</string>
+    <string name="app_blocked">App Bloccata</string>
+    <string name="authenticate_to_access">Autenticati per accedere ai tuoi dati</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="report">Report</string>
+    <string name="menu">Menu</string>
+    <string name="new_transaction">Nuova Transazione</string>
+    <string name="no_credit_card_selected">Nessuna carta selezionata. Crea o seleziona una carta di credito.</string>
+    <string name="remove_image">Rimuovi immagine</string>
+    <string name="icon_or_emoji">Icona o Emoji</string>
+    <string name="no_expenses_for_month">Nessuna spesa registrata per questo mese</string>
+    <string name="retry">Riprova</string>
 </resources>

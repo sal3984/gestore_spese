@@ -68,17 +68,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.expense.management.R
 import com.expense.management.data.CardType
 import com.expense.management.data.CreditCardEntity
-import com.expense.management.viewmodel.ExpenseViewModel
-import com.expense.management.viewmodel.ExpenseViewModelFactory
+import com.expense.management.data.CurrencyRate
+import com.expense.management.ui.theme.gestoreSpeseTheme
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -101,17 +100,26 @@ val EXPORT_COLUMN_MAP = mapOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun settingsScreen(
+    modifier: Modifier = Modifier,
     currentCurrency: String,
     currentDateFormat: String,
     csvExportColumns: Set<String>,
     hasTransactions: Boolean,
+    currencyRates: List<CurrencyRate>,
+    lastRatesUpdate: Long?,
+    allCreditCards: List<CreditCardEntity>,
+    onRefreshCurrencyRates: () -> Unit,
+    onForceCurrencyRatesUpdate: suspend () -> Unit,
+    onAddCreditCard: (CreditCardEntity) -> Unit,
+    onUpdateCreditCard: (CreditCardEntity) -> Unit,
+    onDeleteCreditCard: (CreditCardEntity) -> Unit,
     onCurrencyChange: (String) -> Unit,
     onDateFormatChange: (String) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
 ) {
     val context = LocalContext.current
-    val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
+    val coroutineScope = rememberCoroutineScope()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showExportColumnsDialog by remember { mutableStateOf(false) }
@@ -121,15 +129,8 @@ fun settingsScreen(
     var showEditCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
     var showDeleteCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
 
-    val coroutineScope = rememberCoroutineScope()
-
-    // Raccogli stato aggiornamento tassi
-    val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
-    val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
-    val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle(initialValue = emptyList())
-
     LaunchedEffect(Unit) {
-        viewModel.refreshCurrencyRates()
+        onRefreshCurrencyRates()
     }
 
     Column(
@@ -168,8 +169,8 @@ fun settingsScreen(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 // Voce Tassi di Cambio
-                val updateText = if (lastRatesUpdate != null && lastRatesUpdate!! > 0) {
-                    val date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastRatesUpdate!!), ZoneId.systemDefault())
+                val updateText = if (lastRatesUpdate != null && lastRatesUpdate > 0) {
+                    val date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastRatesUpdate), ZoneId.systemDefault())
                     val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
                     stringResource(R.string.last_update, date.format(formatter))
                 } else {
@@ -343,7 +344,7 @@ fun settingsScreen(
                         ) {
                             RadioButton(selected = (symbol == currentCurrency), onClick = null)
                             Spacer(modifier = Modifier.width(16.dp))
-                            Text(symbol, fontSize = 20.sp)
+                            Text(symbol, style = MaterialTheme.typography.titleLarge)
                         }
                     }
                 }
@@ -393,8 +394,9 @@ fun settingsScreen(
 
                     Button(
                         onClick = {
-                            isRefreshing = true
-                            viewModel.forceCurrencyRatesUpdate { success ->
+                            coroutineScope.launch {
+                                isRefreshing = true
+                                onForceCurrencyRatesUpdate()
                                 isRefreshing = false
                             }
                         },
@@ -472,7 +474,7 @@ fun settingsScreen(
                         ) {
                             RadioButton(selected = (format == currentDateFormat), onClick = null)
                             Spacer(modifier = Modifier.width(16.dp))
-                            Text(format, fontSize = 18.sp)
+                            Text(format, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
@@ -617,9 +619,9 @@ fun settingsScreen(
                                 type = type,
                             )
                             if (isEditing) {
-                                viewModel.updateCreditCard(newCard)
+                                onUpdateCreditCard(newCard)
                             } else {
-                                viewModel.addCreditCard(newCard)
+                                onAddCreditCard(newCard)
                             }
                             showAddCardDialog = false
                             showEditCardDialog = null
@@ -650,7 +652,7 @@ fun settingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteCreditCard(cardToDelete)
+                        onDeleteCreditCard(cardToDelete)
                         showDeleteCardDialog = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -715,4 +717,20 @@ fun settingsListItem(
             .let { if (isClickable) it.clickable(onClick = onClick) else it }
             .padding(vertical = 4.dp),
     )
+}
+
+@Preview(showBackground = true, name = "Settings Light")
+@Composable
+private fun SettingsPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SettingsPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {})
+    }
 }

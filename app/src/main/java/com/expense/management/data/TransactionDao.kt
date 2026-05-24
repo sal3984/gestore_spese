@@ -29,9 +29,15 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
+    @Query("SELECT * FROM transactions WHERE groupId = :groupId")
+    suspend fun getByGroupId(groupId: String): List<TransactionEntity>
+
     @Query("SELECT DISTINCT description FROM transactions WHERE description LIKE :query || '%' LIMIT 5")
-    fun getDescriptionSuggestions(query: String): List<String>
+    suspend fun getDescriptionSuggestions(query: String): List<String>
 
     @Query("SELECT MIN(effectiveDate) FROM transactions")
     suspend fun getMinEffectiveDate(): String?
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
 }

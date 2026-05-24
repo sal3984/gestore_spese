@@ -1,5 +1,7 @@
 package com.expense.management.utils
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -36,32 +38,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
-import com.expense.management.ui.theme.ExpenseRed
-import com.expense.management.ui.theme.IncomeGreen
+import java.io.File
+import java.io.FileOutputStream
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 
 // --- COMPONENTI UI CONDIVISI ---
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun TransactionItem(
+    modifier: Modifier = Modifier,
     transaction: TransactionEntity,
     categories: List<CategoryEntity>,
     currencySymbol: String,
@@ -77,8 +80,7 @@ fun TransactionItem(
     val categoryLabel = getLocalizedCategoryLabel(category)
     val isIncome = transaction.type == TransactionType.INCOME
 
-    // Use theme colors if possible, otherwise fallback
-    val amountColor = if (isIncome) IncomeGreen else ExpenseRed
+    val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
     val formattedDate = remember(transaction.date, dateFormat) {
         try {
@@ -116,7 +118,7 @@ fun TransactionItem(
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .then(
@@ -229,7 +231,7 @@ fun TransactionItem(
                             Icon(
                                 imageVector = Icons.Default.Repeat,
                                 contentDescription = null,
-                                size = 14.dp,
+                                modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -300,28 +302,57 @@ fun getCategory(id: String, categories: List<CategoryEntity>): CategoryEntity {
 }
 
 @Composable
-private fun Icon(imageVector: ImageVector, contentDescription: String?, size: Dp, tint: Color) {
-    Icon(
-        imageVector = imageVector,
-        contentDescription = contentDescription,
-        modifier = Modifier.size(size),
-        tint = tint,
-    )
-}
-
-@Composable
-fun CategoryImage(category: CategoryEntity, size: Dp) {
+fun CategoryImage(
+    modifier: Modifier = Modifier,
+    category: CategoryEntity,
+    size: Dp,
+) {
     if (category.imageUri != null) {
         AsyncImage(
             model = category.imageUri,
             contentDescription = null,
-            modifier = Modifier.size(size).clip(CircleShape),
+            modifier = modifier.size(size).clip(CircleShape),
             contentScale = ContentScale.Crop,
         )
     } else {
         Text(
+            modifier = modifier,
             text = category.icon,
             fontSize = (size.value * 0.5).sp,
         )
     }
+}
+
+fun saveImageToInternalStorage(context: Context, imageUri: String): String? {
+    return try {
+        val uri = Uri.parse(imageUri)
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val dir = File(context.filesDir, "category_images")
+            if (!dir.exists()) dir.mkdirs()
+            val fileName = "cat_${UUID.randomUUID()}.jpg"
+            val destFile = File(dir, fileName)
+            FileOutputStream(destFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                destFile,
+            ).toString()
+        }
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun deleteImageFile(context: Context, imageUri: String) {
+    try {
+        val uri = Uri.parse(imageUri)
+        if (uri.scheme == "content") {
+            context.contentResolver.delete(uri, null, null)
+        } else {
+            val file = File(uri.path ?: return)
+            if (file.exists()) file.delete()
+        }
+    } catch (_: Exception) { }
 }

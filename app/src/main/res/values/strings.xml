@@ -268,4 +268,16 @@
     <string name="payment_method_label">Payment Method</string>
     <string name="use_credit_card_label">Use Credit Card</string>
     <string name="image">Image</string>
+    <string name="clear">Clear</string>
+    <string name="app_blocked">App Blocked</string>
+    <string name="authenticate_to_access">Authenticate to access your data</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="report">Report</string>
+    <string name="menu">Menu</string>
+    <string name="new_transaction">New Transaction</string>
+    <string name="no_credit_card_selected">No credit card selected. Create or select a credit card.</string>
+    <string name="remove_image">Remove image</string>
+    <string name="icon_or_emoji">Icon or Emoji</string>
+    <string name="no_expenses_for_month">No expenses recorded for this month</string>
+    <string name="retry">Retry</string>
 </resources>

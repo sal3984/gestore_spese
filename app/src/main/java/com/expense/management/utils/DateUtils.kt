@@ -25,14 +25,16 @@ object DateUtils {
 
         var paymentMonth = YearMonth.from(transactionDate)
 
-        // Se la transazione avviene DOPO o il giorno stesso della chiusura,
-        // l'addebito slitta al ciclo di fatturazione successivo.
         if (transactionDate.dayOfMonth >= closingDay) {
             paymentMonth = paymentMonth.plusMonths(1)
         }
 
-        // Calcola la data di pagamento finale, gestendo i giorni di fine mese
-        val finalPaymentDate = getValidDateForDay(paymentMonth, paymentDay)
+        var finalPaymentDate = getValidDateForDay(paymentMonth, paymentDay)
+
+        if (!finalPaymentDate.isAfter(transactionDate)) {
+            paymentMonth = paymentMonth.plusMonths(1)
+            finalPaymentDate = getValidDateForDay(paymentMonth, paymentDay)
+        }
 
         return finalPaymentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
     }

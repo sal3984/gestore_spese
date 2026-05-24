@@ -1,5 +1,7 @@
 package com.expense.management.ui.screens.category
 
+import android.app.Activity
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,14 +70,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.CategoryImage
+import com.expense.management.utils.deleteImageFile
+import com.expense.management.utils.saveImageToInternalStorage
+import com.yalantis.ucrop.UCrop
+import java.io.File
 import java.util.UUID
 
 private val availableIcons = listOf(
@@ -87,6 +95,7 @@ private val availableIcons = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryScreen(
+    modifier: Modifier = Modifier,
     categories: List<CategoryEntity>,
     onAddCategory: (CategoryEntity) -> Unit,
     onUpdateCategory: (CategoryEntity) -> Unit,
@@ -187,7 +196,10 @@ fun CategoryScreen(
                                 categoryToEdit = category
                                 showDialog = true
                             },
-                            onDelete = { onDeleteCategory(category.id) },
+                            onDelete = {
+                                category.imageUri?.let { deleteImageFile(context, it) }
+                                onDeleteCategory(category.id)
+                            },
                         )
                     }
                 }
@@ -234,6 +246,7 @@ fun CategoryScreen(
 
 @Composable
 fun CategoryCard(
+    modifier: Modifier = Modifier,
     category: CategoryEntity,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -292,6 +305,7 @@ fun CategoryCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CategoryDialog(
+    modifier: Modifier = Modifier,
     type: TransactionType,
     existingCategories: List<CategoryEntity>,
     categoryToEdit: CategoryEntity? = null,
@@ -309,11 +323,44 @@ fun CategoryDialog(
     val msg = stringResource(R.string.error_msg_name)
     val msgDuplicate = stringResource(R.string.error_category_already_exists)
 
+    val context = LocalContext.current
+    val oldImageUri = categoryToEdit?.imageUri
+
+    var lastPickedUri by remember { mutableStateOf<String?>(null) }
+
+    val cropLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val croppedUri = UCrop.getOutput(result.data!!)
+            imageUri = croppedUri?.toString() ?: lastPickedUri
+        } else if (result.resultCode == UCrop.RESULT_ERROR) {
+            lastPickedUri?.let { original ->
+                saveImageToInternalStorage(context, original)?.let { imageUri = it }
+            }
+        }
+        lastPickedUri = null
+    }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri != null) {
-            imageUri = uri.toString()
+            lastPickedUri = uri.toString()
+            val dir = File(context.filesDir, "category_images")
+            if (!dir.exists()) dir.mkdirs()
+            val destFile = File(dir, "cat_${UUID.randomUUID()}.jpg")
+            val destUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                destFile,
+            )
+            val uCrop = UCrop.of(uri, destUri)
+                .withAspectRatio(1f, 1f)
+                .withMaxResultSize(512, 512)
+            val intent = uCrop.getIntent(context)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            cropLauncher.launch(intent)
         }
     }
 
@@ -350,13 +397,13 @@ fun CategoryDialog(
                                 Icon(Icons.Default.PhotoCamera, null, tint = Color.White)
                             }
                         } else {
-                            Text(text = selectedIcon, fontSize = 40.sp)
+                            Text(text = selectedIcon, style = MaterialTheme.typography.displayMedium)
                         }
                     }
 
                     if (imageUri != null) {
                         IconButton(onClick = { imageUri = null }) {
-                            Icon(Icons.Default.Close, contentDescription = "Rimuovi immagine", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove_image), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -387,7 +434,7 @@ fun CategoryDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Icona o Emoji",
+                        text = stringResource(R.string.icon_or_emoji),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -397,7 +444,7 @@ fun CategoryDialog(
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.width(70.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center, fontSize = 18.sp),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
                     )
 
                     Button(
@@ -439,7 +486,7 @@ fun CategoryDialog(
                                     imageUri = null
                                 },
                         ) {
-                            Text(text = icon, fontSize = 20.sp)
+                            Text(text = icon, style = MaterialTheme.typography.titleLarge)
                         }
                     }
                 }
@@ -459,6 +506,9 @@ fun CategoryDialog(
                         if (isDuplicate) {
                             errorMessage = msgDuplicate
                         } else {
+                            if (isEditing && oldImageUri != null && oldImageUri != imageUri) {
+                                deleteImageFile(context, oldImageUri)
+                            }
                             onConfirm(label, selectedIcon, imageUri)
                         }
                     }
@@ -473,4 +523,20 @@ fun CategoryDialog(
             }
         },
     )
+}
+
+@Preview(showBackground = true, name = "Category Light")
+@Composable
+private fun CategoryPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Category Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun CategoryPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
+    }
 }

@@ -1,18 +1,18 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp") version "2.3.8"
+    alias(libs.plugins.ksp)
     id("com.diffplug.spotless") version "8.5.1"
 }
 
 android {
     namespace = "com.expense.management"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.expense.management"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -36,13 +36,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
     }
 
@@ -113,4 +113,10 @@ dependencies {
     implementation(libs.androidx.appcompat)
 
     implementation(libs.coil.compose)
+
+    // Image Cropper (uCrop)
+    implementation(libs.ucrop)
+
+    // Play Services Wearable (per WearableDataListenerService)
+    implementation(libs.play.services.wearable)
 }

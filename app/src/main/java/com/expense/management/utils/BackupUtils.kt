@@ -4,8 +4,8 @@ import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import com.expense.management.R
+import com.expense.management.data.BackupData
 import com.expense.management.data.TransactionEntity
-import com.expense.management.viewmodel.BackupData
 import com.expense.management.viewmodel.ExpenseViewModel
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
@@ -23,6 +23,14 @@ import java.util.Locale
 
 object BackupUtils {
 
+    private fun escapeCsvField(value: String): String {
+        return if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            "\"${value.replace("\"", "\"\"")}\""
+        } else {
+            value
+        }
+    }
+
     val EXPORT_COLUMN_DISPLAY_NAMES = mapOf(
         "ID" to "ID",
         "Data" to "Data",
@@ -36,20 +44,8 @@ object BackupUtils {
         "DataAddebito" to "Data Addebito",
     )
 
-    private val CURRENCY_SYMBOL_TO_CODE = mapOf(
-        "€" to "EUR",
-        "$" to "USD",
-        "£" to "GBP",
-        "¥" to "JPY",
-        "CHF" to "CHF",
-        "₽" to "RUB",
-        "₹" to "INR",
-        "₩" to "KRW",
-        "₪" to "ILS",
-        "₫" to "VND",
-    )
-
     fun performCsvExport(
+        scope: CoroutineScope,
         context: Context,
         viewModel: ExpenseViewModel,
         uri: Uri,
@@ -58,8 +54,7 @@ object BackupUtils {
         selectedColumns: Set<String>,
     ) {
         val formatter = DateTimeFormatter.ofPattern(dateFormat)
-        val coroutineScope = CoroutineScope(Dispatchers.IO)
-        coroutineScope.launch {
+        scope.launch {
             try {
                 val expenses = viewModel.getExpensesForExport()
 
@@ -68,6 +63,7 @@ object BackupUtils {
                 val headerColumns = selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) }
                     .map { EXPORT_COLUMN_DISPLAY_NAMES[it] ?: it }
                     .map { if (it == "Importo (Convertito)") "Importo ($currencySymbol - Convertito)" else it }
+                    .map { escapeCsvField(it) }
                 val csvHeader = headerColumns.joinToString(",") + "\n"
 
                 val csvContent = StringBuilder(csvHeader)
@@ -88,30 +84,31 @@ object BackupUtils {
                     val row = mutableListOf<String>()
                     selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) }.forEach { columnKey ->
                         when (columnKey) {
-                            "ID" -> row.add(t.id)
-                            "Data" -> row.add("\"$dateStr\"")
-                            "Descrizione" -> row.add("\"${t.description}\"")
+                            "ID" -> row.add(escapeCsvField(t.id))
+                            "Data" -> row.add(escapeCsvField(dateStr))
+                            "Descrizione" -> row.add(escapeCsvField(t.description))
                             "ImportoConvertito" -> row.add(String.format(Locale.US, "%.2f", t.amount))
                             "ImportoOriginale" -> row.add(String.format(Locale.US, "%.2f", t.originalAmount))
                             "ValutaOriginale" -> {
-                                val code = CURRENCY_SYMBOL_TO_CODE[t.originalCurrency] ?: t.originalCurrency
-                                row.add(code)
+                                val code = CurrencyUtils.normalizeCurrencyCode(t.originalCurrency)
+                                row.add(escapeCsvField(code))
                             }
                             "Categoria" -> row.add(
-                                category.firstOrNull { it.id == t.categoryId }?.label ?: t.categoryId,
+                                escapeCsvField(category.firstOrNull { it.id == t.categoryId }?.label ?: t.categoryId),
                             )
                             "Tipo" -> row.add(t.type.name)
                             "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
-                            "DataAddebito" -> row.add("\"$effectiveDateStr\"")
+                            "DataAddebito" -> row.add(escapeCsvField(effectiveDateStr))
                         }
                     }
                     csvContent.append(row.joinToString(",") + "\n")
                 }
 
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    // Removed BOM writing
-                    OutputStreamWriter(outputStream).use { writer ->
-                        writer.write(csvContent.toString())
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        OutputStreamWriter(outputStream).use { writer ->
+                            writer.write(csvContent.toString())
+                        }
                     }
                 }
 
@@ -127,19 +124,21 @@ object BackupUtils {
     }
 
     fun performBackup(
+        scope: CoroutineScope,
         context: Context,
         viewModel: ExpenseViewModel,
         uri: Uri,
     ) {
-        val coroutineScope = CoroutineScope(Dispatchers.IO)
-        coroutineScope.launch {
+        scope.launch {
             try {
                 val allData = viewModel.getAllForBackup()
                 val json = Gson().toJson(allData)
 
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    OutputStreamWriter(outputStream).use { writer ->
-                        writer.write(json)
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        OutputStreamWriter(outputStream).use { writer ->
+                            writer.write(json)
+                        }
                     }
                 }
 
@@ -155,23 +154,32 @@ object BackupUtils {
     }
 
     fun performRestore(
+        scope: CoroutineScope,
         context: Context,
         viewModel: ExpenseViewModel,
         uri: Uri,
     ) {
-        val scope = CoroutineScope(Dispatchers.IO)
         scope.launch {
             try {
                 val sb = StringBuilder()
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    BufferedReader(InputStreamReader(inputStream)).use { reader ->
-                        reader.forEachLine { sb.append(it) }
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                            reader.forEachLine { sb.append(it) }
+                        }
                     }
                 }
                 val jsonString = sb.toString()
 
                 try {
                     val backupData = Gson().fromJson(jsonString, BackupData::class.java)
+
+                    if (backupData.transactions == null) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, context.getString(R.string.restore_error_file), Toast.LENGTH_LONG).show()
+                        }
+                        return@launch
+                    }
 
                     // Normalizzazione date e campi nuovi (da dd/MM/yyyy a ISO yyyy-MM-dd se necessario)
                     val normalizedTransactions =
@@ -188,7 +196,7 @@ object BackupUtils {
 
                     viewModel.restoreData(normalizedBackupData)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, context.getString(R.string.restore_success, normalizedBackupData.transactions.size, normalizedBackupData.categories.size, normalizedBackupData.creditCard?.size ?: 0), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.restore_success, (normalizedBackupData.transactions ?: emptyList()).size, (normalizedBackupData.categories ?: emptyList()).size, normalizedBackupData.creditCard?.size ?: 0), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 } catch (_: JsonSyntaxException) {
