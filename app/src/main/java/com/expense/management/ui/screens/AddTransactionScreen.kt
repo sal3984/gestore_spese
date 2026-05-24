@@ -613,6 +613,28 @@ fun CategorySelector(
             ),
         )
 
+        if (searchQuery.isEmpty()) {
+            val selectedCategory = remember(selectedCategoryId, availableCategories) {
+                availableCategories.find { it.id == selectedCategoryId }
+            }
+            if (selectedCategory != null && selectedCategory.type == type) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp),
+                ) {
+                    CategoryImage(category = selectedCategory, size = 20.dp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        selectedCategory.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         if (frequentCategories.isNotEmpty() && searchQuery.isEmpty()) {
             Text(
                 text = stringResource(R.string.frequent_categories),
