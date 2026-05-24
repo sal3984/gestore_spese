@@ -6,9 +6,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.BackupData
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CreditCardDetailEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
 import com.expense.management.data.ExpenseRepository
+import com.expense.management.data.KlarnaDetailEntity
+import com.expense.management.data.PaymentMethodEntity
+import com.expense.management.data.PaypalDetailEntity
+import com.expense.management.data.RevolutDetailEntity
+import com.expense.management.data.SatispayDetailEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
@@ -16,9 +22,11 @@ import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
 import com.expense.management.domain.usecase.GetCreditCardsUseCase
 import com.expense.management.domain.usecase.GetFrequentCategoriesUseCase
+import com.expense.management.domain.usecase.GetPaymentMethodsUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.InitializeCategoriesUseCase
 import com.expense.management.domain.usecase.ManageCreditCardUseCase
+import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.ui.model.DeleteType
@@ -46,6 +54,8 @@ class ExpenseViewModel(
     private val initializeCategoriesUseCase: InitializeCategoriesUseCase,
     private val getCreditCardsUseCase: GetCreditCardsUseCase,
     private val manageCreditCardUseCase: ManageCreditCardUseCase,
+    private val getPaymentMethodsUseCase: GetPaymentMethodsUseCase,
+    private val managePaymentMethodUseCase: ManagePaymentMethodUseCase,
     private val getBackupDataUseCase: GetBackupDataUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
@@ -93,6 +103,11 @@ class ExpenseViewModel(
     // DATI CARTE DI CREDITO
     val allCreditCards: StateFlow<List<CreditCardEntity>> =
         getCreditCardsUseCase()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // DATI METODI DI PAGAMENTO
+    val allPaymentMethods: StateFlow<List<PaymentMethodEntity>> =
+        getPaymentMethodsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
@@ -180,6 +195,67 @@ class ExpenseViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             manageCreditCardUseCase.delete(creditCard)
         }
+    }
+
+    // GESTIONE METODI DI PAGAMENTO
+    fun addPaymentMethod(paymentMethod: PaymentMethodEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.add(paymentMethod)
+        }
+    }
+
+    fun updatePaymentMethod(paymentMethod: PaymentMethodEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.update(paymentMethod)
+        }
+    }
+
+    fun deletePaymentMethod(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            managePaymentMethodUseCase.delete(id)
+        }
+    }
+
+    suspend fun getPaymentMethodById(id: String): PaymentMethodEntity? =
+        managePaymentMethodUseCase.getPaymentMethodById(id)
+
+    suspend fun getAllPaymentMethods(): List<PaymentMethodEntity> =
+        managePaymentMethodUseCase.getAllPaymentMethods()
+
+    // DETTAGLI METODI DI PAGAMENTO
+    suspend fun getCreditCardDetail(paymentMethodId: String): CreditCardDetailEntity? =
+        repository.getCreditCardDetail(paymentMethodId)
+
+    suspend fun insertCreditCardDetail(detail: CreditCardDetailEntity) {
+        repository.insertCreditCardDetail(detail)
+    }
+
+    suspend fun getRevolutDetail(paymentMethodId: String): RevolutDetailEntity? =
+        repository.getRevolutDetail(paymentMethodId)
+
+    suspend fun insertRevolutDetail(detail: RevolutDetailEntity) {
+        repository.insertRevolutDetail(detail)
+    }
+
+    suspend fun getSatispayDetail(paymentMethodId: String): SatispayDetailEntity? =
+        repository.getSatispayDetail(paymentMethodId)
+
+    suspend fun insertSatispayDetail(detail: SatispayDetailEntity) {
+        repository.insertSatispayDetail(detail)
+    }
+
+    suspend fun getPaypalDetail(paymentMethodId: String): PaypalDetailEntity? =
+        repository.getPaypalDetail(paymentMethodId)
+
+    suspend fun insertPaypalDetail(detail: PaypalDetailEntity) {
+        repository.insertPaypalDetail(detail)
+    }
+
+    suspend fun getKlarnaDetail(paymentMethodId: String): KlarnaDetailEntity? =
+        repository.getKlarnaDetail(paymentMethodId)
+
+    suspend fun insertKlarnaDetail(detail: KlarnaDetailEntity) {
+        repository.insertKlarnaDetail(detail)
     }
 
     fun addCategory(category: CategoryEntity) {

@@ -80,6 +80,7 @@ import com.expense.management.data.TransactionType
 import com.expense.management.ui.screens.AddTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
+import com.expense.management.ui.screens.PaymentMethodSettingsScreen
 import com.expense.management.ui.screens.ReportScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.screens.securityScreen
@@ -127,6 +128,7 @@ fun mainApp() {
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle()
+    val allPaymentMethods by viewModel.allPaymentMethods.collectAsStateWithLifecycle()
     val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
     val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
     val frequentExpenseCategories by viewModel.getFrequentCategories(TransactionType.EXPENSE).collectAsStateWithLifecycle()
@@ -539,6 +541,25 @@ fun mainApp() {
                                 onDateFormatChange = viewModel::updateDateFormat,
                                 onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                                 onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
+                                onNavigateToPaymentMethods = { navController.navigate("payment_methods") },
+                            )
+                        }
+
+                        composable(
+                            "payment_methods",
+                            enterTransition = { fadeIn(animationSpec = tween(300)) },
+                            exitTransition = { fadeOut(animationSpec = tween(300)) },
+                        ) {
+                            PaymentMethodSettingsScreen(
+                                currentCurrency = currentCurrency,
+                                allPaymentMethods = allPaymentMethods,
+                                legacyCreditCards = allCreditCards,
+                                onNavigateBack = { navController.popBackStack() },
+                                onAdd = { viewModel.addPaymentMethod(it) },
+                                onDelete = { viewModel.deletePaymentMethod(it) },
+                                onAddLegacyCard = { viewModel.addCreditCard(it) },
+                                onUpdateLegacyCard = { viewModel.updateCreditCard(it) },
+                                onDeleteLegacyCard = { viewModel.deleteCreditCard(it) },
                             )
                         }
 

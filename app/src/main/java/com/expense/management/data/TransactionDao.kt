@@ -40,4 +40,7 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
+
+    @Query("UPDATE transactions SET creditCardId = NULL WHERE creditCardId = :cardId")
+    suspend fun nullifyCreditCardId(cardId: String)
 }

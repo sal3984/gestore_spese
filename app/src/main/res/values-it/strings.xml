@@ -280,4 +280,12 @@
     <string name="icon_or_emoji">Icona o Emoji</string>
     <string name="no_expenses_for_month">Nessuna spesa registrata per questo mese</string>
     <string name="retry">Riprova</string>
+    <string name="payment_methods">Metodi di Pagamento</string>
+    <string name="add_payment_method">Aggiungi Metodo di Pagamento</string>
+    <string name="credit_cards">Carte di Credito</string>
+    <string name="no_payment_methods">Nessun metodo di pagamento configurato</string>
+    <string name="payment_method_name">Nome Metodo di Pagamento</string>
+    <string name="provider">Fornitore</string>
+    <string name="add">Aggiungi</string>
+    <string name="manage_payment_methods">Gestisci Metodi di Pagamento</string>
 </resources>

@@ -7,6 +7,7 @@ class ExpenseRepository(
     private val categoryDao: CategoryDao,
     private val currencyDao: CurrencyDao,
     private val creditCardDao: CreditCardDao,
+    private val paymentMethodDao: PaymentMethodDao,
 ) {
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()
@@ -75,6 +76,7 @@ class ExpenseRepository(
     }
 
     suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
+        transactionDao.nullifyCreditCardId(creditCard.id)
         creditCardDao.deleteCreditCard(creditCard)
     }
 
@@ -88,4 +90,62 @@ class ExpenseRepository(
     suspend fun deleteAllTransactions() = transactionDao.deleteAll()
     suspend fun deleteAllCategories() = categoryDao.deleteAll()
     suspend fun deleteAllCreditCards() = creditCardDao.deleteAll()
+
+    // Payment Methods
+    val allPaymentMethods: Flow<List<PaymentMethodEntity>> = paymentMethodDao.getAllPaymentMethodsFlow()
+
+    suspend fun getAllPaymentMethods(): List<PaymentMethodEntity> = paymentMethodDao.getAllPaymentMethods()
+
+    suspend fun getPaymentMethodById(id: String): PaymentMethodEntity? = paymentMethodDao.getPaymentMethodById(id)
+
+    suspend fun insertPaymentMethod(paymentMethod: PaymentMethodEntity) {
+        paymentMethodDao.insertPaymentMethod(paymentMethod)
+    }
+
+    suspend fun deletePaymentMethod(id: String) {
+        transactionDao.nullifyCreditCardId(id)
+        paymentMethodDao.deletePaymentMethod(id)
+    }
+
+    suspend fun insertAllPaymentMethods(paymentMethods: List<PaymentMethodEntity>) {
+        paymentMethodDao.insertAllPaymentMethods(paymentMethods)
+    }
+
+    suspend fun deleteAllPaymentMethods() = paymentMethodDao.deleteAll()
+
+    // Payment Method Details
+    suspend fun insertCreditCardDetail(detail: CreditCardDetailEntity) {
+        paymentMethodDao.insertCreditCardDetail(detail)
+    }
+
+    suspend fun getCreditCardDetail(paymentMethodId: String): CreditCardDetailEntity? =
+        paymentMethodDao.getCreditCardDetail(paymentMethodId)
+
+    suspend fun insertRevolutDetail(detail: RevolutDetailEntity) {
+        paymentMethodDao.insertRevolutDetail(detail)
+    }
+
+    suspend fun getRevolutDetail(paymentMethodId: String): RevolutDetailEntity? =
+        paymentMethodDao.getRevolutDetail(paymentMethodId)
+
+    suspend fun insertSatispayDetail(detail: SatispayDetailEntity) {
+        paymentMethodDao.insertSatispayDetail(detail)
+    }
+
+    suspend fun getSatispayDetail(paymentMethodId: String): SatispayDetailEntity? =
+        paymentMethodDao.getSatispayDetail(paymentMethodId)
+
+    suspend fun insertPaypalDetail(detail: PaypalDetailEntity) {
+        paymentMethodDao.insertPaypalDetail(detail)
+    }
+
+    suspend fun getPaypalDetail(paymentMethodId: String): PaypalDetailEntity? =
+        paymentMethodDao.getPaypalDetail(paymentMethodId)
+
+    suspend fun insertKlarnaDetail(detail: KlarnaDetailEntity) {
+        paymentMethodDao.insertKlarnaDetail(detail)
+    }
+
+    suspend fun getKlarnaDetail(paymentMethodId: String): KlarnaDetailEntity? =
+        paymentMethodDao.getKlarnaDetail(paymentMethodId)
 }

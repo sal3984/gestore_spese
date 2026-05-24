@@ -170,6 +170,7 @@ fun AddTransactionScreen(
     val installmentLabel = stringResource(R.string.installment)
     val errorConversionFailed = stringResource(R.string.error_conversion_failed)
     val okLabel = stringResource(R.string.ok)
+    val errorNoCardSelected = stringResource(R.string.no_credit_card_selected)
 
     val saveUseCase = remember { AddTransactionSaveUseCase() }
 
@@ -200,7 +201,7 @@ fun AddTransactionScreen(
                         val formattedMonth = result.message.removePrefix("error_past_limit_date:")
                         String.format(errorPastLimitDate, formattedMonth)
                     }
-                    result.message == "error_no_card_selected" -> "Nessuna carta selezionata. Crea o seleziona una carta di credito."
+                    result.message == "error_no_card_selected" -> errorNoCardSelected
                     else -> result.message
                 }
                 scope.launch { snackbarHostState.showSnackbar(message, okLabel) }

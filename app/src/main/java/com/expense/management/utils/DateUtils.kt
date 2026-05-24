@@ -22,10 +22,12 @@ object DateUtils {
 
         val closingDay = card.closingDay
         val paymentDay = card.paymentDay
+        val transactionYearMonth = YearMonth.from(transactionDate)
+        val effectiveClosing = closingDay.coerceAtMost(transactionYearMonth.lengthOfMonth())
 
-        var paymentMonth = YearMonth.from(transactionDate)
+        var paymentMonth = transactionYearMonth
 
-        if (transactionDate.dayOfMonth >= closingDay) {
+        if (transactionDate.dayOfMonth >= effectiveClosing) {
             paymentMonth = paymentMonth.plusMonths(1)
         }
 
