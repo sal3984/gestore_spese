@@ -402,11 +402,12 @@ fun PaymentMethodSection(
                 modifier = Modifier.padding(bottom = 12.dp),
             )
 
-            // Generic payment method selector (all providers)
-            if (allPaymentMethods.isNotEmpty()) {
+            // Generic payment method selector (all providers + legacy fallback)
+            if (allPaymentMethods.isNotEmpty() || activeCreditCards.isNotEmpty()) {
                 val selectedName = when {
                     uiState.selectedPaymentMethodId != null ->
                         allPaymentMethods.find { it.id == uiState.selectedPaymentMethodId }?.name
+                            ?: activeCreditCards.find { it.id == uiState.selectedPaymentMethodId }?.name
                     uiState.creditCardId != null ->
                         activeCreditCards.find { it.id == uiState.creditCardId }?.name
                             ?: allPaymentMethods.find { it.id == uiState.creditCardId }?.name

@@ -367,36 +367,52 @@ fun AddTransactionScreen(
         )
     }
 
-    if (uiState.showCreditCardDialog && allPaymentMethods.isNotEmpty()) {
-        PaymentMethodPickerDialog(
-            allPaymentMethods = allPaymentMethods,
-            currentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
-            onMethodSelected = { methodId, isCreditCard ->
-                handleEvent(AddTransactionEvent.OnPaymentMethodSelected(methodId, isCreditCard))
-                handleEvent(
-                    AddTransactionEvent.OnIsInstallmentChange(
-                        if (isCreditCard) {
-                            activeCreditCards.find { it.id == methodId }?.cardType == CreditCardType.REVOLVING
-                        } else {
-                            false
-                        },
-                    ),
-                )
-                handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
-            },
-            onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
-        )
-    } else if (uiState.showCreditCardDialog && activeCreditCards.isNotEmpty()) {
-        CreditCardDialog(
-            activeCreditCards = activeCreditCards,
-            currentCardId = uiState.creditCardId,
-            onCardSelected = { cardId, isRevolving ->
-                handleEvent(AddTransactionEvent.OnCreditCardIdChange(cardId))
-                handleEvent(AddTransactionEvent.OnIsInstallmentChange(isRevolving))
-                handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
-            },
-            onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
-        )
+    if (uiState.showCreditCardDialog) {
+        val legacyAsPaymentMethods = remember(activeCreditCards, allPaymentMethods) {
+            activeCreditCards
+                .filter { card -> allPaymentMethods.none { it.id == card.id } }
+                .map { card ->
+                    PaymentMethodEntity(
+                        id = card.id,
+                        name = card.name,
+                        provider = card.provider.name,
+                        isActive = true,
+                    )
+                }
+        }
+        val allMethodsForDialog = allPaymentMethods + legacyAsPaymentMethods
+
+        if (allMethodsForDialog.isNotEmpty()) {
+            PaymentMethodPickerDialog(
+                allPaymentMethods = allMethodsForDialog,
+                currentMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId,
+                onMethodSelected = { methodId, isCreditCard ->
+                    handleEvent(AddTransactionEvent.OnPaymentMethodSelected(methodId, isCreditCard))
+                    handleEvent(
+                        AddTransactionEvent.OnIsInstallmentChange(
+                            if (isCreditCard) {
+                                activeCreditCards.find { it.id == methodId }?.cardType == CreditCardType.REVOLVING
+                            } else {
+                                false
+                            },
+                        ),
+                    )
+                    handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
+                },
+                onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
+            )
+        } else if (activeCreditCards.isNotEmpty()) {
+            CreditCardDialog(
+                activeCreditCards = activeCreditCards,
+                currentCardId = uiState.creditCardId,
+                onCardSelected = { cardId, isRevolving ->
+                    handleEvent(AddTransactionEvent.OnCreditCardIdChange(cardId))
+                    handleEvent(AddTransactionEvent.OnIsInstallmentChange(isRevolving))
+                    handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false))
+                },
+                onDismiss = { handleEvent(AddTransactionEvent.OnShowCreditCardDialog(false)) },
+            )
+        }
     }
 
     if (uiState.showRecurrenceTypeDialog) {

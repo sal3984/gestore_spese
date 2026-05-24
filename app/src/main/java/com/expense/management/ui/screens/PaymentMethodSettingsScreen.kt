@@ -80,6 +80,7 @@ fun PaymentMethodSettingsScreen(
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingMethod by remember { mutableStateOf<PaymentMethodEntity?>(null) }
+    var editingLegacyCard by remember { mutableStateOf<CreditCardEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
@@ -127,7 +128,7 @@ fun PaymentMethodSettingsScreen(
                             icon = Icons.Default.CreditCard,
                             title = card.name,
                             subtitle = "${if (card.type == CardType.SALDO) stringResource(R.string.single_balance) else stringResource(R.string.installment_plan)} • ${stringResource(R.string.max_limit, currentCurrency)} ${String.format(Locale.US, "%.0f", card.limit)}",
-                            onEdit = { /* TODO: edit legacy card */ },
+                            onEdit = { editingLegacyCard = card },
                             onDelete = { onDeleteLegacyCard(card) },
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -209,6 +210,63 @@ fun PaymentMethodSettingsScreen(
                 onEditPaymentMethod(updatedMethod, details)
                 editingMethod = null
             },
+        )
+    }
+
+    // Edit Legacy Credit Card Dialog
+    editingLegacyCard?.let { card ->
+        var editName by remember(card) { mutableStateOf(card.name) }
+        var editLimitText by remember(card) { mutableStateOf(card.limit.toString()) }
+        var editClosingDayText by remember(card) { mutableStateOf(card.closingDay.toString()) }
+        var editPaymentDayText by remember(card) { mutableStateOf(card.paymentDay.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { editingLegacyCard = null },
+            title = { Text("Modifica Carta") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Nome") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editLimitText,
+                        onValueChange = { editLimitText = it },
+                        label = { Text("Limite") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editClosingDayText,
+                        onValueChange = { editClosingDayText = it },
+                        label = { Text("Giorno Chiusura") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editPaymentDayText,
+                        onValueChange = { editPaymentDayText = it },
+                        label = { Text("Giorno Addebito") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val limit = editLimitText.toDoubleOrNull() ?: return@TextButton
+                    val closingDay = editClosingDayText.toIntOrNull() ?: return@TextButton
+                    val paymentDay = editPaymentDayText.toIntOrNull() ?: return@TextButton
+                    onUpdateLegacyCard(card.copy(name = editName, limit = limit, closingDay = closingDay, paymentDay = paymentDay))
+                    editingLegacyCard = null
+                }) { Text("Salva") }
+            },
+            dismissButton = { TextButton(onClick = { editingLegacyCard = null }) { Text("Annulla") } },
         )
     }
 }

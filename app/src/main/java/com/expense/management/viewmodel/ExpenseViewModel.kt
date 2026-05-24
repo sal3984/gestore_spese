@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.BackupData
+import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardDetailEntity
 import com.expense.management.data.CreditCardEntity
@@ -117,10 +118,11 @@ class ExpenseViewModel(
         getPaymentMethodsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // CARTE DI CREDITO ATTIVE (dal nuovo sistema payment_methods + credit_card_details)
+    // CARTE DI CREDITO ATTIVE: unisce nuovo sistema (payment_methods + credit_card_details)
+    // e legacy (allCreditCards) per garantire visibilità anche dopo restore da vecchio backup
     val activeCreditCards: StateFlow<List<ActiveCreditCard>> =
-        combine(allPaymentMethods, repository.allCreditCardDetails) { methods, details ->
-            methods
+        combine(allPaymentMethods, repository.allCreditCardDetails, allCreditCards) { methods, details, legacyCards ->
+            val newCards = methods
                 .filter {
                     it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
                         it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
@@ -139,6 +141,21 @@ class ExpenseViewModel(
                         )
                     }
                 }
+            val existingIds = newCards.map { it.id }.toSet()
+            val fallbackCards = legacyCards
+                .filter { it.id !in existingIds }
+                .map { card ->
+                    ActiveCreditCard(
+                        id = card.id,
+                        name = card.name,
+                        provider = if (card.type == CardType.SALDO) PaymentProvider.CREDIT_CARD_SALDO else PaymentProvider.CREDIT_CARD_REVOLVING,
+                        cardType = if (card.type == CardType.SALDO) CreditCardType.SALDO else CreditCardType.REVOLVING,
+                        limit = card.limit,
+                        closingDay = card.closingDay,
+                        paymentDay = card.paymentDay,
+                    )
+                }
+            newCards + fallbackCards
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
