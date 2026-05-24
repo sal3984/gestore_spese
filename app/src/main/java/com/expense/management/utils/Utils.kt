@@ -43,7 +43,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
@@ -122,7 +121,7 @@ fun TransactionItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .padding(vertical = 8.dp)
             .then(
                 if (sharedTransitionScope != null && animatedVisibilityScope != null) {
                     with(sharedTransitionScope) {
@@ -154,7 +153,7 @@ fun TransactionItem(
                 // Icona Categoria
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(
                             if (isIncome) {
@@ -168,7 +167,7 @@ fun TransactionItem(
                     if (category.imageUri != null) {
                         AsyncImage(
                             model = category.imageUri,
-                            contentDescription = null,
+                            contentDescription = category.label,
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Crop,
                         )
@@ -247,8 +246,8 @@ fun TransactionItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Repeat,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                contentDescription = stringResource(R.string.recurring),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -327,7 +326,7 @@ fun CategoryImage(
     if (category.imageUri != null) {
         AsyncImage(
             model = category.imageUri,
-            contentDescription = null,
+            contentDescription = category.label,
             modifier = modifier.size(size).clip(CircleShape),
             contentScale = ContentScale.Crop,
         )
@@ -335,7 +334,7 @@ fun CategoryImage(
         Text(
             modifier = modifier,
             text = category.icon,
-            fontSize = (size.value * 0.5).sp,
+            style = MaterialTheme.typography.headlineSmall,
         )
     }
 }

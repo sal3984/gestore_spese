@@ -214,6 +214,13 @@
     <string name="calc_amount_per_installment">Amount per installment: %1$s</string>
 
 
+    <!-- Theme -->
+    <string name="theme">Theme</string>
+    <string name="choose_theme">Choose Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
     <!-- Donations -->
     <string name="support_us">Support Us</string>
     <string name="donate">Donate</string>
@@ -289,4 +296,36 @@
     <string name="provider">Provider</string>
     <string name="add">Add</string>
     <string name="manage_payment_methods">Manage Payment Methods</string>
+
+    <!-- Accessibility content descriptions -->
+    <string name="bnpl_debt">BNPL Debt</string>
+    <string name="limit_warning">Limit warning</string>
+    <string name="search">Search</string>
+    <string name="clear_search">Clear search</string>
+    <string name="currency_selected">Currency selected</string>
+    <string name="select_recurrence">Select recurrence</string>
+    <string name="select_payment_method">Select payment method</string>
+    <string name="select_image">Select image</string>
+    <string name="effective_date">Effective date</string>
+    <string name="more">More</string>
+    <string name="error">Error</string>
+    <string name="savings_trend">Savings trend</string>
+    <string name="bar_chart">Bar chart</string>
+    <string name="no_data">No data</string>
+    <string name="change_image">Change image</string>
+    <string name="recurring">Recurring</string>
+    <string name="category_icon">Category</string>
+    <!-- Payment Method Settings -->
+    <string name="end_of_month">End of month</string>
+    <string name="issuer_bank">Issuer / Bank</string>
+    <string name="card_number">Card Number</string>
+    <string name="notes">Notes</string>
+    <string name="iban">IBAN</string>
+    <string name="account_number">Account Number</string>
+    <string name="weekly_budget">Weekly Budget</string>
+    <string name="sdd_day">SDD Day</string>
+    <string name="email">Email</string>
+    <string name="bnpl_installments">BNPL Installments</string>
+    <string name="bnpl_cycle_days">BNPL Cycle Days</string>
+    <string name="edit">Edit</string>
 </resources>

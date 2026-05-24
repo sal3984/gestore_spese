@@ -64,7 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -172,7 +171,7 @@ fun CategoryScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Default.Category,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.category_icon),
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.surfaceVariant,
                         )
@@ -370,7 +369,7 @@ fun CategoryDialog(
         text = {
             Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -386,15 +385,15 @@ fun CategoryDialog(
                         if (imageUri != null) {
                             AsyncImage(
                                 model = imageUri,
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.change_image),
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
                             )
                             Box(
-                                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
+                                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Default.PhotoCamera, null, tint = Color.White)
+                                Icon(Icons.Default.PhotoCamera, stringResource(R.string.change_image), tint = MaterialTheme.colorScheme.onPrimary)
                             }
                         } else {
                             Text(text = selectedIcon, style = MaterialTheme.typography.displayMedium)
@@ -452,7 +451,7 @@ fun CategoryDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
                         modifier = Modifier.weight(1f),
                     ) {
-                        Icon(Icons.Default.Image, null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Image, stringResource(R.string.select_image), modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.image), style = MaterialTheme.typography.labelSmall)
                     }
@@ -478,7 +477,7 @@ fun CategoryDialog(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(if (selectedIcon == icon && imageUri == null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                                 .clickable {

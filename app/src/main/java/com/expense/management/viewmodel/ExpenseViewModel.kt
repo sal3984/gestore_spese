@@ -79,6 +79,7 @@ class ExpenseViewModel(
         private const val KEY_BIOMETRIC_ENABLED = "is_biometric_enabled"
         private const val KEY_CC_PAYMENT_MODE = "cc_payment_mode"
         private const val KEY_CSV_EXPORT_COLUMNS = "csv_export_columns"
+        private const val KEY_THEME_MODE = "theme_mode"
     }
 
     // Frequent Categories Caching
@@ -218,6 +219,9 @@ class ExpenseViewModel(
         prefs?.getStringSet(KEY_CSV_EXPORT_COLUMNS, defaultExportColumns) ?: defaultExportColumns,
     )
     val csvExportColumns = _csvExportColumns.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(prefs?.getString(KEY_THEME_MODE, "system") ?: "system")
+    val themeMode = _themeMode.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -573,6 +577,11 @@ class ExpenseViewModel(
     fun updateCsvExportColumns(columns: Set<String>) {
         _csvExportColumns.value = columns
         prefs?.edit { putStringSet(KEY_CSV_EXPORT_COLUMNS, columns) }
+    }
+
+    fun updateThemeMode(mode: String) {
+        _themeMode.value = mode
+        prefs?.edit { putString(KEY_THEME_MODE, mode) }
     }
 
     fun refreshCurrencyRates() {

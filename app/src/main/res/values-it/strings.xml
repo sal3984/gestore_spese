@@ -191,6 +191,13 @@
     <string name="installment_amount_label">Importo Rata</string>
     <string name="calc_amount_per_installment">Importo per rata: %1$s</string>
 
+    <!-- Theme -->
+    <string name="theme">Tema</string>
+    <string name="choose_theme">Scegli tema</string>
+    <string name="theme_system">Predefinito sistema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+
     <!-- Donations -->
     <string name="support_us">Supportaci</string>
     <string name="donate">Fai una donazione</string>
@@ -289,4 +296,36 @@
     <string name="provider">Fornitore</string>
     <string name="add">Aggiungi</string>
     <string name="manage_payment_methods">Gestisci Metodi di Pagamento</string>
+
+    <!-- Accessibility content descriptions -->
+    <string name="bnpl_debt">Debiti BNPL</string>
+    <string name="limit_warning">Limite quasi raggiunto</string>
+    <string name="search">Cerca</string>
+    <string name="clear_search">Cancella ricerca</string>
+    <string name="currency_selected">Valuta selezionata</string>
+    <string name="select_recurrence">Seleziona ricorrenza</string>
+    <string name="select_payment_method">Seleziona metodo di pagamento</string>
+    <string name="select_image">Seleziona immagine</string>
+    <string name="effective_date">Data effettiva</string>
+    <string name="more">Altro</string>
+    <string name="error">Errore</string>
+    <string name="savings_trend">Andamento risparmio</string>
+    <string name="bar_chart">Grafico a barre</string>
+    <string name="no_data">Nessun dato</string>
+    <string name="change_image">Cambia immagine</string>
+    <string name="recurring">Ricorrente</string>
+    <string name="category_icon">Categoria</string>
+    <!-- Payment Method Settings -->
+    <string name="end_of_month">Fine Mese</string>
+    <string name="issuer_bank">Istituto / Banca</string>
+    <string name="card_number">Numero Carta</string>
+    <string name="notes">Note</string>
+    <string name="iban">IBAN</string>
+    <string name="account_number">Numero Conto</string>
+    <string name="weekly_budget">Budget Settimanale</string>
+    <string name="sdd_day">Giorno SDD</string>
+    <string name="email">Email</string>
+    <string name="bnpl_installments">Rate BNPL</string>
+    <string name="bnpl_cycle_days">Giorni Ciclo BNPL</string>
+    <string name="edit">Modifica</string>
 </resources>

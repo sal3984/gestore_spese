@@ -12,6 +12,7 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -98,9 +99,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            gestoreSpeseTheme {
-                mainApp()
-            }
+            mainApp()
         }
     }
 }
@@ -110,6 +109,21 @@ class MainActivity : FragmentActivity() {
 fun mainApp() {
     val context = LocalContext.current
     val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val isDarkTheme = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
+    gestoreSpeseTheme(darkTheme = isDarkTheme) {
+        mainAppContent(viewModel)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun mainAppContent(viewModel: ExpenseViewModel) {
+    val context = LocalContext.current
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -120,6 +134,7 @@ fun mainApp() {
     val currentCcLimit by viewModel.ccLimit.collectAsStateWithLifecycle()
     val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsStateWithLifecycle()
     val currentDateFormat by viewModel.dateFormat.collectAsStateWithLifecycle()
+    val currentThemeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val earliestMonth by viewModel.earliestMonth.collectAsStateWithLifecycle()
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsStateWithLifecycle()
     val isAmountHidden by viewModel.isAmountHidden.collectAsStateWithLifecycle()
@@ -548,6 +563,7 @@ fun mainApp() {
                             settingsScreen(
                                 currentCurrency = currentCurrency,
                                 currentDateFormat = currentDateFormat,
+                                currentThemeMode = currentThemeMode,
                                 csvExportColumns = csvExportColumns,
                                 hasTransactions = hasTransactions,
                                 currencyRates = currencyRates,
@@ -562,6 +578,7 @@ fun mainApp() {
                                 onDateFormatChange = viewModel::updateDateFormat,
                                 onCcPaymentModeChange = viewModel::updateCcPaymentMode,
                                 onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
+                                onThemeModeChange = viewModel::updateThemeMode,
                             )
                         }
 

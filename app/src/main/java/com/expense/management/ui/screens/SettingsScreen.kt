@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CurrencyExchange
@@ -89,6 +91,7 @@ fun settingsScreen(
     modifier: Modifier = Modifier,
     currentCurrency: String,
     currentDateFormat: String,
+    currentThemeMode: String,
     csvExportColumns: Set<String>,
     hasTransactions: Boolean,
     currencyRates: List<CurrencyRate>,
@@ -103,11 +106,13 @@ fun settingsScreen(
     onDateFormatChange: (String) -> Unit,
     onCcPaymentModeChange: (String) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
+    onThemeModeChange: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var showExportColumnsDialog by remember { mutableStateOf(false) }
     var showCurrencyWarningDialog by remember { mutableStateOf(false) }
     var showCurrencyRatesInfoDialog by remember { mutableStateOf(false) }
@@ -178,6 +183,29 @@ fun settingsScreen(
                     onClick = { showDateFormatDialog = true },
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- SEZIONE TEMA ---
+        settingsSectionHeader(stringResource(R.string.theme))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            val themeLabel = when (currentThemeMode) {
+                "light" -> stringResource(R.string.theme_light)
+                "dark" -> stringResource(R.string.theme_dark)
+                else -> stringResource(R.string.theme_system)
+            }
+            settingsListItem(
+                icon = Icons.Default.BrightnessMedium,
+                title = stringResource(R.string.theme),
+                value = themeLabel,
+                onClick = { showThemeDialog = true },
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -257,6 +285,7 @@ fun settingsScreen(
                             modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 48.dp)
                                 .clickable {
                                     onCurrencyChange(symbol)
                                     showCurrencyDialog = false
@@ -374,6 +403,43 @@ fun settingsScreen(
         }
     }
 
+    // Dialog Selezione Tema
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text(stringResource(R.string.choose_theme)) },
+            text = {
+                Column {
+                    val themeModes = listOf("system", "light", "dark")
+                    val themeLabels = mapOf(
+                        "system" to stringResource(R.string.theme_system),
+                        "light" to stringResource(R.string.theme_light),
+                        "dark" to stringResource(R.string.theme_dark),
+                    )
+                    themeModes.forEach { mode ->
+                        Row(
+                            modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .clickable {
+                                    onThemeModeChange(mode)
+                                    showThemeDialog = false
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = (mode == currentThemeMode), onClick = null)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(themeLabels[mode] ?: mode, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showThemeDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
     // Dialog Selezione Formato Data
     if (showDateFormatDialog) {
         AlertDialog(
@@ -387,6 +453,7 @@ fun settingsScreen(
                             modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 48.dp)
                                 .clickable {
                                     onDateFormatChange(format)
                                     showDateFormatDialog = false
@@ -412,7 +479,9 @@ fun settingsScreen(
             onDismissRequest = { showExportColumnsDialog = false },
             title = { Text(stringResource(R.string.select_columns_to_export)) },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
                     EXPORT_COLUMN_MAP.entries.forEach { (key, displayName) ->
                         Row(
                             modifier = Modifier
@@ -482,7 +551,7 @@ fun settingsListItem(
         leadingContent = {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = alpha),
                 modifier =
                 Modifier
@@ -493,7 +562,7 @@ fun settingsListItem(
         trailingContent = {
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.more),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
             )
         },
@@ -508,7 +577,7 @@ fun settingsListItem(
 @Composable
 private fun SettingsPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {})
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {})
     }
 }
 
@@ -516,6 +585,6 @@ private fun SettingsPreview() {
 @Composable
 private fun SettingsPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {})
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {})
     }
 }

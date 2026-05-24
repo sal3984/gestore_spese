@@ -65,7 +65,7 @@ fun DataManagementScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = onExportCsv,
@@ -77,13 +77,13 @@ fun DataManagementScreen(
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                 ) {
-                    Icon(Icons.Default.Download, null)
+                    Icon(Icons.Default.Download, stringResource(R.string.export_csv))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(stringResource(R.string.export_csv), style = MaterialTheme.typography.titleMedium)
                 }
 
                 HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 28.dp),
+                    modifier = Modifier.padding(vertical = 24.dp),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                 )
 
@@ -106,7 +106,7 @@ fun DataManagementScreen(
                                 modifier = Modifier.weight(1f).height(56.dp),
                                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                             ) {
-                                Icon(Icons.Default.CloudUpload, null)
+                                Icon(Icons.Default.CloudUpload, stringResource(R.string.backup))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.backup), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
@@ -118,7 +118,7 @@ fun DataManagementScreen(
                                 modifier = Modifier.weight(1f).height(56.dp),
                                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                             ) {
-                                Icon(Icons.Default.CloudDownload, null)
+                                Icon(Icons.Default.CloudDownload, stringResource(R.string.restore))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.restore), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                             }
@@ -132,7 +132,7 @@ fun DataManagementScreen(
                                 modifier = Modifier.fillMaxWidth().height(56.dp),
                                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                             ) {
-                                Icon(Icons.Default.CloudUpload, null)
+                                Icon(Icons.Default.CloudUpload, stringResource(R.string.backup))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.backup), style = MaterialTheme.typography.labelLarge)
                             }
@@ -144,7 +144,7 @@ fun DataManagementScreen(
                                 modifier = Modifier.fillMaxWidth().height(56.dp),
                                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                             ) {
-                                Icon(Icons.Default.CloudDownload, null)
+                                Icon(Icons.Default.CloudDownload, stringResource(R.string.restore))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.restore), style = MaterialTheme.typography.labelLarge)
                             }

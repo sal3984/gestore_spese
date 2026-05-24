@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -60,6 +61,7 @@ fun CurrencyDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onCurrencySelected(symbol) }
+                            .heightIn(min = 48.dp)
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -91,6 +93,7 @@ fun CreditCardDialog(
                             .clickable {
                                 onCardSelected(card.id, card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING)
                             }
+                            .heightIn(min = 48.dp)
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -123,6 +126,7 @@ fun PaymentMethodPickerDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onMethodSelected(method.id, isCreditCard) }
+                            .heightIn(min = 48.dp)
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -158,6 +162,7 @@ fun RecurrenceTypeDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onRecurrenceSelected(typeEntry) }
+                            .heightIn(min = 48.dp)
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -219,7 +224,7 @@ fun TransactionDatePicker(
                     val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
                     onDateSelected(selectedDate.format(displayFormatter))
                 }
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.ok)) }
         },
     ) {
         DatePicker(state = datePickerState)
@@ -252,7 +257,7 @@ fun InstallmentDatePicker(
                     val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
                     onDateSelected(selectedDate.format(displayFormatter))
                 }
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.ok)) }
         },
     ) {
         DatePicker(state = datePickerState)

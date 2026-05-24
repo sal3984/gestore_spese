@@ -583,104 +583,105 @@ fun CategorySelector(
         availableCategories.filter { it.type == type && it.label.contains(searchQuery, ignoreCase = true) }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
-            .padding(12.dp),
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = { Text(stringResource(R.string.search_categories)) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = null)
+        Column(modifier = Modifier.padding(12.dp)) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text(stringResource(R.string.search_categories)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear_search))
+                        }
                     }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            ),
-        )
-
-        if (searchQuery.isEmpty()) {
-            val selectedCategory = remember(selectedCategoryId, availableCategories) {
-                availableCategories.find { it.id == selectedCategoryId }
-            }
-            if (selectedCategory != null && selectedCategory.type == type) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp),
-                ) {
-                    CategoryImage(category = selectedCategory, size = 20.dp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        selectedCategory.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-
-        if (frequentCategories.isNotEmpty() && searchQuery.isEmpty()) {
-            Text(
-                text = stringResource(R.string.frequent_categories),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
-            )
-            Row(
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                frequentCategories.forEach { category ->
-                    key(category.id) {
-                        CategoryChip(
-                            category = category,
-                            isSelected = selectedCategoryId == category.id,
-                            onClick = { onCategorySelected(category.id) },
+                    .padding(bottom = 12.dp),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                ),
+            )
+
+            if (searchQuery.isEmpty()) {
+                val selectedCategory = remember(selectedCategoryId, availableCategories) {
+                    availableCategories.find { it.id == selectedCategoryId }
+                }
+                if (selectedCategory != null && selectedCategory.type == type) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 4.dp, start = 4.dp),
+                    ) {
+                        CategoryImage(category = selectedCategory, size = 20.dp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            selectedCategory.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
-            HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-        }
 
-        if (searchQuery.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.search_results),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
-            )
-            CategoryGrid(
-                categories = filteredCategories,
-                selectedCategoryId = selectedCategoryId,
-                onCategorySelected = onCategorySelected,
-            )
-        } else {
-            TextButton(
-                onClick = { showAllDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.show_all_categories))
+            if (frequentCategories.isNotEmpty() && searchQuery.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.frequent_categories),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    frequentCategories.forEach { category ->
+                        key(category.id) {
+                            CategoryChip(
+                                category = category,
+                                isSelected = selectedCategoryId == category.id,
+                                onClick = { onCategorySelected(category.id) },
+                            )
+                        }
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
+            }
+
+            if (searchQuery.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.search_results),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+                )
+                CategoryGrid(
+                    categories = filteredCategories,
+                    selectedCategoryId = selectedCategoryId,
+                    onCategorySelected = onCategorySelected,
+                )
+            } else {
+                TextButton(
+                    onClick = { showAllDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.show_all_categories))
+                }
             }
         }
     }

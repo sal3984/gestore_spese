@@ -32,8 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Warning
@@ -73,7 +71,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
@@ -136,7 +133,7 @@ fun ReportScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+            Icon(Icons.Default.Warning, contentDescription = stringResource(R.string.error), modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(16.dp))
             Text(error, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(16.dp))
@@ -261,40 +258,14 @@ fun ReportScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(
-                        stringResource(R.string.total_savings),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                    )
-                    Text(
-                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", savings)}",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = if (savings >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
-                        .padding(12.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // --- MONTH FILTERS CARD ---
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
@@ -364,10 +335,10 @@ fun ReportScreen(
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -380,7 +351,7 @@ fun ReportScreen(
                         )
                         Icon(
                             imageVector = Icons.Default.BarChart,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.bar_chart),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }
@@ -425,7 +396,7 @@ fun ReportScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.PieChart,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.no_data),
                             modifier = Modifier.size(80.dp),
                             tint = MaterialTheme.colorScheme.surfaceVariant,
                         )
@@ -440,7 +411,6 @@ fun ReportScreen(
                 }
             } else {
                 Column(
-                    modifier = Modifier.fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     expenseByCategory.forEachIndexed { index, pair ->
@@ -571,9 +541,6 @@ fun MonthSelector(
         (-24..0).map { YearMonth.now().plusMonths(it.toLong()) }.sortedByDescending { it }
     }
 
-    val screenWidth = LocalConfiguration.current.screenWidthDp
-    val responsiveFontSize = (screenWidth * 0.032f).sp
-
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -584,7 +551,7 @@ fun MonthSelector(
             onValueChange = { /* Read Only */ },
             readOnly = true,
             maxLines = 1,
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = responsiveFontSize),
+            textStyle = MaterialTheme.typography.titleMedium,
 
             label = { Text(text = label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -604,7 +571,6 @@ fun MonthSelector(
                             month.format(
                                 DateTimeFormatter.ofPattern("MMMM yyyy", locale),
                             ).capitalizeFirstLetter(locale),
-                            fontSize = responsiveFontSize,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             softWrap = false,
@@ -835,7 +801,7 @@ fun CategoryTransactionsBottomSheetContent(
             ) {
                 Icon(
                     imageVector = Icons.Default.PieChart,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.no_data),
                     modifier = Modifier.size(64.dp),
                     tint = MaterialTheme.colorScheme.surfaceVariant,
                 )

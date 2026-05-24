@@ -319,13 +319,13 @@ fun DashboardScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(20.dp)
+                                .padding(16.dp)
                                 .fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -333,14 +333,14 @@ fun DashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(40.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.secondaryContainer),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         Icons.Default.ArrowUpward,
-                                        null,
+                                        stringResource(R.string.income),
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.size(24.dp),
                                     )
@@ -379,14 +379,14 @@ fun DashboardScreen(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(40.dp)
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.errorContainer),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         Icons.Default.ArrowDownward,
-                                        null,
+                                        stringResource(R.string.expenses),
                                         tint = MaterialTheme.colorScheme.onErrorContainer,
                                         modifier = Modifier.size(24.dp),
                                     )
@@ -395,7 +395,7 @@ fun DashboardScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Card Debiti Previsti BNPL
                     if (bnplProjections.isNotEmpty()) {
@@ -404,7 +404,7 @@ fun DashboardScreen(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
                             ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                             shape = RoundedCornerShape(24.dp),
                             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                         ) {
@@ -412,13 +412,13 @@ fun DashboardScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         Icons.Default.Payment,
-                                        contentDescription = null,
+                                        contentDescription = stringResource(R.string.bnpl_debt),
                                         tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(16.dp),
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "Debiti Previsti (BNPL)",
+                                        stringResource(R.string.bnpl_debt),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -524,7 +524,7 @@ fun DashboardScreen(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -545,7 +545,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.AccountBalanceWallet,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.report_no_transaction_this_month),
                             modifier = Modifier.size(80.dp),
                             tint = MaterialTheme.colorScheme.surfaceVariant,
                         )
@@ -605,7 +605,7 @@ fun DashboardScreen(
                             enableDismissFromEndToStart = true,
                             backgroundContent = {
                                 val color = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
+                                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                                     else -> Color.Transparent
                                 }
                                 Box(
@@ -674,10 +674,10 @@ fun CreditCardItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(12.dp))
+                Icon(Icons.Default.CreditCard, stringResource(R.string.credit_card), tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
                         name,
@@ -697,7 +697,7 @@ fun CreditCardItem(
                     Spacer(modifier = Modifier.weight(1f))
                     Icon(
                         Icons.Default.Warning,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.limit_warning),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp),
                     )
@@ -736,12 +736,12 @@ fun CreditCardItem(
                 progress = { progress.coerceAtMost(1f) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp)),
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
                 color = if (progress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     text = if (isAmountHidden) "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",

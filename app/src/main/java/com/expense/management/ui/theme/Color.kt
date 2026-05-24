@@ -30,3 +30,21 @@ val SurfaceLight = Color(0xFFFFFFFF)
 val PrimaryDarkTheme = Color(0xFF9FA8DA)
 val SecondaryDarkTheme = Color(0xFF80CBC4)
 val TertiaryDarkTheme = Color(0xFFFFCC80)
+
+// Light scheme additional tokens
+val OnSecondaryContainerLight = Color(0xFF004D40)
+val OnBackgroundLight = Color(0xFF1C1B1F)
+val OnSurfaceLight = Color(0xFF1C1B1F)
+
+// Dark scheme tokens
+val OnPrimaryDark = Color(0xFF001054)
+val PrimaryContainerDark = Color(0xFF1A237E)
+val OnPrimaryContainerDark = Color(0xFFE8EAF6)
+val OnSecondaryDark = Color(0xFF003631)
+val OnTertiaryDark = Color(0xFF4E2C00)
+val BackgroundDark = Color(0xFF121212)
+val SurfaceDark = Color(0xFF1E1E1E)
+val OnBackgroundDark = Color(0xFFE0E0E0)
+val OnSurfaceDark = Color(0xFFE0E0E0)
+val ErrorDark = Color(0xFFCF6679)
+val OnErrorDark = Color(0xFF37000B)

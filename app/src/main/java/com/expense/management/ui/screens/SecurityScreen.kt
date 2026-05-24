@@ -93,12 +93,12 @@ fun settingsSwitchItem(
         leadingContent = {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = title,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier =
                 Modifier
                     .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                    .padding(10.dp),
+                    .padding(8.dp),
             )
         },
         trailingContent = {

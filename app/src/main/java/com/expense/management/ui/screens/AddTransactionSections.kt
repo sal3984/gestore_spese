@@ -250,7 +250,7 @@ fun BasicDetailsCard(
                                 onValueChange = { onEvent(AddTransactionEvent.OnOriginalCurrencyChange(it.uppercase(Locale.ROOT))) },
                                 label = { Text(stringResource(R.string.currency_original_label)) },
                                 readOnly = true,
-                                trailingIcon = { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                trailingIcon = { Icon(Icons.Default.Check, contentDescription = stringResource(R.string.currency_selected), tint = MaterialTheme.colorScheme.primary) },
                                 modifier = Modifier
                                     .weight(0.7f)
                                     .clickable { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
@@ -272,7 +272,7 @@ fun BasicDetailsCard(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.converting))
                             } else {
-                                Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                                Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.convert_currency_desc))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(stringResource(R.string.convert_currency_desc))
                             }
@@ -334,7 +334,7 @@ fun RecurrenceSection(
                 readOnly = true,
                 trailingIcon = {
                     IconButton(onClick = { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
                     }
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
@@ -399,7 +399,7 @@ fun PaymentMethodSection(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier.padding(bottom = 16.dp),
             )
 
             // Generic payment method selector (all providers + legacy fallback)
@@ -420,7 +420,7 @@ fun PaymentMethodSection(
                     label = { Text(stringResource(R.string.payment_method_label)) },
                     trailingIcon = {
                         IconButton(onClick = { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) }) {
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_payment_method))
                         }
                     },
                     modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) },
@@ -703,7 +703,7 @@ fun InstallmentSection(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.effective_date), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(stringResource(R.string.expected_debit_date), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
@@ -728,7 +728,7 @@ fun SaveButton(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 16.dp,
+        shadowElevation = 6.dp,
         color = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
