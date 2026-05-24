@@ -17,6 +17,9 @@ import com.expense.management.data.RevolutDetailEntity
 import com.expense.management.data.SatispayDetailEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -37,6 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -109,6 +113,30 @@ class ExpenseViewModel(
     val allPaymentMethods: StateFlow<List<PaymentMethodEntity>> =
         getPaymentMethodsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // CARTE DI CREDITO ATTIVE (dal nuovo sistema payment_methods + credit_card_details)
+    val activeCreditCards: StateFlow<List<ActiveCreditCard>> =
+        combine(allPaymentMethods, repository.allCreditCardDetails) { methods, details ->
+            methods
+                .filter {
+                    it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
+                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                }
+                .mapNotNull { method ->
+                    val detail = details.find { it.paymentMethodId == method.id }
+                    detail?.let {
+                        ActiveCreditCard(
+                            id = method.id,
+                            name = method.name,
+                            provider = PaymentProvider.valueOf(method.provider),
+                            cardType = CreditCardType.valueOf(it.cardType),
+                            limit = it.limit,
+                            closingDay = it.closingDay,
+                            paymentDay = it.paymentDay,
+                        )
+                    }
+                }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs?.getString(KEY_CURRENCY, "€") ?: "€")

@@ -60,12 +60,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.usecase.AddTransactionSaveResult
 import com.expense.management.domain.usecase.AddTransactionSaveUseCase
 import com.expense.management.ui.model.DeleteType
@@ -95,7 +95,7 @@ fun AddTransactionScreen(
     onDescriptionChange: (String) -> Unit,
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
     isCC: Boolean = false,
-    availableCreditCards: List<CreditCardEntity> = emptyList(),
+    activeCreditCards: List<ActiveCreditCard> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     frequentExpenseCategories: List<CategoryEntity> = emptyList(),
@@ -118,7 +118,7 @@ fun AddTransactionScreen(
                     ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
                     ?: "food",
                 isCreditCard = transactionToEdit?.isCreditCard ?: isCC,
-                creditCardId = transactionToEdit?.creditCardId ?: availableCreditCards.firstOrNull()?.id,
+                creditCardId = transactionToEdit?.creditCardId ?: activeCreditCards.firstOrNull()?.id,
                 originalAmountText = transactionToEdit?.originalAmount?.toString() ?: "",
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1,
@@ -135,7 +135,7 @@ fun AddTransactionScreen(
                     LocalDate.now().format(displayFormatter)
                 },
                 installmentStartDateStr = if (transactionToEdit == null && isCC) {
-                    val defaultCard = availableCreditCards.firstOrNull()
+                    val defaultCard = activeCreditCards.firstOrNull()
                     val paymentDay = (defaultCard?.paymentDay ?: 15).coerceIn(1, 28)
                     LocalDate.now().plusMonths(1).withDayOfMonth(paymentDay).format(displayFormatter)
                 } else {
@@ -150,10 +150,10 @@ fun AddTransactionScreen(
             uiState = uiState.copy(isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1)
         } else {
             if (uiState.isCreditCard) {
-                val selectedCard = availableCreditCards.find { it.id == uiState.creditCardId }
+                val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
                 uiState = uiState.copy(
                     isInstallment = if (selectedCard != null) {
-                        selectedCard.type == CardType.REVOLVING
+                        selectedCard.cardType == CreditCardType.REVOLVING
                     } else {
                         ccPaymentMode == "installment"
                     },
@@ -180,7 +180,7 @@ fun AddTransactionScreen(
                 uiState = uiState,
                 transactionToEdit = transactionToEdit,
                 availableCategories = availableCategories,
-                availableCreditCards = availableCreditCards,
+                activeCreditCards = activeCreditCards,
                 dateFormat = dateFormat,
                 locale = locale,
                 installmentLabel = installmentLabel,
@@ -340,7 +340,7 @@ fun AddTransactionScreen(
             dateFormat = dateFormat,
             suggestions = suggestions,
             availableCategories = availableCategories,
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
             frequentExpenseCategories = frequentExpenseCategories,
             frequentIncomeCategories = frequentIncomeCategories,
             sharedTransitionScope = sharedTransitionScope,
@@ -358,9 +358,9 @@ fun AddTransactionScreen(
         )
     }
 
-    if (uiState.showCreditCardDialog && availableCreditCards.isNotEmpty()) {
+    if (uiState.showCreditCardDialog && activeCreditCards.isNotEmpty()) {
         CreditCardDialog(
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
             currentCardId = uiState.creditCardId,
             onCardSelected = { cardId, isRevolving ->
                 handleEvent(AddTransactionEvent.OnCreditCardIdChange(cardId))
@@ -428,7 +428,7 @@ private fun AddTransactionContent(
     dateFormat: String,
     suggestions: List<String>,
     availableCategories: List<CategoryEntity>,
-    availableCreditCards: List<CreditCardEntity>,
+    activeCreditCards: List<ActiveCreditCard>,
     frequentExpenseCategories: List<CategoryEntity>,
     frequentIncomeCategories: List<CategoryEntity>,
     sharedTransitionScope: SharedTransitionScope?,
@@ -499,7 +499,7 @@ private fun AddTransactionContent(
             onEvent = onEvent,
             isEditing = isEditing,
             transactionToEdit = transactionToEdit,
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
             isCC = isCC,
         )
 
@@ -512,7 +512,7 @@ private fun AddTransactionContent(
             transactionToEdit = transactionToEdit,
             currencySymbol = currencySymbol,
             dateFormat = dateFormat,
-            availableCreditCards = availableCreditCards,
+            activeCreditCards = activeCreditCards,
         )
     }
 }

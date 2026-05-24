@@ -121,6 +121,9 @@ class ExpenseRepository(
     suspend fun getCreditCardDetail(paymentMethodId: String): CreditCardDetailEntity? =
         paymentMethodDao.getCreditCardDetail(paymentMethodId)
 
+    val allCreditCardDetails: Flow<List<CreditCardDetailEntity>> =
+        paymentMethodDao.getAllCreditCardDetailsFlow()
+
     suspend fun insertRevolutDetail(detail: RevolutDetailEntity) {
         paymentMethodDao.insertRevolutDetail(detail)
     }

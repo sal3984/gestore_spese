@@ -62,7 +62,7 @@ fun CurrencyDialog(
 
 @Composable
 fun CreditCardDialog(
-    availableCreditCards: List<com.expense.management.data.CreditCardEntity>,
+    activeCreditCards: List<com.expense.management.domain.model.ActiveCreditCard>,
     currentCardId: String?,
     onCardSelected: (cardId: String, isRevolving: Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -72,14 +72,14 @@ fun CreditCardDialog(
         title = { Text(stringResource(R.string.select_credit_card)) },
         text = {
             Column {
-                availableCreditCards.forEach { card ->
+                activeCreditCards.forEach { card ->
                     Text(
                         text = card.name,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                onCardSelected(card.id, card.type == com.expense.management.data.CardType.REVOLVING)
+                                onCardSelected(card.id, card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING)
                             }
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )

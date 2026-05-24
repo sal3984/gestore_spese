@@ -71,11 +71,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
 import com.expense.management.ui.theme.gestoreSpeseTheme
@@ -100,7 +100,7 @@ fun DashboardScreen(
     onDelete: (String, DeleteType) -> Unit,
     onEdit: (String) -> Unit,
     isAmountHidden: Boolean,
-    creditCards: List<CreditCardEntity> = emptyList(),
+    creditCards: List<ActiveCreditCard> = emptyList(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     isLoading: Boolean = false,
@@ -404,7 +404,7 @@ fun DashboardScreen(
                             val card = creditCards[page]
 
                             val (displayedSpent, totalUtilizedForDisplay, totalPaidForDisplay) = remember(card.id, transactions, currentDashboardMonth) {
-                                if (card.type == CardType.REVOLVING) {
+                                if (card.cardType == CreditCardType.REVOLVING) {
                                     val totalUtilized = transactions
                                         .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
                                         .sumOf { it.amount }
@@ -448,7 +448,7 @@ fun DashboardScreen(
                                 progress = progress,
                                 currencySymbol = currencySymbol,
                                 isAmountHidden = isAmountHidden,
-                                type = card.type,
+                                type = card.cardType,
                                 totalUtilized = totalUtilizedForDisplay,
                                 totalPaid = totalPaidForDisplay,
                                 locale = locale,
@@ -610,7 +610,7 @@ fun CreditCardItem(
     progress: Float,
     currencySymbol: String,
     isAmountHidden: Boolean,
-    type: CardType,
+    type: CreditCardType,
     totalUtilized: Double = 0.0,
     totalPaid: Double = 0.0,
     locale: Locale = Locale.getDefault(),
@@ -633,7 +633,7 @@ fun CreditCardItem(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (type == CardType.REVOLVING) {
+                    if (type == CreditCardType.REVOLVING) {
                         Text(
                             stringResource(R.string.installment_plan),
                             style = MaterialTheme.typography.labelSmall,
@@ -654,7 +654,7 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (type == CardType.REVOLVING) {
+            if (type == CreditCardType.REVOLVING) {
                 Text(
                     text = stringResource(R.string.revolving_utilized_label),
                     style = MaterialTheme.typography.bodyMedium,
@@ -693,7 +693,7 @@ fun CreditCardItem(
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    text = if (isAmountHidden) "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",
+                    text = if (isAmountHidden) "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,

@@ -12,6 +12,7 @@ import java.util.UUID
         Index(value = ["categoryId"]),
         Index(value = ["groupId"]),
         Index(value = ["creditCardId"]),
+        Index(value = ["paymentMethodId"]),
     ],
 )
 data class TransactionEntity(
@@ -35,8 +36,10 @@ data class TransactionEntity(
     val totalInstallments: Int? = null,
     // UUID condiviso tra tutte le rate o transazioni ricorrenti dello stesso gruppo
     val groupId: String? = null,
-    // ID della carta di credito usata (opzionale)
+    // ID della carta di credito usata (opzionale, legacy)
     val creditCardId: String? = null,
+    // ID del metodo di pagamento usato (nuovo sistema multifornitore)
+    val paymentMethodId: String? = null,
     // Campi per transazioni ricorrenti
     val recurrenceType: RecurrenceType = RecurrenceType.NONE,
     val recurrenceEndDate: String? = null,

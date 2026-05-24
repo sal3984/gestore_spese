@@ -36,6 +36,9 @@ interface PaymentMethodDao {
     @Query("SELECT * FROM credit_card_details WHERE paymentMethodId = :paymentMethodId")
     suspend fun getCreditCardDetail(paymentMethodId: String): CreditCardDetailEntity?
 
+    @Query("SELECT * FROM credit_card_details")
+    fun getAllCreditCardDetailsFlow(): Flow<List<CreditCardDetailEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRevolutDetail(detail: RevolutDetailEntity)
 

@@ -56,10 +56,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.utils.DateUtils
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -375,7 +375,7 @@ fun PaymentMethodSection(
     onEvent: (AddTransactionEvent) -> Unit,
     isEditing: Boolean,
     transactionToEdit: TransactionEntity?,
-    availableCreditCards: List<CreditCardEntity>,
+    activeCreditCards: List<ActiveCreditCard>,
     isCC: Boolean = false,
 ) {
     AnimatedVisibility(
@@ -396,9 +396,9 @@ fun PaymentMethodSection(
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
 
-                if (availableCreditCards.isNotEmpty()) {
+                if (activeCreditCards.isNotEmpty()) {
                     OutlinedTextField(
-                        value = availableCreditCards.find { it.id == uiState.creditCardId }?.name ?: stringResource(R.string.select_credit_card),
+                        value = activeCreditCards.find { it.id == uiState.creditCardId }?.name ?: stringResource(R.string.select_credit_card),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.credit_card)) },
@@ -490,7 +490,7 @@ fun InstallmentSection(
     transactionToEdit: TransactionEntity?,
     currencySymbol: String,
     dateFormat: String,
-    availableCreditCards: List<CreditCardEntity>,
+    activeCreditCards: List<ActiveCreditCard>,
 ) {
     val showSection = (uiState.isCreditCard || uiState.isInstallment) && (uiState.type == TransactionType.EXPENSE || uiState.type == TransactionType.INCOME)
     AnimatedVisibility(visible = showSection) {
@@ -649,8 +649,8 @@ fun InstallmentSection(
                     )
                 }
             } else if (uiState.isCreditCard && !uiState.isInstallment) {
-                val selectedCard = remember(uiState.creditCardId, availableCreditCards) {
-                    availableCreditCards.find { it.id == uiState.creditCardId }
+                val selectedCard = remember(uiState.creditCardId, activeCreditCards) {
+                    activeCreditCards.find { it.id == uiState.creditCardId }
                 }
                 val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
                 val effectiveDate = try {
@@ -659,7 +659,10 @@ fun InstallmentSection(
                     } else {
                         val tDate = LocalDate.parse(uiState.dateStr, displayFormatter)
                         if (selectedCard != null) {
-                            DateUtils.calculateEffectiveDate(tDate, selectedCard)
+                            DateUtils.calculateEffectiveDate(
+                                tDate,
+                                DateUtils.CardDateInfo(selectedCard.closingDay, selectedCard.paymentDay),
+                            )
                         } else {
                             tDate.plusMonths(1).withDayOfMonth(15).format(DateTimeFormatter.ISO_LOCAL_DATE)
                         }

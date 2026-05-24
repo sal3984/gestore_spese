@@ -128,6 +128,7 @@ fun mainApp() {
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle()
+    val activeCreditCards by viewModel.activeCreditCards.collectAsStateWithLifecycle()
     val allPaymentMethods by viewModel.allPaymentMethods.collectAsStateWithLifecycle()
     val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
     val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
@@ -463,7 +464,7 @@ fun mainApp() {
                                     navController.navigate("add_transaction/$transactionId")
                                 },
                                 isAmountHidden = isAmountHidden,
-                                creditCards = allCreditCards,
+                                creditCards = activeCreditCards,
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = this@composable,
                             )
@@ -642,7 +643,7 @@ fun mainApp() {
                                         viewModel.updateCurrencyRate(amount, from, to)
                                     },
                                     isCC = isCreditCardArg,
-                                    availableCreditCards = allCreditCards,
+                                    activeCreditCards = activeCreditCards,
                                     frequentExpenseCategories = frequentExpenseCategories,
                                     frequentIncomeCategories = frequentIncomeCategories,
                                     sharedTransitionScope = this@SharedTransitionLayout,
