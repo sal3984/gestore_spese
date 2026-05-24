@@ -379,7 +379,7 @@ fun PaymentMethodSection(
     isCC: Boolean = false,
 ) {
     AnimatedVisibility(
-        visible = isCC
+        visible = isCC,
     ) {
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

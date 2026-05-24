@@ -66,6 +66,8 @@ import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.usecase.AddTransactionSaveResult
+import com.expense.management.domain.usecase.AddTransactionSaveUseCase
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.CategoryImage
@@ -133,11 +135,13 @@ fun AddTransactionScreen(
                     LocalDate.now().format(displayFormatter)
                 },
                 installmentStartDateStr = if (transactionToEdit == null && isCC) {
-                    LocalDate.now().plusMonths(1).withDayOfMonth(15).format(displayFormatter)
+                    val defaultCard = availableCreditCards.firstOrNull()
+                    val paymentDay = (defaultCard?.paymentDay ?: 15).coerceIn(1, 28)
+                    LocalDate.now().plusMonths(1).withDayOfMonth(paymentDay).format(displayFormatter)
                 } else {
                     LocalDate.now().format(displayFormatter)
                 },
-            )
+            ),
         )
     }
 
@@ -152,7 +156,7 @@ fun AddTransactionScreen(
                         selectedCard.type == CardType.REVOLVING
                     } else {
                         ccPaymentMode == "installment"
-                    }
+                    },
                 )
             } else {
                 uiState = uiState.copy(isInstallment = false)
@@ -170,16 +174,17 @@ fun AddTransactionScreen(
     val saveUseCase = remember { AddTransactionSaveUseCase() }
 
     fun trySave() {
-        when (val result = saveUseCase(
-            uiState = uiState,
-            transactionToEdit = transactionToEdit,
-            availableCategories = availableCategories,
-            availableCreditCards = availableCreditCards,
-            isCC = isCC,
-            dateFormat = dateFormat,
-            locale = locale,
-            installmentLabel = installmentLabel,
-        )) {
+        when (
+            val result = saveUseCase(
+                uiState = uiState,
+                transactionToEdit = transactionToEdit,
+                availableCategories = availableCategories,
+                availableCreditCards = availableCreditCards,
+                dateFormat = dateFormat,
+                locale = locale,
+                installmentLabel = installmentLabel,
+            )
+        ) {
             is AddTransactionSaveResult.Ready -> {
                 result.transactions.forEach { onSave(it) }
                 onBack()
@@ -209,7 +214,7 @@ fun AddTransactionScreen(
                 val newCategory = availableCategories.firstOrNull { it.type == event.type }
                 uiState = uiState.copy(
                     type = event.type,
-                    selectedCategory = newCategory?.id ?: uiState.selectedCategory
+                    selectedCategory = newCategory?.id ?: uiState.selectedCategory,
                 )
             }
             is AddTransactionEvent.OnAmountChange -> uiState = uiState.copy(amountText = event.amount)

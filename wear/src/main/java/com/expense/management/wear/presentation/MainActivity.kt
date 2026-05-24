@@ -124,7 +124,7 @@ fun WearApp(onSendTransaction: (String, String) -> Unit) {
 
             item {
                 Text(
-                    text = if (amount.isEmpty()) "0" else amount,
+                    text = amount.ifEmpty { "0" },
                     style = MaterialTheme.typography.display3,
                     color = MaterialTheme.colors.primary,
                     textAlign = TextAlign.Center,

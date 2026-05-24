@@ -77,6 +77,8 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.CategoryImage
+import com.expense.management.utils.deleteImageFile
+import com.expense.management.utils.saveImageToInternalStorage
 import java.util.UUID
 
 private val availableIcons = listOf(
@@ -189,7 +191,10 @@ fun CategoryScreen(
                                 categoryToEdit = category
                                 showDialog = true
                             },
-                            onDelete = { onDeleteCategory(category.id) },
+                            onDelete = {
+                                category.imageUri?.let { deleteImageFile(context, it) }
+                                onDeleteCategory(category.id)
+                            },
                         )
                     }
                 }
@@ -313,11 +318,17 @@ fun CategoryDialog(
     val msg = stringResource(R.string.error_msg_name)
     val msgDuplicate = stringResource(R.string.error_category_already_exists)
 
+    val context = LocalContext.current
+    val oldImageUri = categoryToEdit?.imageUri
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri != null) {
-            imageUri = uri.toString()
+            val savedUri = saveImageToInternalStorage(context, uri.toString())
+            if (savedUri != null) {
+                imageUri = savedUri
+            }
         }
     }
 
@@ -463,6 +474,9 @@ fun CategoryDialog(
                         if (isDuplicate) {
                             errorMessage = msgDuplicate
                         } else {
+                            if (isEditing && oldImageUri != null && oldImageUri != imageUri) {
+                                deleteImageFile(context, oldImageUri)
+                            }
                             onConfirm(label, selectedIcon, imageUri)
                         }
                     }

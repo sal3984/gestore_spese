@@ -1,5 +1,7 @@
 package com.expense.management.utils
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -48,10 +50,13 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import java.io.File
+import java.io.FileOutputStream
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 
 // --- COMPONENTI UI CONDIVISI ---
 
@@ -315,4 +320,29 @@ fun CategoryImage(
             fontSize = (size.value * 0.5).sp,
         )
     }
+}
+
+fun saveImageToInternalStorage(context: Context, imageUri: String): String? {
+    return try {
+        val uri = Uri.parse(imageUri)
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val dir = File(context.filesDir, "category_images")
+            if (!dir.exists()) dir.mkdirs()
+            val fileName = "cat_${UUID.randomUUID()}.jpg"
+            val destFile = File(dir, fileName)
+            FileOutputStream(destFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+            destFile.toURI().toString()
+        }
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun deleteImageFile(context: Context, imageUri: String) {
+    try {
+        val file = File(Uri.parse(imageUri).path ?: return)
+        if (file.exists()) file.delete()
+    } catch (_: Exception) { }
 }
