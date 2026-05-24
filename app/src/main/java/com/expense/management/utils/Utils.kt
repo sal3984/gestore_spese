@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
@@ -333,7 +334,11 @@ fun saveImageToInternalStorage(context: Context, imageUri: String): String? {
             FileOutputStream(destFile).use { outputStream ->
                 inputStream.copyTo(outputStream)
             }
-            destFile.toURI().toString()
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                destFile,
+            ).toString()
         }
     } catch (e: Exception) {
         null
@@ -342,7 +347,12 @@ fun saveImageToInternalStorage(context: Context, imageUri: String): String? {
 
 fun deleteImageFile(context: Context, imageUri: String) {
     try {
-        val file = File(Uri.parse(imageUri).path ?: return)
-        if (file.exists()) file.delete()
+        val uri = Uri.parse(imageUri)
+        if (uri.scheme == "content") {
+            context.contentResolver.delete(uri, null, null)
+        } else {
+            val file = File(uri.path ?: return)
+            if (file.exists()) file.delete()
+        }
     } catch (_: Exception) { }
 }

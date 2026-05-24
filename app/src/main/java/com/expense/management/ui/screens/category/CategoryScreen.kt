@@ -1,7 +1,7 @@
 package com.expense.management.ui.screens.category
 
 import android.app.Activity
-import android.net.Uri
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
@@ -349,10 +350,16 @@ fun CategoryDialog(
             val dir = File(context.filesDir, "category_images")
             if (!dir.exists()) dir.mkdirs()
             val destFile = File(dir, "cat_${UUID.randomUUID()}.jpg")
-            val uCrop = UCrop.of(uri, Uri.fromFile(destFile))
+            val destUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                destFile,
+            )
+            val uCrop = UCrop.of(uri, destUri)
                 .withAspectRatio(1f, 1f)
                 .withMaxResultSize(512, 512)
             val intent = uCrop.getIntent(context)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             cropLauncher.launch(intent)
         }
     }
