@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,7 +68,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -91,38 +91,104 @@ private val availableIcons = listOf(
     "💻", "☕", "🍻", "🍕", "🥦", "🚕", "⛽", "🏥", "👠", "⚽", "🎤", "🎨",
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryScreen(
-    modifier: Modifier = Modifier,
     categories: List<CategoryEntity>,
     onAddCategory: (CategoryEntity) -> Unit,
     onUpdateCategory: (CategoryEntity) -> Unit,
     onDeleteCategory: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(TransactionType.EXPENSE) }
-    val selectedTabIndex = if (selectedTab == TransactionType.EXPENSE) 0 else 1
-    val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
-
     var showDialog by remember { mutableStateOf(false) }
     var categoryToEdit by remember { mutableStateOf<CategoryEntity?>(null) }
+    val context = LocalContext.current
+
+    CategoryScreenStateless(
+        state = CategoryUiState(
+            categories = categories,
+            selectedTab = selectedTab,
+            showDialog = showDialog,
+            categoryToEdit = categoryToEdit,
+        ),
+        onEvent = { event ->
+            when (event) {
+                is CategoryEvent.OnTabChanged -> selectedTab = event.tab
+                is CategoryEvent.OnAddCategoryClick -> {
+                    categoryToEdit = null
+                    showDialog = true
+                }
+                is CategoryEvent.OnEditCategoryClick -> {
+                    categoryToEdit = event.category
+                    showDialog = true
+                }
+                is CategoryEvent.OnDeleteCategoryClick -> onDeleteCategory(event.categoryId)
+                is CategoryEvent.OnDialogDismiss -> {
+                    showDialog = false
+                    categoryToEdit = null
+                }
+                is CategoryEvent.OnDialogConfirm -> {
+                    val oldImageUri = categoryToEdit?.imageUri
+                    if (oldImageUri != null && oldImageUri != event.imageUri) {
+                        deleteImageFile(context, oldImageUri)
+                    }
+                    if (categoryToEdit == null) {
+                        val exists = categories.any {
+                            it.label.equals(event.label.trim(), ignoreCase = true) && it.type == selectedTab
+                        }
+                        if (!exists) {
+                            onAddCategory(
+                                CategoryEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    label = event.label.trim(),
+                                    icon = event.icon,
+                                    type = selectedTab,
+                                    isCustom = true,
+                                    imageUri = event.imageUri,
+                                ),
+                            )
+                        }
+                    } else {
+                        onUpdateCategory(
+                            categoryToEdit!!.copy(
+                                label = event.label.trim(),
+                                icon = event.icon,
+                                imageUri = event.imageUri,
+                            ),
+                        )
+                    }
+                    showDialog = false
+                    categoryToEdit = null
+                }
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryScreenStateless(
+    state: CategoryUiState,
+    onEvent: (CategoryEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val selectedTabIndex = if (state.selectedTab == TransactionType.EXPENSE) 0 else 1
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = {
-                    categoryToEdit = null
-                    showDialog = true
-                },
+                onClick = { onEvent(CategoryEvent.OnAddCategoryClick) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 text = { Text(stringResource(R.string.new_category)) },
                 icon = { Icon(Icons.Default.Add, stringResource(R.string.add_icon_desc)) },
             )
         },
+        modifier = modifier,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -130,116 +196,139 @@ fun CategoryScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            PrimaryTabRow(
+            CategoryTabRow(
+                selectedTab = state.selectedTab,
+                onTabChange = { onEvent(CategoryEvent.OnTabChanged(it)) },
                 selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
-                indicator = {
-                    TabRowDefaults.PrimaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(selectedTabIndex),
-                        width = Dp.Unspecified,
-                        shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
-                    )
-                },
-                divider = {},
-            ) {
-                Tab(
-                    selected = selectedTab == TransactionType.EXPENSE,
-                    onClick = { selectedTab = TransactionType.EXPENSE },
-                    text = { Text(stringResource(R.string.expenses_tab), fontWeight = if (selectedTab == TransactionType.EXPENSE) FontWeight.Bold else FontWeight.Normal) },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Tab(
-                    selected = selectedTab == TransactionType.INCOME,
-                    onClick = { selectedTab = TransactionType.INCOME },
-                    text = { Text(stringResource(R.string.income_tab), fontWeight = if (selectedTab == TransactionType.INCOME) FontWeight.Bold else FontWeight.Normal) },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-            val filteredCategories = categories.filter { it.isCustom && it.type == selectedTab }
+            Crossfade(
+                targetState = state.selectedTab,
+                modifier = Modifier.weight(1f),
+            ) { _ ->
+                val filteredCategories = state.categories.filter { it.isCustom && it.type == state.selectedTab }
 
-            if (filteredCategories.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Category,
-                            contentDescription = stringResource(R.string.category_icon),
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.surfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.no_custom_categories),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(bottom = 88.dp, top = 16.dp, start = 16.dp, end = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(filteredCategories, key = { it.id }) { category ->
-                        CategoryCard(
-                            category = category,
-                            onEdit = {
-                                categoryToEdit = category
-                                showDialog = true
-                            },
-                            onDelete = {
-                                category.imageUri?.let { deleteImageFile(context, it) }
-                                onDeleteCategory(category.id)
-                            },
-                        )
-                    }
+                if (filteredCategories.isEmpty()) {
+                    CategoryEmptyState()
+                } else {
+                    CategoryList(
+                        categories = filteredCategories,
+                        onEdit = { onEvent(CategoryEvent.OnEditCategoryClick(it)) },
+                        onDelete = { onEvent(CategoryEvent.OnDeleteCategoryClick(it.id)) },
+                    )
                 }
             }
         }
     }
 
-    if (showDialog) {
+    if (state.showDialog) {
         CategoryDialog(
-            type = selectedTab,
-            existingCategories = categories,
-            categoryToEdit = categoryToEdit,
-            onDismiss = { showDialog = false },
+            type = state.selectedTab,
+            existingCategories = state.categories,
+            categoryToEdit = state.categoryToEdit,
+            onDismiss = { onEvent(CategoryEvent.OnDialogDismiss) },
             onConfirm = { label, icon, imageUri ->
-                if (categoryToEdit == null) {
-                    val exists = categories.any {
-                        it.label.equals(label.trim(), ignoreCase = true) && it.type == selectedTab
-                    }
-
-                    if (!exists) {
-                        val newCategory = CategoryEntity(
-                            id = UUID.randomUUID().toString(),
-                            label = label.trim(),
-                            icon = icon,
-                            type = selectedTab,
-                            isCustom = true,
-                            imageUri = imageUri,
-                        )
-                        onAddCategory(newCategory)
-                    }
-                } else {
-                    val updatedCategory = categoryToEdit!!.copy(
-                        label = label.trim(),
-                        icon = icon,
-                        imageUri = imageUri,
-                    )
-                    onUpdateCategory(updatedCategory)
-                }
-                showDialog = false
+                onEvent(CategoryEvent.OnDialogConfirm(label, icon, imageUri))
             },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryTabRow(
+    selectedTab: TransactionType,
+    onTabChange: (TransactionType) -> Unit,
+    selectedTabIndex: Int,
+    modifier: Modifier = Modifier,
+) {
+    PrimaryTabRow(
+        selectedTabIndex = selectedTabIndex,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.primary,
+        indicator = {
+            TabRowDefaults.PrimaryIndicator(
+                modifier = Modifier.tabIndicatorOffset(selectedTabIndex),
+                width = Dp.Unspecified,
+                shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp),
+            )
+        },
+        divider = {},
+        modifier = modifier,
+    ) {
+        Tab(
+            selected = selectedTab == TransactionType.EXPENSE,
+            onClick = { onTabChange(TransactionType.EXPENSE) },
+            text = {
+                Text(
+                    stringResource(R.string.expenses_tab),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            },
+            selectedContentColor = MaterialTheme.colorScheme.primary,
+            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Tab(
+            selected = selectedTab == TransactionType.INCOME,
+            onClick = { onTabChange(TransactionType.INCOME) },
+            text = {
+                Text(
+                    stringResource(R.string.income_tab),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            },
+            selectedContentColor = MaterialTheme.colorScheme.primary,
+            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun CategoryEmptyState(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.Category,
+                contentDescription = stringResource(R.string.category_icon),
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.surfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.no_custom_categories),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryList(
+    categories: List<CategoryEntity>,
+    onEdit: (CategoryEntity) -> Unit,
+    onDelete: (CategoryEntity) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = 88.dp, top = 16.dp, start = 16.dp, end = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier,
+    ) {
+        items(categories, key = { it.id }) { category ->
+            CategoryCard(
+                category = category,
+                onEdit = { onEdit(category) },
+                onDelete = { onDelete(category) },
+            )
+        }
     }
 }
 
@@ -276,7 +365,7 @@ fun CategoryCard(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     category.label,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
@@ -537,5 +626,55 @@ private fun CategoryPreview() {
 private fun CategoryPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
         CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Category Card Light")
+@Composable
+private fun CategoryCardPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryCard(
+            category = CategoryEntity(id = "test", label = "Cibo", icon = "🍔", type = TransactionType.EXPENSE, isCustom = true),
+            onEdit = {},
+            onDelete = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Category Card Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun CategoryCardPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        CategoryCard(
+            category = CategoryEntity(id = "test", label = "Cibo", icon = "🍔", type = TransactionType.EXPENSE, isCustom = true),
+            onEdit = {},
+            onDelete = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Category Dialog Light")
+@Composable
+private fun CategoryDialogPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryDialog(
+            type = TransactionType.EXPENSE,
+            existingCategories = emptyList(),
+            onDismiss = {},
+            onConfirm = { _, _, _ -> },
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Category Dialog Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun CategoryDialogPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        CategoryDialog(
+            type = TransactionType.EXPENSE,
+            existingCategories = emptyList(),
+            onDismiss = {},
+            onConfirm = { _, _, _ -> },
+        )
     }
 }
