@@ -124,8 +124,8 @@
     <string name="expenses_tab">EXPENSES</string>
     <string name="income_tab">INCOME</string>
     <string name="no_custom_categories">No custom categories</string>
-    <string name="new_expense_dialog">New Expense</string>
-    <string name="new_income_dialog">New Income</string>
+    <string name="new_expense_dialog">New Category</string>
+    <string name="new_income_dialog">New Category</string>
     <string name="category_name_label">Category Name</string>
     <string name="choose_icon_label">Choose an icon:</string>
     <string name="preview_label">Preview: </string>
@@ -234,6 +234,10 @@
     <string name="insert_emoji">Insert category name and choose icon or emoji </string>
     <string name="edit_category">Update Category</string>
     <string name="suggest">Suggest:</string>
+    <string name="collapse">Collapse</string>
+    <string name="expand">Expand</string>
+    <string name="emoji_button">Emoji</string>
+    <string name="photo_button">Photo</string>
 
     <string name="error_msg_name">Name is required</string>
     <string name="error_msg_icon">Icon is required</string>

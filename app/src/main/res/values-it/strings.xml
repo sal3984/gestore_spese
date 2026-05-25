@@ -107,8 +107,8 @@
     <string name="expenses_tab">SPESE</string>
     <string name="income_tab">ENTRATE</string>
     <string name="no_custom_categories">Nessuna categoria personalizzata</string>
-    <string name="new_expense_dialog">Nuova Spesa</string>
-    <string name="new_income_dialog">Nuova Entrata</string>
+    <string name="new_expense_dialog">Nuova Categoria</string>
+    <string name="new_income_dialog">Nuova Categoria</string>
     <string name="category_name_label">Nome Categoria</string>
     <string name="choose_icon_label">Scegli un\'icona:</string>
     <string name="preview_label">Anteprima: </string>
@@ -211,6 +211,10 @@
     <string name="insert_emoji">Inserisci il nome e scegli un\'icona o un \'emoji.</string>
     <string name="edit_category">Aggiorna Categoria</string>
     <string name="suggest">Suggerite:</string>
+    <string name="collapse">Comprimi</string>
+    <string name="expand">Espandi</string>
+    <string name="emoji_button">Emoji</string>
+    <string name="photo_button">Foto</string>
     <string name="error_msg_name">Il nome è obbligatorio</string>
     <string name="error_msg_icon">L\'icona è obbligatoria</string>
 

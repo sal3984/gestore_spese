@@ -5,7 +5,11 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,15 +43,16 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -68,7 +73,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -342,7 +346,7 @@ fun CategoryCard(
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -390,7 +394,6 @@ fun CategoryCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CategoryDialog(
     modifier: Modifier = Modifier,
@@ -404,49 +407,31 @@ fun CategoryDialog(
     var selectedIcon by remember { mutableStateOf(categoryToEdit?.icon ?: "🏷️") }
     var imageUri by remember { mutableStateOf<String?>(categoryToEdit?.imageUri) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
 
     val isEditing = categoryToEdit != null
-    val dialogTitle = if (isEditing) stringResource(R.string.edit_category) else if (type == TransactionType.EXPENSE) stringResource(R.string.new_expense_dialog) else stringResource(R.string.new_income_dialog)
-
+    val dialogTitle = if (isEditing) stringResource(R.string.edit_category) else stringResource(R.string.new_expense_dialog)
     val msg = stringResource(R.string.error_msg_name)
     val msgDuplicate = stringResource(R.string.error_category_already_exists)
-
     val context = LocalContext.current
     val oldImageUri = categoryToEdit?.imageUri
-
     var lastPickedUri by remember { mutableStateOf<String?>(null) }
 
-    val cropLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
+    val cropLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            val croppedUri = UCrop.getOutput(result.data!!)
-            imageUri = croppedUri?.toString() ?: lastPickedUri
+            imageUri = UCrop.getOutput(result.data!!)?.toString() ?: lastPickedUri
         } else if (result.resultCode == UCrop.RESULT_ERROR) {
-            lastPickedUri?.let { original ->
-                saveImageToInternalStorage(context, original)?.let { imageUri = it }
-            }
+            lastPickedUri?.let { saveImageToInternalStorage(context, it)?.let { uri -> imageUri = uri } }
         }
         lastPickedUri = null
     }
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
+    val photoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             lastPickedUri = uri.toString()
-            val dir = File(context.filesDir, "category_images")
-            if (!dir.exists()) dir.mkdirs()
-            val destFile = File(dir, "cat_${UUID.randomUUID()}.jpg")
-            val destUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                destFile,
-            )
-            val uCrop = UCrop.of(uri, destUri)
-                .withAspectRatio(1f, 1f)
-                .withMaxResultSize(512, 512)
-            val intent = uCrop.getIntent(context)
+            val dir = File(context.filesDir, "category_images").also { if (!it.exists()) it.mkdirs() }
+            val destUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(dir, "cat_${UUID.randomUUID()}.jpg"))
+            val intent = UCrop.of(uri, destUri).withAspectRatio(1f, 1f).withMaxResultSize(512, 512).getIntent(context)
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             cropLauncher.launch(intent)
         }
@@ -456,128 +441,33 @@ fun CategoryDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = dialogTitle, style = MaterialTheme.typography.headlineSmall) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
-                            .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (imageUri != null) {
-                            AsyncImage(
-                                model = imageUri,
-                                contentDescription = stringResource(R.string.change_image),
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop,
-                            )
-                            Box(
-                                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Default.PhotoCamera, stringResource(R.string.change_image), tint = MaterialTheme.colorScheme.onPrimary)
-                            }
-                        } else {
-                            Text(text = selectedIcon, style = MaterialTheme.typography.displayMedium)
-                        }
-                    }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                CategoryDialogIconPicker(
+                    selectedIcon = selectedIcon,
+                    imageUri = imageUri,
+                    onPickImage = { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onRemoveImage = { imageUri = null },
+                    onIconSelect = { icon ->
+                        selectedIcon = icon
+                        imageUri = null
+                    },
+                )
 
-                    if (imageUri != null) {
-                        IconButton(onClick = { imageUri = null }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove_image), tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
+                CategoryDialogNameField(
                     value = label,
+                    isError = errorMessage != null,
+                    errorMessage = errorMessage,
                     onValueChange = {
                         label = it
                         errorMessage = null
                     },
-                    label = { Text(stringResource(R.string.category_name_label)) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = errorMessage != null,
-                    supportingText = {
-                        if (errorMessage != null) {
-                            Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
-                        }
-                    },
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.icon_or_emoji),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    OutlinedTextField(
-                        value = selectedIcon,
-                        onValueChange = { selectedIcon = it },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.width(70.dp),
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
-                    )
-
-                    Button(
-                        onClick = { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(Icons.Default.Image, stringResource(R.string.select_image), modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.image), style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = stringResource(R.string.suggest),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxItemsInEachRow = 6,
-                ) {
-                    availableIcons.forEach { icon ->
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(if (selectedIcon == icon && imageUri == null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable {
-                                    selectedIcon = icon
-                                    imageUri = null
-                                },
-                        ) {
-                            Text(text = icon, style = MaterialTheme.typography.titleLarge)
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
@@ -586,23 +476,27 @@ fun CategoryDialog(
                     if (label.isBlank()) {
                         errorMessage = msg
                     } else {
-                        val isDuplicate = existingCategories.any {
-                            it.label.equals(label.trim(), ignoreCase = true) &&
-                                it.type == type &&
-                                it.id != categoryToEdit?.id
-                        }
+                        val isDuplicate = existingCategories.any { it.label.equals(label.trim(), ignoreCase = true) && it.type == type && it.id != categoryToEdit?.id }
                         if (isDuplicate) {
                             errorMessage = msgDuplicate
                         } else {
-                            if (isEditing && oldImageUri != null && oldImageUri != imageUri) {
-                                deleteImageFile(context, oldImageUri)
-                            }
+                            isSaving = true
+                            if (isEditing && oldImageUri != null && oldImageUri != imageUri) deleteImageFile(context, oldImageUri)
                             onConfirm(label, selectedIcon, imageUri)
                         }
                     }
                 },
+                enabled = !isSaving,
             ) {
-                Text(stringResource(R.string.save))
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text(stringResource(R.string.save))
+                }
             }
         },
         dismissButton = {
@@ -610,7 +504,159 @@ fun CategoryDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        modifier = modifier,
     )
+}
+
+@Composable
+private fun CategoryDialogIconPicker(
+    selectedIcon: String,
+    imageUri: String?,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
+    onIconSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showGrid by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
+                    .clickable { if (imageUri != null && !showGrid) onPickImage() },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (imageUri != null && !showGrid) {
+                    AsyncImage(
+                        model = imageUri,
+                        contentDescription = stringResource(R.string.change_image),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(R.string.change_image), tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                } else {
+                    Text(text = selectedIcon, style = MaterialTheme.typography.displayMedium)
+                }
+            }
+
+            AnimatedVisibility(
+                visible = imageUri != null && !showGrid,
+                enter = expandVertically(animationSpec = tween(200)),
+                exit = shrinkVertically(animationSpec = tween(200)),
+            ) {
+                IconButton(onClick = onRemoveImage) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.remove_image), tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = { showGrid = !showGrid },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = "😊", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.emoji_button), style = MaterialTheme.typography.labelSmall)
+            }
+            OutlinedButton(
+                onClick = {
+                    showGrid = false
+                    onPickImage()
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.photo_button), style = MaterialTheme.typography.labelSmall)
+            }
+        }
+
+        if (showGrid) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CategoryIconGrid(
+                availableIcons = availableIcons,
+                selectedIcon = selectedIcon,
+                selectedImageUri = imageUri,
+                onIconSelect = { icon ->
+                    onIconSelect(icon)
+                    showGrid = false
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryDialogNameField(
+    value: String,
+    isError: Boolean,
+    errorMessage: String?,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(stringResource(R.string.category_name_label)) },
+        singleLine = true,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier.fillMaxWidth(),
+        isError = isError,
+        supportingText = {
+            AnimatedVisibility(visible = isError, enter = expandVertically(animationSpec = tween(200)), exit = shrinkVertically(animationSpec = tween(200))) {
+                Text(errorMessage ?: "", color = MaterialTheme.colorScheme.error)
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategoryIconGrid(
+    availableIcons: List<String>,
+    selectedIcon: String,
+    selectedImageUri: String?,
+    onIconSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = 6,
+    ) {
+        availableIcons.forEach { icon ->
+            val isSelected = selectedIcon == icon && selectedImageUri == null
+            val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(bgColor)
+                    .clickable { onIconSelect(icon) },
+            ) {
+                Text(text = icon, style = MaterialTheme.typography.titleLarge)
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true, name = "Category Light")
@@ -649,6 +695,41 @@ private fun CategoryCardPreviewDark() {
             category = CategoryEntity(id = "test", label = "Cibo", icon = "🍔", type = TransactionType.EXPENSE, isCustom = true),
             onEdit = {},
             onDelete = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Dialog Icon Picker Light")
+@Composable
+private fun CategoryDialogIconPickerPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryDialogIconPicker(
+            selectedIcon = "🍔",
+            imageUri = null,
+            onPickImage = {},
+            onRemoveImage = {},
+            onIconSelect = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Dialog Name Field Light")
+@Composable
+private fun CategoryDialogNameFieldPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryDialogNameField(value = "", isError = true, errorMessage = "Nome obbligatorio", onValueChange = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Dialog Icon Grid Light")
+@Composable
+private fun CategoryIconGridPreview() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        CategoryIconGrid(
+            availableIcons = availableIcons.take(12),
+            selectedIcon = "🍔",
+            selectedImageUri = null,
+            onIconSelect = {},
         )
     }
 }
