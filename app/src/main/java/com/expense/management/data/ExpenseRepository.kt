@@ -12,6 +12,9 @@ class ExpenseRepository(
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()
 
+    fun getTransactionsBetween(startDate: String, endDate: String): Flow<List<TransactionEntity>> =
+        transactionDao.getBetweenFlow(startDate, endDate)
+
     suspend fun insertTransaction(transaction: TransactionEntity) {
         transactionDao.insert(transaction)
     }

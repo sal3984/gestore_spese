@@ -129,6 +129,7 @@ fun ReportScreen(
     error: String? = null,
     onRetry: () -> Unit = {},
     allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
+    onRangeChanged: (YearMonth, YearMonth) -> Unit = { _, _ -> },
 ) {
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -155,7 +156,7 @@ fun ReportScreen(
     val locale = ComposeLocale.current.platformLocale
     // --- 1. STATO DEL MESE SELEZIONATO ---
     var selectedReportMonth by remember { mutableStateOf<YearMonth?>(YearMonth.now()) }
-    var reportStartMonth by remember { mutableStateOf(YearMonth.now().minusMonths(11)) }
+    var reportStartMonth by remember { mutableStateOf(YearMonth.now().minusMonths(2)) }
     var reportEndMonth by remember { mutableStateOf(YearMonth.now()) }
 
     // --- STATO PER I DETTAGLI DELLE TRANSAZIONI PER CATEGORIA ---
@@ -170,6 +171,7 @@ fun ReportScreen(
             selectedReportMonth!!.isAfter(reportEndMonth) -> reportEndMonth
             else -> selectedReportMonth
         }
+        onRangeChanged(reportStartMonth, reportEndMonth)
     }
 
     // Single-pass: iterate transactions once, derive all aggregates (background thread)
@@ -192,7 +194,6 @@ fun ReportScreen(
                         LocalDate.parse(tx.effectiveDate)
                     },
                 )
-                if (ym.isBefore(reportStartMonth) || ym.isAfter(reportEndMonth)) continue
 
                 total += if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
 
@@ -333,9 +334,6 @@ fun ReportScreen(
                             if (newStartMonth.isAfter(reportEndMonth)) {
                                 reportEndMonth = newStartMonth
                             }
-                            if (newStartMonth.plusMonths(11).isBefore(reportEndMonth)) {
-                                reportEndMonth = newStartMonth.plusMonths(11)
-                            }
                             reportStartMonth = newStartMonth
                         },
                         label = stringResource(R.string.start_month),
@@ -347,9 +345,6 @@ fun ReportScreen(
                         onMonthSelected = { newEndMonth ->
                             if (newEndMonth.isBefore(reportStartMonth)) {
                                 reportStartMonth = newEndMonth
-                            }
-                            if (newEndMonth.minusMonths(11).isAfter(reportStartMonth)) {
-                                reportStartMonth = newEndMonth.minusMonths(11)
                             }
                             reportEndMonth = newEndMonth
                         },

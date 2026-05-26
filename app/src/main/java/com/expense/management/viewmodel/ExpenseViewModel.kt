@@ -41,17 +41,20 @@ import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
 import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ExpenseViewModel(
     private val repository: ExpenseRepository,
     private val currencyUtils: CurrencyUtils,
@@ -104,6 +107,23 @@ class ExpenseViewModel(
     val allTransactions: StateFlow<List<TransactionEntity>> =
         getTransactionsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _reportRange = MutableStateFlow(
+        Pair(YearMonth.now().minusMonths(2), YearMonth.now()),
+    )
+
+    val reportTransactions: StateFlow<List<TransactionEntity>> = _reportRange
+        .flatMapLatest { (start, end) ->
+            repository.getTransactionsBetween(
+                start.atDay(1).toString(),
+                end.atEndOfMonth().toString(),
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setReportRange(start: YearMonth, end: YearMonth) {
+        _reportRange.value = start to end
+    }
 
     // DATI CATEGORIE
     val allCategories: StateFlow<List<CategoryEntity>> =

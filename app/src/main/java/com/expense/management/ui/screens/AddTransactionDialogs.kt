@@ -36,7 +36,7 @@ import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.DeleteType
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -209,7 +209,7 @@ fun TransactionDatePicker(
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = try {
             LocalDate.parse(currentDate, displayFormatter)
-                .atStartOfDay(ZoneId.systemDefault())
+                .atStartOfDay(ZoneOffset.UTC)
                 .toInstant()
                 .toEpochMilli()
         } catch (e: Exception) {
@@ -221,7 +221,7 @@ fun TransactionDatePicker(
         confirmButton = {
             TextButton(onClick = {
                 datePickerState.selectedDateMillis?.let { millis ->
-                    val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     onDateSelected(selectedDate.format(displayFormatter))
                 }
                 onDismiss()
@@ -243,7 +243,7 @@ fun InstallmentDatePicker(
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = try {
             LocalDate.parse(currentDate, displayFormatter)
-                .atStartOfDay(ZoneId.systemDefault())
+                .atStartOfDay(ZoneOffset.UTC)
                 .toInstant()
                 .toEpochMilli()
         } catch (e: Exception) {
@@ -255,7 +255,7 @@ fun InstallmentDatePicker(
         confirmButton = {
             TextButton(onClick = {
                 datePickerState.selectedDateMillis?.let { millis ->
-                    val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     onDateSelected(selectedDate.format(displayFormatter))
                 }
                 onDismiss()

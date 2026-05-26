@@ -11,6 +11,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY effectiveDate ASC")
     fun getAllFlow(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions WHERE effectiveDate >= :startDate AND effectiveDate <= :endDate ORDER BY effectiveDate ASC")
+    fun getBetweenFlow(startDate: String, endDate: String): Flow<List<TransactionEntity>>
+
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     suspend fun getAllList(): List<TransactionEntity>
 

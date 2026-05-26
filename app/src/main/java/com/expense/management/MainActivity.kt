@@ -129,6 +129,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
+    val reportTransactions by viewModel.reportTransactions.collectAsStateWithLifecycle()
     val allCategories by viewModel.allCategories.collectAsStateWithLifecycle()
     val currentCurrency by viewModel.currency.collectAsStateWithLifecycle()
     val currentCcLimit by viewModel.ccLimit.collectAsStateWithLifecycle()
@@ -498,12 +499,15 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                             exitTransition = { fadeOut(animationSpec = tween(300)) },
                         ) {
                             ReportScreen(
-                                transactions = allTransactions,
+                                transactions = reportTransactions,
                                 categories = allCategories,
                                 currencySymbol = currentCurrency,
                                 dateFormat = currentDateFormat,
                                 isAmountHidden = isAmountHidden,
                                 allPaymentMethods = allPaymentMethods,
+                                onRangeChanged = { start, end ->
+                                    viewModel.setReportRange(start, end)
+                                },
                             )
                         }
 
