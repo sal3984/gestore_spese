@@ -224,6 +224,7 @@ fun TransactionDatePicker(
                     val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
                     onDateSelected(selectedDate.format(displayFormatter))
                 }
+                onDismiss()
             }) { Text(stringResource(R.string.ok)) }
         },
     ) {
@@ -257,6 +258,7 @@ fun InstallmentDatePicker(
                     val selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
                     onDateSelected(selectedDate.format(displayFormatter))
                 }
+                onDismiss()
             }) { Text(stringResource(R.string.ok)) }
         },
     ) {

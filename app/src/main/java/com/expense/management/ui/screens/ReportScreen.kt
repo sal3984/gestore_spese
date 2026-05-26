@@ -32,6 +32,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Warning
@@ -54,9 +56,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -79,6 +81,8 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.getLocalizedCategoryLabel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -94,17 +98,23 @@ private val formatterCache = java.util.concurrent.ConcurrentHashMap<String, Date
 
 private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
     val cachedFormatter = formatterCache.getOrPut(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
-    val formatters = listOf(DateTimeFormatter.ISO_LOCAL_DATE, cachedFormatter)
-    for (formatter in formatters) {
+    return try {
+        LocalDate.parse(dateString, cachedFormatter)
+    } catch (_: Exception) {
         try {
-            return LocalDate.parse(dateString, formatter)
-        } catch (e: Exception) {
-            // ignore and try next
+            LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (_: Exception) {
+            LocalDate.now()
         }
     }
-    // Fallback to avoid crash
-    return LocalDate.now()
 }
+
+private data class ReportCalcData(
+    val savings: Double,
+    val monthlyBalances: List<Pair<YearMonth, Double>>,
+    val expenseByCategory: List<Pair<String, Double>>,
+    val totalMonthlyExpense: Double,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,65 +172,68 @@ fun ReportScreen(
         }
     }
 
-    // Calcolo Risparmio Anno Corrente
-    val savings: Double by remember(transactions, reportStartMonth, reportEndMonth) {
-        derivedStateOf {
-            transactions
-                .filter { transaction ->
-                    try {
-                        val transactionMonth = YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat))
-                        !transactionMonth.isBefore(reportStartMonth) && !transactionMonth.isAfter(reportEndMonth)
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-                .sumOf { if (it.type == TransactionType.INCOME) it.amount else -it.amount }
-        }
-    }
+    // Single-pass: iterate transactions once, derive all aggregates (background thread)
+    val reportData by produceState<ReportCalcData?>(
+        initialValue = null,
+        key1 = transactions,
+        key2 = reportStartMonth,
+        key3 = reportEndMonth,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            val dateCache = HashMap<String, LocalDate>(transactions.size)
+            val monthIncome = HashMap<YearMonth, Double>()
+            val monthExpense = HashMap<YearMonth, Double>()
+            val categoryExpense = HashMap<String, Double>()
+            var total = 0.0
 
-    // --- 2. CALCOLO SPESE PER CATEGORIA (DINAMICO) ---
-    val monthToShow = selectedReportMonth ?: reportEndMonth
+            for (tx in transactions) {
+                val ym = YearMonth.from(
+                    dateCache.getOrPut(tx.effectiveDate) {
+                        LocalDate.parse(tx.effectiveDate)
+                    },
+                )
+                if (ym.isBefore(reportStartMonth) || ym.isAfter(reportEndMonth)) continue
 
-    val expenseByCategory: List<Pair<String, Double>> by remember(transactions, monthToShow) {
-        derivedStateOf {
-            transactions
-                .filter {
-                    it.type == TransactionType.EXPENSE && try {
-                        YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow
-                    } catch (e: Exception) {
-                        false
-                    }
-                }
-                .groupBy { it.categoryId }
-                .mapValues { (_, transactions) -> transactions.sumOf { it.amount } }
-                .toList()
-                .sortedByDescending { it.second }
-        }
-    }
+                total += if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
 
-    val totalMonthlyExpense: Double by remember {
-        derivedStateOf { expenseByCategory.sumOf { it.second } }
-    }
-
-    // Calcolo Bilancio Mensile (Range Selezionato)
-    val monthlyBalances: List<Pair<YearMonth, Double>> = remember(transactions, reportStartMonth, reportEndMonth) {
-        val balances = mutableListOf<Pair<YearMonth, Double>>()
-        var current = reportStartMonth
-        while (!current.isAfter(reportEndMonth)) {
-            val monthlyTransactions = transactions.filter { transaction ->
-                try {
-                    YearMonth.from(parseDateSafe(transaction.effectiveDate, dateFormat)) == current
-                } catch (e: Exception) {
-                    false
+                if (tx.type == TransactionType.EXPENSE) {
+                    categoryExpense.merge(tx.categoryId, tx.amount, Double::plus)
+                    monthExpense.merge(ym, tx.amount, Double::plus)
+                } else {
+                    monthIncome.merge(ym, tx.amount, Double::plus)
                 }
             }
-            val income = monthlyTransactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-            val expense = monthlyTransactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-            balances.add(current to (income - expense))
-            current = current.plusMonths(1)
+
+            val monthlyBalances = mutableListOf<Pair<YearMonth, Double>>()
+            var current = reportStartMonth
+            while (!current.isAfter(reportEndMonth)) {
+                monthlyBalances.add(current to ((monthIncome[current] ?: 0.0) - (monthExpense[current] ?: 0.0)))
+                current = current.plusMonths(1)
+            }
+
+            val expenseByCategory = categoryExpense.toList().sortedByDescending { it.second }
+
+            ReportCalcData(
+                savings = total,
+                monthlyBalances = monthlyBalances,
+                expenseByCategory = expenseByCategory,
+                totalMonthlyExpense = expenseByCategory.sumOf { it.second },
+            )
         }
-        balances
     }
+
+    if (reportData == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val data = reportData!!
+    val savings = data.savings
+    val expenseByCategory = data.expenseByCategory
+    val totalMonthlyExpense = data.totalMonthlyExpense
+    val monthlyBalances = data.monthlyBalances
 
     val scrollState = rememberScrollState()
 
@@ -258,7 +271,37 @@ fun ReportScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(
+                        stringResource(R.string.total_savings),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                    )
+                    Text(
+                        text = if (isAmountHidden) {
+                            "$currencySymbol *****"
+                        } else {
+                            "$currencySymbol ${String.format(locale, "%.2f", savings)}"
+                        },
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = if (savings >= 0) {
+                        Icons.AutoMirrored.Filled.TrendingUp
+                    } else {
+                        Icons.AutoMirrored.Filled.TrendingDown
+                    },
+                    contentDescription = stringResource(R.string.savings_trend),
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
         }
 
         // --- MONTH FILTERS CARD ---
@@ -371,11 +414,17 @@ fun ReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- 4. TITOLO DINAMICO ---
-            val monthName = monthToShow.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)).capitalizeFirstLetter(locale)
+            // --- 4. TITOLO DINAMICO (Range) ---
+            val rangeLabel = if (reportStartMonth == reportEndMonth) {
+                reportStartMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)).capitalizeFirstLetter(locale)
+            } else {
+                val start = reportStartMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", locale)).capitalizeFirstLetter(locale)
+                val end = reportEndMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", locale)).capitalizeFirstLetter(locale)
+                "$start - $end"
+            }
 
             Text(
-                stringResource(R.string.category_detail_current_month, monthName),
+                stringResource(R.string.category_detail_current_month, rangeLabel),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -506,11 +555,15 @@ fun ReportScreen(
             ) {
                 val categoryId = selectedCategoryIdForDetails!!
                 val category = categories.firstOrNull { it.id == categoryId }
-                val transactionsForSelectedCategory = remember(transactions, monthToShow, categoryId) {
+                val transactionsForSelectedCategory = remember(transactions, reportStartMonth, reportEndMonth, categoryId) {
                     transactions.filter {
                         it.type == TransactionType.EXPENSE &&
-                            YearMonth.from(parseDateSafe(it.effectiveDate, dateFormat)) == monthToShow &&
-                            it.categoryId == categoryId
+                            it.categoryId == categoryId && try {
+                                val m = YearMonth.from(LocalDate.parse(it.effectiveDate))
+                                !m.isBefore(reportStartMonth) && !m.isAfter(reportEndMonth)
+                            } catch (e: Exception) {
+                                false
+                            }
                     }.sortedByDescending { parseDateSafe(it.date, dateFormat) }
                 }
 
@@ -547,10 +600,10 @@ fun MonthSelector(
         modifier = modifier,
     ) {
         OutlinedTextField(
-            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)).capitalizeFirstLetter(locale),
+            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", locale)).capitalizeFirstLetter(locale),
             onValueChange = { /* Read Only */ },
             readOnly = true,
-            maxLines = 1,
+            singleLine = true,
             textStyle = MaterialTheme.typography.titleMedium,
 
             label = { Text(text = label) },
