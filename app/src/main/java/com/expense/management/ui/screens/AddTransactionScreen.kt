@@ -126,7 +126,8 @@ fun AddTransactionScreen(
                 originalAmountText = transactionToEdit?.originalAmount?.toString() ?: "",
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1,
-                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
+                isRecurrenceEnabled = transactionToEdit?.recurrenceType?.let { it != RecurrenceType.NONE } ?: false,
+                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.MONTHLY,
                 recurrenceLimit = transactionToEdit?.recurrenceLimit ?: 12,
                 installmentsCount = transactionToEdit?.totalInstallments ?: 3,
                 dateStr = if (transactionToEdit != null) {
@@ -241,6 +242,10 @@ fun AddTransactionScreen(
             is AddTransactionEvent.OnOriginalCurrencyChange -> uiState = uiState.copy(originalCurrency = event.currency)
             is AddTransactionEvent.OnShowCurrencyDialog -> uiState = uiState.copy(showCurrencyDialog = event.show)
             is AddTransactionEvent.OnIsInstallmentChange -> uiState = uiState.copy(isInstallment = event.isInstallment)
+            is AddTransactionEvent.OnRecurrenceEnabledChange -> uiState = uiState.copy(
+                isRecurrenceEnabled = event.enabled,
+                recurrenceType = if (event.enabled) uiState.recurrenceType else RecurrenceType.NONE,
+            )
             is AddTransactionEvent.OnRecurrenceTypeChange -> uiState = uiState.copy(recurrenceType = event.recurrenceType)
             is AddTransactionEvent.OnRecurrenceLimitChange -> uiState = uiState.copy(recurrenceLimit = event.limit)
             is AddTransactionEvent.OnShowRecurrenceTypeDialog -> uiState = uiState.copy(showRecurrenceTypeDialog = event.show)
@@ -509,7 +514,39 @@ private fun AddTransactionContent(
             animatedVisibilityScope = animatedVisibilityScope,
         )
 
+        if (!isEditing) {
+            Spacer(modifier = Modifier.height(12.dp))
+            RecurrenceSection(
+                uiState = uiState,
+                onEvent = onEvent,
+            )
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
+
+        PaymentMethodSection(
+            uiState = uiState,
+            onEvent = onEvent,
+            isEditing = isEditing,
+            transactionToEdit = transactionToEdit,
+            activeCreditCards = activeCreditCards,
+            allPaymentMethods = allPaymentMethods,
+            isCC = isCC,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        InstallmentSection(
+            uiState = uiState,
+            onEvent = onEvent,
+            isEditing = isEditing,
+            transactionToEdit = transactionToEdit,
+            currencySymbol = currencySymbol,
+            dateFormat = dateFormat,
+            activeCreditCards = activeCreditCards,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             stringResource(R.string.category_selection_label),
@@ -528,38 +565,6 @@ private fun AddTransactionContent(
             availableCategories = availableCategories,
             frequentExpenseCategories = frequentExpenseCategories,
             frequentIncomeCategories = frequentIncomeCategories,
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (!isEditing) {
-            RecurrenceSection(
-                uiState = uiState,
-                onEvent = onEvent,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        PaymentMethodSection(
-            uiState = uiState,
-            onEvent = onEvent,
-            isEditing = isEditing,
-            transactionToEdit = transactionToEdit,
-            activeCreditCards = activeCreditCards,
-            allPaymentMethods = allPaymentMethods,
-            isCC = isCC,
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        InstallmentSection(
-            uiState = uiState,
-            onEvent = onEvent,
-            isEditing = isEditing,
-            transactionToEdit = transactionToEdit,
-            currencySymbol = currencySymbol,
-            dateFormat = dateFormat,
-            activeCreditCards = activeCreditCards,
         )
     }
 }

@@ -257,7 +257,7 @@
     <string name="select_credit_card">Seleziona Carta di Credito</string>
 
     <!-- Recurrence -->
-    <string name="recurrence_label">Ricorrenza</string>
+    <string name="recurrence_label">Pagamento ricorrente</string>
     <string name="recurrence_none">Nessuna</string>
     <string name="recurrence_daily">Giornaliera</string>
     <string name="recurrence_weekly">Settimanale</string>
@@ -277,7 +277,7 @@
     <string name="no_categories_found">Nessuna categoria trovata</string>
     <string name="search_results">Risultati della ricerca</string>
     <string name="show_all_categories">Mostra tutte le categorie</string>
-    <string name="payment_method_label">Metodo di Pagamento</string>
+    <string name="payment_method_label">Metodo di pagamento</string>
     <string name="use_credit_card_label">Usa Carta di Credito</string>
     <string name="image">Imm.</string>
     <string name="clear">Cancella</string>

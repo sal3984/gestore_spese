@@ -53,7 +53,7 @@
     <string name="error_past_limit_date">Cannot operate on transactions before %1$s.</string>
 
     <!-- Recurrence -->
-    <string name="recurrence_label">Recurrence</string>
+    <string name="recurrence_label">Recurring payment</string>
     <string name="recurrence_none">None</string>
     <string name="recurrence_daily">Daily</string>
     <string name="recurrence_weekly">Weekly</string>
@@ -277,7 +277,7 @@
     <string name="no_categories_found">No categories found</string>
     <string name="search_results">Search Results</string>
     <string name="show_all_categories">Show All Categories</string>
-    <string name="payment_method_label">Payment Method</string>
+    <string name="payment_method_label">Payment method</string>
     <string name="use_credit_card_label">Use Credit Card</string>
     <string name="image">Image</string>
     <string name="clear">Clear</string>

@@ -314,56 +314,67 @@ fun RecurrenceSection(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.recurrence_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Checkbox(
+                    checked = uiState.isRecurrenceEnabled,
+                    onCheckedChange = { onEvent(AddTransactionEvent.OnRecurrenceEnabledChange(it)) },
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.recurrence_label),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
 
-            OutlinedTextField(
-                value = when (uiState.recurrenceType) {
-                    RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
-                    RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
-                    RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
-                    RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
-                    RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
-                },
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
+            AnimatedVisibility(visible = uiState.isRecurrenceEnabled) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    OutlinedTextField(
+                        value = when (uiState.recurrenceType) {
+                            RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                            RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                            RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                            RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                            else -> stringResource(R.string.recurrence_monthly)
+                        },
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
+                        shape = RoundedCornerShape(12.dp),
+                    )
+
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                        Text(
+                            text = stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Slider(
+                            value = uiState.recurrenceLimit.toFloat(),
+                            onValueChange = { onEvent(AddTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
+                            valueRange = 1f..60f,
+                            steps = 59,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                        Text(
+                            text = stringResource(R.string.recurrence_occurrences_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
                     }
-                },
-                modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
-                shape = RoundedCornerShape(12.dp),
-            )
-
-            AnimatedVisibility(visible = uiState.recurrenceType != RecurrenceType.NONE) {
-                Column(modifier = Modifier.padding(top = 16.dp)) {
-                    Text(
-                        text = stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Slider(
-                        value = uiState.recurrenceLimit.toFloat(),
-                        onValueChange = { onEvent(AddTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
-                        valueRange = 2f..60f,
-                        steps = 58,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                    Text(
-                        text = stringResource(R.string.recurrence_occurrences_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
                 }
             }
         }

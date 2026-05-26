@@ -19,8 +19,9 @@ data class AddTransactionUiState(
     val showCurrencyDialog: Boolean = false,
     val isConverting: Boolean = false,
     val isInstallment: Boolean = false,
-    val recurrenceType: RecurrenceType = RecurrenceType.NONE,
-    val recurrenceLimit: Int = 12,
+    val isRecurrenceEnabled: Boolean = false,
+    val recurrenceType: RecurrenceType = RecurrenceType.MONTHLY,
+    val recurrenceLimit: Int = 1,
     val showRecurrenceTypeDialog: Boolean = false,
     val calculationMode: String = "installments",
     val installmentAmountText: String = "",
@@ -49,6 +50,7 @@ sealed interface AddTransactionEvent {
     data class OnOriginalCurrencyChange(val currency: String) : AddTransactionEvent
     data class OnShowCurrencyDialog(val show: Boolean) : AddTransactionEvent
     data class OnIsInstallmentChange(val isInstallment: Boolean) : AddTransactionEvent
+    data class OnRecurrenceEnabledChange(val enabled: Boolean) : AddTransactionEvent
     data class OnRecurrenceTypeChange(val recurrenceType: RecurrenceType) : AddTransactionEvent
     data class OnRecurrenceLimitChange(val limit: Int) : AddTransactionEvent
     data class OnShowRecurrenceTypeDialog(val show: Boolean) : AddTransactionEvent

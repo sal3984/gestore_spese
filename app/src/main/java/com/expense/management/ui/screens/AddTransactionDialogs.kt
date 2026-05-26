@@ -148,20 +148,23 @@ fun RecurrenceTypeDialog(
         title = { Text(stringResource(R.string.recurrence_label)) },
         text = {
             Column {
-                RecurrenceType.entries.forEach { typeEntry ->
+                RecurrenceType.entries.filter { it != RecurrenceType.NONE }.forEach { typeEntry ->
                     Text(
                         text = when (typeEntry) {
-                            RecurrenceType.NONE -> stringResource(R.string.recurrence_none)
                             RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
                             RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
                             RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
                             RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                            else -> ""
                         },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = if (typeEntry == currentRecurrence) FontWeight.Bold else FontWeight.Normal,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onRecurrenceSelected(typeEntry) }
+                            .clickable {
+                                onRecurrenceSelected(typeEntry)
+                                onDismiss()
+                            }
                             .heightIn(min = 48.dp)
                             .padding(vertical = 12.dp, horizontal = 8.dp),
                     )
