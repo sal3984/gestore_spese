@@ -108,11 +108,11 @@ class ExpenseViewModel(
         getTransactionsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _reportRange = MutableStateFlow(
+    private val reportRangeState = MutableStateFlow(
         Pair(YearMonth.now().minusMonths(2), YearMonth.now()),
     )
 
-    val reportTransactions: StateFlow<List<TransactionEntity>> = _reportRange
+    val reportTransactions: StateFlow<List<TransactionEntity>> = reportRangeState
         .flatMapLatest { (start, end) ->
             repository.getTransactionsBetween(
                 start.atDay(1).toString(),
@@ -122,7 +122,7 @@ class ExpenseViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setReportRange(start: YearMonth, end: YearMonth) {
-        _reportRange.value = start to end
+        reportRangeState.value = start to end
     }
 
     // DATI CATEGORIE

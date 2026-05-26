@@ -71,7 +71,7 @@ fun TransactionItem(
     dateFormat: String,
     isAmountHidden: Boolean,
     onDelete: (String) -> Unit,
-    onEdit: (String) -> Unit,
+    onEdit: (String, Boolean) -> Unit,
     locale: Locale = Locale.getDefault(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
@@ -134,7 +134,7 @@ fun TransactionItem(
                     Modifier
                 },
             )
-            .clickable { onEdit(transaction.id) },
+            .clickable { onEdit(transaction.id, transaction.isCreditCard) },
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

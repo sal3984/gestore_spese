@@ -12,6 +12,7 @@
     <string name="today">Oggi</string>
     <string name="yesterday">Ieri</string>
     <string name="credit_card">Carta di Credito</string>
+    <string name="credit_card_transaction">Movimento Carta di Credito</string>
     <string name="transaction">Transazione</string>
 
     <!-- Revolving Card Labels -->
@@ -135,6 +136,7 @@
     <string name="exit">Esci</string>
     <string name="credit_card_mode">Modalità Carta di Credito</string>
     <string name="single_balance">Saldo Unico</string>
+    <string name="no_payment_methods_available">Nessun metodo di pagamento disponibile. Aggiungine uno nelle Impostazioni.</string>
     <string name="installment_plan">Rateale</string>
     <string name="manual">Manuale</string>
     <string name="setting_credit_card_message_1">Tutte le spese con carta saranno impostate automaticamente a Saldo Unico</string>

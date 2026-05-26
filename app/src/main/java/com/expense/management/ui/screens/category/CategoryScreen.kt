@@ -211,8 +211,8 @@ private fun CategoryScreenStateless(
             Crossfade(
                 targetState = state.selectedTab,
                 modifier = Modifier.weight(1f),
-            ) { _ ->
-                val filteredCategories = state.categories.filter { it.isCustom && it.type == state.selectedTab }
+            ) { tab ->
+                val filteredCategories = state.categories.filter { it.isCustom && it.type == tab }
 
                 if (filteredCategories.isEmpty()) {
                     CategoryEmptyState()

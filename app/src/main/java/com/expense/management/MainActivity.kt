@@ -78,7 +78,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
-import com.expense.management.ui.screens.AddTransactionScreen
+import com.expense.management.ui.screens.AddCreditCardTransactionScreen
+import com.expense.management.ui.screens.AddRegularTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
 import com.expense.management.ui.screens.PaymentMethodSettingsScreen
@@ -89,6 +90,8 @@ import com.expense.management.ui.screens.settingsScreen
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.BackupUtils
 import com.expense.management.utils.BiometricUtils
+import com.expense.management.viewmodel.CreditCardViewModel
+import com.expense.management.viewmodel.CreditCardViewModelFactory
 import com.expense.management.viewmodel.ExpenseViewModel
 import com.expense.management.viewmodel.ExpenseViewModelFactory
 import kotlinx.coroutines.launch
@@ -109,6 +112,7 @@ class MainActivity : FragmentActivity() {
 fun mainApp() {
     val context = LocalContext.current
     val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
+    val creditCardViewModel: CreditCardViewModel = viewModel(factory = CreditCardViewModelFactory(context))
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isDarkTheme = when (themeMode) {
         "dark" -> true
@@ -116,13 +120,13 @@ fun mainApp() {
         else -> isSystemInDarkTheme()
     }
     gestoreSpeseTheme(darkTheme = isDarkTheme) {
-        mainAppContent(viewModel)
+        mainAppContent(viewModel, creditCardViewModel)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun mainAppContent(viewModel: ExpenseViewModel) {
+private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: CreditCardViewModel) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
@@ -438,18 +442,18 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                                 },
                                 onClick = {
                                     showAddMenu = false
-                                    navController.navigate("add_transaction/0?isCreditCard=false")
+                                    navController.navigate("add_transaction/0")
                                 },
                             )
 
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.credit_card)) },
+                                text = { Text(stringResource(R.string.credit_card_transaction)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.CreditCard, contentDescription = null)
                                 },
                                 onClick = {
                                     showAddMenu = false
-                                    navController.navigate("add_transaction/0?isCreditCard=true")
+                                    navController.navigate("add_credit_card_transaction/0")
                                 },
                             )
                         }
@@ -481,8 +485,12 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                                 onDelete = { transactionId, deleteType ->
                                     viewModel.deleteTransaction(transactionId, deleteType)
                                 },
-                                onEdit = { transactionId ->
-                                    navController.navigate("add_transaction/$transactionId")
+                                onEdit = { transactionId, isCreditCard ->
+                                    if (isCreditCard) {
+                                        navController.navigate("add_credit_card_transaction/$transactionId")
+                                    } else {
+                                        navController.navigate("add_transaction/$transactionId")
+                                    }
                                 },
                                 isAmountHidden = isAmountHidden,
                                 creditCards = activeCreditCards,
@@ -613,16 +621,11 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                         }
 
                         composable(
-                            route = "add_transaction/{transactionId}?isCreditCard={isCreditCard}",
-                            arguments =
-                            listOf(
+                            route = "add_transaction/{transactionId}",
+                            arguments = listOf(
                                 navArgument("transactionId") {
                                     type = NavType.StringType
                                     defaultValue = "0"
-                                },
-                                navArgument("isCreditCard") {
-                                    type = NavType.BoolType
-                                    defaultValue = false
                                 },
                             ),
                             enterTransition = {
@@ -639,7 +642,6 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                             },
                         ) { backStackEntry ->
                             val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
-                            val isCreditCardArg = backStackEntry.arguments?.getBoolean("isCreditCard") ?: false
 
                             var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
                             var isLoading by remember { mutableStateOf(transactionId != "0") }
@@ -658,9 +660,8 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                                     CircularProgressIndicator()
                                 }
                             } else {
-                                AddTransactionScreen(
+                                AddRegularTransactionScreen(
                                     currencySymbol = currentCurrency,
-                                    ccPaymentMode = currentCcPaymentMode,
                                     suggestions = suggestions,
                                     dateFormat = currentDateFormat,
                                     onSave = { transaction ->
@@ -679,13 +680,82 @@ private fun mainAppContent(viewModel: ExpenseViewModel) {
                                     onConvertAmount = { from, to, amount ->
                                         viewModel.updateCurrencyRate(amount, from, to)
                                     },
-                                    isCC = isCreditCardArg,
-                                    activeCreditCards = activeCreditCards,
                                     allPaymentMethods = allPaymentMethods,
                                     frequentExpenseCategories = frequentExpenseCategories,
                                     frequentIncomeCategories = frequentIncomeCategories,
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@composable,
+                                )
+                            }
+                        }
+
+                        composable(
+                            route = "add_credit_card_transaction/{transactionId}",
+                            arguments = listOf(
+                                navArgument("transactionId") {
+                                    type = NavType.StringType
+                                    defaultValue = "0"
+                                },
+                            ),
+                            enterTransition = {
+                                slideIntoContainer(
+                                    AnimatedContentTransitionScope.SlideDirection.Up,
+                                    animationSpec = tween(300),
+                                )
+                            },
+                            exitTransition = {
+                                slideOutOfContainer(
+                                    AnimatedContentTransitionScope.SlideDirection.Down,
+                                    animationSpec = tween(300),
+                                )
+                            },
+                        ) { backStackEntry ->
+                            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: "0"
+
+                            var transactionToEdit: TransactionEntity? by remember { mutableStateOf(null) }
+                            var isLoading by remember { mutableStateOf(transactionId != "0") }
+
+                            LaunchedEffect(transactionId) {
+                                if (transactionId != "0") {
+                                    transactionToEdit = creditCardViewModel.getTransactionById(transactionId)
+                                    isLoading = false
+                                } else {
+                                    isLoading = false
+                                }
+                            }
+
+                            if (isLoading && transactionId != "0") {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
+                                AddCreditCardTransactionScreen(
+                                    currencySymbol = currentCurrency,
+                                    ccPaymentMode = currentCcPaymentMode,
+                                    suggestions = suggestions,
+                                    dateFormat = currentDateFormat,
+                                    onSave = { transaction ->
+                                        creditCardViewModel.saveTransaction(transaction)
+                                    },
+                                    onDelete = { id, deleteType ->
+                                        creditCardViewModel.deleteTransaction(id, deleteType)
+                                        navController.popBackStack()
+                                    },
+                                    transactionToEdit = transactionToEdit,
+                                    onBack = { navController.popBackStack() },
+                                    availableCategories = allCategories,
+                                    onDescriptionChange = { query ->
+                                        viewModel.searchDescriptionSuggestions(query)
+                                    },
+                                    onConvertAmount = { from, to, amount ->
+                                        creditCardViewModel.updateCurrencyRate(amount, from, to)
+                                    },
+                                    activeCreditCards = activeCreditCards,
+                                    allPaymentMethods = allPaymentMethods,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = this@composable,
+                                    frequentExpenseCategories = frequentExpenseCategories,
+                                    frequentIncomeCategories = frequentIncomeCategories,
                                 )
                             }
                         }

@@ -12,6 +12,7 @@
     <string name="today">Today</string>
     <string name="yesterday">Yesterday</string>
     <string name="credit_card">Credit Card</string>
+    <string name="credit_card_transaction">Credit Card Payment</string>
 
     <!-- Revolving Card Labels -->
     <string name="revolving_utilized_label">Utilized Amount:</string>
@@ -156,6 +157,7 @@
     <string name="credit_card_mode">Credit Card Mode</string>
     <string name="single_balance">Single Balance</string>
 
+    <string name="no_payment_methods_available">No payment methods available. Add one in Settings.</string>
     <string name="installment_plan">Installment plan</string>
     <string name="manual">Manual</string>
     <string name="installment">Rate</string>

@@ -101,7 +101,7 @@ fun DashboardScreen(
     currentDashboardMonth: YearMonth,
     onMonthChange: (YearMonth) -> Unit,
     onDelete: (String, DeleteType) -> Unit,
-    onEdit: (String) -> Unit,
+    onEdit: (String, Boolean) -> Unit,
     isAmountHidden: Boolean,
     creditCards: List<ActiveCreditCard> = emptyList(),
     bnplProjections: List<BnplProjection> = emptyList(),
@@ -818,7 +818,7 @@ fun DateHeader(
 @Composable
 private fun DashboardPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
-        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = {}, isAmountHidden = false)
+        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = { _, _ -> }, isAmountHidden = false)
     }
 }
 
@@ -826,6 +826,6 @@ private fun DashboardPreview() {
 @Composable
 private fun DashboardPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
-        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = {}, isAmountHidden = false)
+        DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = { _, _ -> }, isAmountHidden = false)
     }
 }
