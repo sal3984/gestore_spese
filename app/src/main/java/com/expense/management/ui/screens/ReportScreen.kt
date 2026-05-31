@@ -79,6 +79,7 @@ import com.expense.management.data.CategoryEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.ui.theme.IncomeGreen
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.getLocalizedCategoryLabel
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +112,8 @@ private fun parseDateSafe(dateString: String, dateFormat: String): LocalDate {
 
 private data class ReportCalcData(
     val savings: Double,
+    val totalIncome: Double,
+    val totalExpense: Double,
     val monthlyBalances: List<Pair<YearMonth, Double>>,
     val expenseByCategory: List<Pair<String, Double>>,
     val totalMonthlyExpense: Double,
@@ -186,7 +189,8 @@ fun ReportScreen(
             val monthIncome = HashMap<YearMonth, Double>()
             val monthExpense = HashMap<YearMonth, Double>()
             val categoryExpense = HashMap<String, Double>()
-            var total = 0.0
+            var totalIncome = 0.0
+            var totalExpense = 0.0
 
             for (tx in transactions) {
                 val ym = YearMonth.from(
@@ -195,12 +199,12 @@ fun ReportScreen(
                     },
                 )
 
-                total += if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
-
                 if (tx.type == TransactionType.EXPENSE) {
+                    totalExpense += tx.amount
                     categoryExpense.merge(tx.categoryId, tx.amount, Double::plus)
                     monthExpense.merge(ym, tx.amount, Double::plus)
                 } else {
+                    totalIncome += tx.amount
                     monthIncome.merge(ym, tx.amount, Double::plus)
                 }
             }
@@ -215,7 +219,9 @@ fun ReportScreen(
             val expenseByCategory = categoryExpense.toList().sortedByDescending { it.second }
 
             ReportCalcData(
-                savings = total,
+                savings = totalIncome - totalExpense,
+                totalIncome = totalIncome,
+                totalExpense = totalExpense,
                 monthlyBalances = monthlyBalances,
                 expenseByCategory = expenseByCategory,
                 totalMonthlyExpense = expenseByCategory.sumOf { it.second },
@@ -232,6 +238,8 @@ fun ReportScreen(
 
     val data = reportData!!
     val savings = data.savings
+    val totalIncome = data.totalIncome
+    val totalExpense = data.totalExpense
     val expenseByCategory = data.expenseByCategory
     val totalMonthlyExpense = data.totalMonthlyExpense
     val monthlyBalances = data.monthlyBalances
@@ -353,6 +361,34 @@ fun ReportScreen(
                     )
                 }
             }
+        }
+
+        // --- SUMMARY DASHBOARD ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .offset(y = (-48).dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ReportSummaryCard(
+                title = stringResource(R.string.income),
+                amount = totalIncome,
+                currencySymbol = currencySymbol,
+                isAmountHidden = isAmountHidden,
+                containerColor = IncomeGreen.copy(alpha = 0.15f),
+                contentColor = IncomeGreen,
+                modifier = Modifier.weight(1f),
+            )
+            ReportSummaryCard(
+                title = stringResource(R.string.expenses),
+                amount = totalExpense,
+                currencySymbol = currencySymbol,
+                isAmountHidden = isAmountHidden,
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f),
+            )
         }
 
         // --- SCROLLABLE CONTENT ---
@@ -923,6 +959,47 @@ fun CategoryTransactionsBottomSheetContent(
 }
 
 @Preview(showBackground = true, name = "Report Light")
+@Composable
+private fun ReportSummaryCard(
+    title: String,
+    amount: Double,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    val locale = ComposeLocale.current.platformLocale
+    Card(
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = 0.8f),
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (isAmountHidden) {
+                    "$currencySymbol *****"
+                } else {
+                    "$currencySymbol ${String.format(locale, "%.2f", amount)}"
+                },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = contentColor,
+            )
+        }
+    }
+}
+
 @Composable
 private fun ReportPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {

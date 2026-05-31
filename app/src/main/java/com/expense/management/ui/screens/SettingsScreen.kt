@@ -121,6 +121,8 @@ fun settingsScreen(
     onNavigateToDataManagement: () -> Unit,
     onNavigateToSecurity: () -> Unit,
     onNavigateToPaymentMethods: () -> Unit,
+    enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget>,
+    onEnabledWidgetsChange: (Set<com.expense.management.domain.model.DashboardWidget>) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -134,6 +136,7 @@ fun settingsScreen(
     var showAddCardDialog by remember { mutableStateOf(false) }
     var showEditCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
     var showDeleteCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
+    var showWidgetsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         onRefreshCurrencyRates()
@@ -259,6 +262,13 @@ fun settingsScreen(
                     title = stringResource(R.string.payment_methods),
                     value = stringResource(R.string.manage_payment_methods),
                     onClick = onNavigateToPaymentMethods,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                settingsListItem(
+                    icon = Icons.Default.Description,
+                    title = stringResource(R.string.dashboard_widgets),
+                    value = stringResource(R.string.selected_widgets_count, enabledWidgets.size, com.expense.management.domain.model.DashboardWidget.entries.size),
+                    onClick = { showWidgetsDialog = true },
                 )
             }
         }
@@ -603,6 +613,62 @@ fun settingsScreen(
             dismissButton = { TextButton(onClick = { showExportColumnsDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+
+    if (showWidgetsDialog) {
+        var selectedWidgets by remember { mutableStateOf(enabledWidgets) }
+        AlertDialog(
+            onDismissRequest = { showWidgetsDialog = false },
+            title = { Text(stringResource(R.string.dashboard_widgets)) },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    com.expense.management.domain.model.DashboardWidget.entries.forEach { widget ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedWidgets = if (selectedWidgets.contains(widget)) {
+                                        selectedWidgets - widget
+                                    } else {
+                                        selectedWidgets + widget
+                                    }
+                                }
+                                .padding(vertical = 8.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = selectedWidgets.contains(widget),
+                                onCheckedChange = { isChecked ->
+                                    selectedWidgets = if (isChecked) {
+                                        selectedWidgets + widget
+                                    } else {
+                                        selectedWidgets - widget
+                                    }
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                when (widget) {
+                                    com.expense.management.domain.model.DashboardWidget.SUMMARY_CARDS -> "Summary Cards"
+                                    com.expense.management.domain.model.DashboardWidget.CREDIT_CARD_INFO -> "Credit Card Info"
+                                    com.expense.management.domain.model.DashboardWidget.BNPL_PROJECTIONS -> "BNPL Projections"
+                                    com.expense.management.domain.model.DashboardWidget.TRANSACTION_LIST -> "Transaction List"
+                                },
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onEnabledWidgetsChange(selectedWidgets)
+                    showWidgetsDialog = false
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { showWidgetsDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
 }
 
 @Composable
@@ -718,6 +784,8 @@ private fun SettingsPreview() {
             onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {},
             onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {},
             onNavigateToSecurity = {}, onNavigateToPaymentMethods = {},
+            enabledWidgets = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
+            onEnabledWidgetsChange = {},
         )
     }
 }
@@ -735,6 +803,8 @@ private fun SettingsPreviewDark() {
             onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {},
             onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {},
             onNavigateToSecurity = {}, onNavigateToPaymentMethods = {},
+            enabledWidgets = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
+            onEnabledWidgetsChange = {},
         )
     }
 }

@@ -4,6 +4,7 @@
     <string name="previous_month">Mese Precedente</string>
     <string name="next_month">Mese Successivo</string>
     <string name="monthly_balance">Saldo Mensile</string>
+    <string name="balance">Saldo</string>
     <string name="income">Entrate</string>
     <string name="expenses">Uscite</string>
     <string name="credit_card_limit_label">Plafond Carta di Credito</string>
@@ -73,6 +74,8 @@
     <string name="app_lock">Blocco App (PIN/Biometrica)</string>
     <string name="app_lock_desc">Abilita il blocco schermo all\'avvio dell\'app.</string>
     <string name="management">Gestione</string>
+    <string name="dashboard_widgets">Widget Dashboard</string>
+    <string name="selected_widgets_count">%1$d di %2$d abilitati</string>
     <string name="data_management">Gestione Dati</string>
     <string name="export_csv">Esporta CSV</string>
     <string name="export_csv_desc">Salva un report delle spese</string>

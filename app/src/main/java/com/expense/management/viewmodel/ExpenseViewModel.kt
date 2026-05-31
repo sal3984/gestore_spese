@@ -22,6 +22,7 @@ import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
@@ -85,6 +86,7 @@ class ExpenseViewModel(
         private const val KEY_CSV_EXPORT_COLUMNS = "csv_export_columns"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_APP_STYLE = "app_style"
+        private const val KEY_ENABLED_WIDGETS = "enabled_widgets"
     }
 
     // Frequent Categories Caching
@@ -255,6 +257,19 @@ class ExpenseViewModel(
         } ?: AppStyle.MATERIAL_YOU,
     )
     val appStyle = _appStyle.asStateFlow()
+
+    private val _enabledWidgets = MutableStateFlow(
+        prefs?.getStringSet(KEY_ENABLED_WIDGETS, null)?.let { saved ->
+            saved.mapNotNull {
+                try {
+                    DashboardWidget.valueOf(it)
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+            }.toSet()
+        } ?: DashboardWidget.entries.toSet(),
+    )
+    val enabledWidgets = _enabledWidgets.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -602,6 +617,12 @@ class ExpenseViewModel(
         prefs?.edit { putBoolean(KEY_HIDE_AMOUNT, isHidden) }
     }
 
+    fun toggleAmountHidden() {
+        val newValue = !_isAmountHidden.value
+        _isAmountHidden.value = newValue
+        prefs?.edit { putBoolean(KEY_HIDE_AMOUNT, newValue) }
+    }
+
     fun updateBiometricEnabled(isEnabled: Boolean) {
         _isBiometricEnabled.value = isEnabled
         prefs?.edit { putBoolean(KEY_BIOMETRIC_ENABLED, isEnabled) }
@@ -620,6 +641,11 @@ class ExpenseViewModel(
     fun updateAppStyle(style: AppStyle) {
         _appStyle.value = style
         prefs?.edit { putString(KEY_APP_STYLE, style.name) }
+    }
+
+    fun updateEnabledWidgets(widgets: Set<DashboardWidget>) {
+        _enabledWidgets.value = widgets
+        prefs?.edit { putStringSet(KEY_ENABLED_WIDGETS, widgets.map { it.name }.toSet()) }
     }
 
     fun refreshCurrencyRates() {

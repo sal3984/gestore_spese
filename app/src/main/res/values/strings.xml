@@ -4,6 +4,7 @@
     <string name="previous_month">Previous Month</string>
     <string name="next_month">Next Month</string>
     <string name="monthly_balance">Monthly Balance</string>
+    <string name="balance">Balance</string>
     <string name="income">Income</string>
     <string name="expenses">Expenses</string>
     <string name="credit_card_limit_label">Credit Card Limit</string>
@@ -84,6 +85,8 @@
     <string name="app_lock">App Lock (PIN/Biometric)</string>
     <string name="app_lock_desc">Enable screen lock on app startup.</string>
     <string name="management">Management</string>
+    <string name="dashboard_widgets">Dashboard Widgets</string>
+    <string name="selected_widgets_count">%1$d of %2$d enabled</string>
     <string name="data_management">Data Management</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_csv_desc">Save an expense report</string>

@@ -73,6 +73,7 @@ fun AppNavHost(
     currentAppStyle: AppStyle,
     hasTransactions: Boolean,
     isBiometricEnabled: Boolean,
+    enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget>,
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
@@ -112,6 +113,7 @@ fun AppNavHost(
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = this@composable,
                 allPaymentMethods = allPaymentMethods,
+                enabledWidgets = enabledWidgets,
             )
         }
 
@@ -164,9 +166,7 @@ fun AppNavHost(
             exitTransition = { fadeOut(animationSpec = tween(300)) },
         ) {
             securityScreen(
-                isAmountHidden = isAmountHidden,
                 isBiometricEnabled = isBiometricEnabled,
-                onAmountHiddenChange = viewModel::updateIsAmountHidden,
                 onBiometricEnabledChange = { isEnabled ->
                     if (isEnabled) {
                         BiometricUtils.authenticateUser(
@@ -210,6 +210,8 @@ fun AppNavHost(
                 onNavigateToDataManagement = onNavigateToDataManagement,
                 onNavigateToSecurity = onNavigateToSecurity,
                 onNavigateToPaymentMethods = onNavigateToPaymentMethods,
+                enabledWidgets = enabledWidgets,
+                onEnabledWidgetsChange = viewModel::updateEnabledWidgets,
             )
         }
 

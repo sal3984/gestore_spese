@@ -1,7 +1,12 @@
 package com.expense.management.ui.navigation
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -12,7 +17,11 @@ import com.expense.management.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppTopBar(currentRoute: String?) {
+fun AppTopBar(
+    currentRoute: String?,
+    isAmountHidden: Boolean = false,
+    onToggleAmountHidden: (() -> Unit)? = null,
+) {
     CenterAlignedTopAppBar(
         title = {
             val title =
@@ -27,6 +36,17 @@ fun AppTopBar(currentRoute: String?) {
                     else -> stringResource(R.string.app_name)
                 }
             Text(text = title, fontWeight = FontWeight.SemiBold)
+        },
+        actions = {
+            if (currentRoute in listOf("dashboard", "report") && onToggleAmountHidden != null) {
+                IconButton(onClick = onToggleAmountHidden) {
+                    Icon(
+                        imageVector = if (isAmountHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = stringResource(R.string.hide_amounts),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
         },
         colors =
         TopAppBarDefaults.topAppBarColors(
