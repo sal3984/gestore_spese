@@ -76,6 +76,9 @@ fun AppNavHost(
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
+    onNavigateToDataManagement: () -> Unit,
+    onNavigateToSecurity: () -> Unit,
+    onNavigateToPaymentMethods: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -204,6 +207,9 @@ fun AppNavHost(
                 onCsvExportColumnsChange = viewModel::updateCsvExportColumns,
                 onThemeModeChange = viewModel::updateThemeMode,
                 onAppStyleChange = viewModel::updateAppStyle,
+                onNavigateToDataManagement = onNavigateToDataManagement,
+                onNavigateToSecurity = onNavigateToSecurity,
+                onNavigateToPaymentMethods = onNavigateToPaymentMethods,
             )
         }
 

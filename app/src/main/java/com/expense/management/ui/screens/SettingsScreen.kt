@@ -22,15 +22,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -111,6 +118,9 @@ fun settingsScreen(
     onCsvExportColumnsChange: (Set<String>) -> Unit,
     onThemeModeChange: (String) -> Unit,
     onAppStyleChange: (AppStyle) -> Unit,
+    onNavigateToDataManagement: () -> Unit,
+    onNavigateToSecurity: () -> Unit,
+    onNavigateToPaymentMethods: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -232,6 +242,40 @@ fun settingsScreen(
                 value = styleLabel,
                 onClick = { showAppStyleDialog = true },
             )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- SEZIONE GESTIONE ---
+        settingsSectionHeader(stringResource(R.string.management))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            Column {
+                settingsListItem(
+                    icon = Icons.Default.Backup,
+                    title = stringResource(R.string.data_management),
+                    value = stringResource(R.string.data_management_subtitle),
+                    onClick = onNavigateToDataManagement,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                settingsListItem(
+                    icon = Icons.Default.Security,
+                    title = stringResource(R.string.security_usability),
+                    value = stringResource(R.string.app_lock_desc),
+                    onClick = onNavigateToSecurity,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                settingsListItem(
+                    icon = Icons.Default.CreditCard,
+                    title = stringResource(R.string.payment_methods),
+                    value = stringResource(R.string.manage_payment_methods),
+                    onClick = onNavigateToPaymentMethods,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -642,7 +686,7 @@ fun settingsListItem(
 @Composable
 private fun SettingsPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {})
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {}, onNavigateToSecurity = {}, onNavigateToPaymentMethods = {})
     }
 }
 
@@ -650,6 +694,6 @@ private fun SettingsPreview() {
 @Composable
 private fun SettingsPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {})
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {}, onNavigateToSecurity = {}, onNavigateToPaymentMethods = {})
     }
 }

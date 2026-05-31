@@ -1,12 +1,7 @@
 package com.expense.management.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -14,16 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.expense.management.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppTopBar(
-    drawerState: DrawerState,
-    coroutineScope: CoroutineScope,
-    currentRoute: String?,
-) {
+fun AppTopBar(currentRoute: String?) {
     CenterAlignedTopAppBar(
         title = {
             val title =
@@ -38,14 +27,6 @@ fun AppTopBar(
                     else -> stringResource(R.string.app_name)
                 }
             Text(text = title, fontWeight = FontWeight.SemiBold)
-        },
-        navigationIcon = {
-            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = stringResource(R.string.menu),
-                )
-            }
         },
         colors =
         TopAppBarDefaults.topAppBarColors(
