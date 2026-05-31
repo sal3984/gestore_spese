@@ -468,6 +468,20 @@ fun CategoryDialog(
                         errorMessage = null
                     },
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = selectedIcon,
+                    onValueChange = {
+                        selectedIcon = it
+                        imageUri = null
+                    },
+                    label = { Text(stringResource(R.string.icon_or_emoji)) },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {

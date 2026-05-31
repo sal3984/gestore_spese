@@ -2,6 +2,8 @@ package com.expense.management.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -22,8 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BrightnessMedium
@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
@@ -61,6 +60,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -149,13 +149,33 @@ fun settingsScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- SEZIONE GENERALI ---
-        settingsSectionHeader(stringResource(R.string.general))
+        val updateText = if (lastRatesUpdate != null && lastRatesUpdate > 0) {
+            val date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastRatesUpdate), ZoneId.systemDefault())
+            val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+            stringResource(R.string.last_update, date.format(formatter))
+        } else {
+            stringResource(R.string.no_rates_downloaded)
+        }
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        val themeLabel = when (currentThemeMode) {
+            "light" -> stringResource(R.string.theme_light)
+            "dark" -> stringResource(R.string.theme_dark)
+            else -> stringResource(R.string.theme_system)
+        }
+
+        val styleLabel = when (currentAppStyle) {
+            AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
+            AppStyle.NORDIC -> stringResource(R.string.style_nordic)
+            AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
+            AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+        }
+
+        val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A"
+
+        SettingsAccordion(
+            headerIcon = Icons.Default.AttachMoney,
+            headerTitle = stringResource(R.string.general),
+            initiallyExpanded = false,
         ) {
             Column {
                 settingsListItem(
@@ -169,27 +189,15 @@ fun settingsScreen(
                             showCurrencyDialog = true
                         }
                     },
-                    // Valuta non cliccabile se ci sono transazioni
                     isClickable = !hasTransactions,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                // Voce Tassi di Cambio
-                val updateText = if (lastRatesUpdate != null && lastRatesUpdate > 0) {
-                    val date = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastRatesUpdate), ZoneId.systemDefault())
-                    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-                    stringResource(R.string.last_update, date.format(formatter))
-                } else {
-                    stringResource(R.string.no_rates_downloaded)
-                }
-
                 settingsListItem(
                     icon = Icons.Default.CurrencyExchange,
                     title = stringResource(R.string.currency_rates),
                     value = updateText,
                     onClick = { showCurrencyRatesInfoDialog = true },
                 )
-
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 settingsListItem(
                     icon = Icons.Default.CalendarToday,
@@ -200,59 +208,36 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // --- SEZIONE TEMA ---
-        settingsSectionHeader(stringResource(R.string.theme))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        SettingsAccordion(
+            headerIcon = Icons.Default.BrightnessMedium,
+            headerTitle = stringResource(R.string.theme),
+            initiallyExpanded = false,
         ) {
-            val themeLabel = when (currentThemeMode) {
-                "light" -> stringResource(R.string.theme_light)
-                "dark" -> stringResource(R.string.theme_dark)
-                else -> stringResource(R.string.theme_system)
+            Column {
+                settingsListItem(
+                    icon = Icons.Default.BrightnessMedium,
+                    title = stringResource(R.string.theme),
+                    value = themeLabel,
+                    onClick = { showThemeDialog = true },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                settingsListItem(
+                    icon = Icons.Default.Palette,
+                    title = stringResource(R.string.app_style),
+                    value = styleLabel,
+                    onClick = { showAppStyleDialog = true },
+                )
             }
-            settingsListItem(
-                icon = Icons.Default.BrightnessMedium,
-                title = stringResource(R.string.theme),
-                value = themeLabel,
-                onClick = { showThemeDialog = true },
-            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        ) {
-            val styleLabel = when (currentAppStyle) {
-                AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
-                AppStyle.NORDIC -> stringResource(R.string.style_nordic)
-                AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
-                AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
-            }
-            settingsListItem(
-                icon = Icons.Default.Palette,
-                title = stringResource(R.string.app_style),
-                value = styleLabel,
-                onClick = { showAppStyleDialog = true },
-            )
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- SEZIONE GESTIONE ---
-        settingsSectionHeader(stringResource(R.string.management))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        SettingsAccordion(
+            headerIcon = Icons.Default.Backup,
+            headerTitle = stringResource(R.string.management),
+            initiallyExpanded = false,
         ) {
             Column {
                 settingsListItem(
@@ -278,15 +263,12 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // --- SEZIONE IMPOSTAZIONI ESPORTAZIONE CSV ---
-        settingsSectionHeader(stringResource(R.string.csv_export_settings))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        SettingsAccordion(
+            headerIcon = Icons.Default.Description,
+            headerTitle = stringResource(R.string.csv_export_settings),
+            initiallyExpanded = false,
         ) {
             Column {
                 settingsListItem(
@@ -298,23 +280,20 @@ fun settingsScreen(
             }
         }
 
-        // --- ABOUT SECTION ---
-        settingsSectionHeader(stringResource(R.string.about))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        SettingsAccordion(
+            headerIcon = Icons.Default.Info,
+            headerTitle = stringResource(R.string.about),
+            initiallyExpanded = false,
         ) {
-            val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A"
-
             Column {
                 settingsListItem(
                     icon = Icons.Default.Description,
                     title = stringResource(R.string.privacy_policy),
                     value = stringResource(R.string.privacy_policy_desc),
                     onClick = {
-                        val privacyPolicyUrl = "https://gist.github.com/sal3984/adc05b7037705f169aa6682b877ef581" // !!! REPLACE THIS WITH YOUR GIST URL !!!
+                        val privacyPolicyUrl = "https://gist.github.com/sal3984/adc05b7037705f169aa6682b877ef581"
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(privacyPolicyUrl))
                         context.startActivity(intent)
                     },
@@ -335,7 +314,7 @@ fun settingsScreen(
                     icon = Icons.Default.Info,
                     title = stringResource(R.string.app_name),
                     value = stringResource(R.string.app_version, appVersion),
-                    onClick = { /* No action for clicking version */ },
+                    onClick = { },
                 )
             }
         }
@@ -343,7 +322,7 @@ fun settingsScreen(
         Spacer(modifier = Modifier.height(80.dp))
     }
 
-    // Dialog Selezione Valuta
+    // Dialogs (unchanged)...
     if (showCurrencyDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyDialog = false },
@@ -374,7 +353,6 @@ fun settingsScreen(
         )
     }
 
-    // Dialog Warning Valuta
     if (showCurrencyWarningDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyWarningDialog = false },
@@ -388,7 +366,6 @@ fun settingsScreen(
         )
     }
 
-    // Dialog Info Tassi Cambio
     if (showCurrencyRatesInfoDialog) {
         Dialog(onDismissRequest = { showCurrencyRatesInfoDialog = false }) {
             Card(
@@ -473,7 +450,6 @@ fun settingsScreen(
         }
     }
 
-    // Dialog Selezione Tema
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
@@ -510,7 +486,6 @@ fun settingsScreen(
         )
     }
 
-    // Dialog Selezione Stile
     if (showAppStyleDialog) {
         AlertDialog(
             onDismissRequest = { showAppStyleDialog = false },
@@ -549,7 +524,6 @@ fun settingsScreen(
         )
     }
 
-    // Dialog Selezione Formato Data
     if (showDateFormatDialog) {
         AlertDialog(
             onDismissRequest = { showDateFormatDialog = false },
@@ -581,7 +555,6 @@ fun settingsScreen(
         )
     }
 
-    // Dialog Selezione Colonne Esportazione CSV
     if (showExportColumnsDialog) {
         var selectedColumns by remember { mutableStateOf(csvExportColumns) }
         AlertDialog(
@@ -632,8 +605,6 @@ fun settingsScreen(
     }
 }
 
-// --- Componenti Helper per Settings ---
-
 @Composable
 fun settingsSectionHeader(title: String) {
     Text(
@@ -643,6 +614,58 @@ fun settingsSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
     )
+}
+
+@Composable
+fun SettingsAccordion(
+    headerIcon: ImageVector,
+    headerTitle: String,
+    initiallyExpanded: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(initiallyExpanded) }
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f)
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    ) {
+        Column {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = headerTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = headerIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.rotate(rotation),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                modifier = Modifier.clickable { expanded = !expanded },
+            )
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    content()
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -686,7 +709,16 @@ fun settingsListItem(
 @Composable
 private fun SettingsPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {}, onNavigateToSecurity = {}, onNavigateToPaymentMethods = {})
+        settingsScreen(
+            currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system",
+            currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false,
+            currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(),
+            onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {},
+            onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {},
+            onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {},
+            onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {},
+            onNavigateToSecurity = {}, onNavigateToPaymentMethods = {},
+        )
     }
 }
 
@@ -694,6 +726,15 @@ private fun SettingsPreview() {
 @Composable
 private fun SettingsPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {}, onNavigateToSecurity = {}, onNavigateToPaymentMethods = {})
+        settingsScreen(
+            currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system",
+            currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false,
+            currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(),
+            onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {},
+            onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {},
+            onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {},
+            onThemeModeChange = {}, onAppStyleChange = {}, onNavigateToDataManagement = {},
+            onNavigateToSecurity = {}, onNavigateToPaymentMethods = {},
+        )
     }
 }
