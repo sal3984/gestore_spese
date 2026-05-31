@@ -199,6 +199,12 @@
     <string name="theme_system">Predefinito sistema</string>
     <string name="theme_light">Chiaro</string>
     <string name="theme_dark">Scuro</string>
+    <string name="app_style">Stile App</string>
+    <string name="choose_app_style">Scegli Stile App</string>
+    <string name="style_material_you">Material You</string>
+    <string name="style_nordic">Minimalista Moderno</string>
+    <string name="style_cyberpunk">Cyberpunk</string>
+    <string name="style_corporate">Aziendale</string>
 
     <!-- Donations -->
     <string name="support_us">Supportaci</string>

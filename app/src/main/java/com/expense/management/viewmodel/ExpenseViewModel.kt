@@ -39,6 +39,7 @@ import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
+import com.expense.management.ui.theme.AppStyle
 import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -83,6 +84,7 @@ class ExpenseViewModel(
         private const val KEY_CC_PAYMENT_MODE = "cc_payment_mode"
         private const val KEY_CSV_EXPORT_COLUMNS = "csv_export_columns"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_APP_STYLE = "app_style"
     }
 
     // Frequent Categories Caching
@@ -242,6 +244,17 @@ class ExpenseViewModel(
 
     private val _themeMode = MutableStateFlow(prefs?.getString(KEY_THEME_MODE, "system") ?: "system")
     val themeMode = _themeMode.asStateFlow()
+
+    private val _appStyle = MutableStateFlow(
+        prefs?.getString(KEY_APP_STYLE, null)?.let {
+            try {
+                AppStyle.valueOf(it)
+            } catch (_: IllegalArgumentException) {
+                AppStyle.MATERIAL_YOU
+            }
+        } ?: AppStyle.MATERIAL_YOU,
+    )
+    val appStyle = _appStyle.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -602,6 +615,11 @@ class ExpenseViewModel(
     fun updateThemeMode(mode: String) {
         _themeMode.value = mode
         prefs?.edit { putString(KEY_THEME_MODE, mode) }
+    }
+
+    fun updateAppStyle(style: AppStyle) {
+        _appStyle.value = style
+        prefs?.edit { putString(KEY_APP_STYLE, style.name) }
     }
 
     fun refreshCurrencyRates() {

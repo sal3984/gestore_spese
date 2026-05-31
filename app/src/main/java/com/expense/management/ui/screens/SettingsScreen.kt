@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -64,6 +65,7 @@ import androidx.core.net.toUri
 import com.expense.management.R
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
+import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -92,6 +94,7 @@ fun settingsScreen(
     currentCurrency: String,
     currentDateFormat: String,
     currentThemeMode: String,
+    currentAppStyle: AppStyle,
     csvExportColumns: Set<String>,
     hasTransactions: Boolean,
     currencyRates: List<CurrencyRate>,
@@ -107,12 +110,14 @@ fun settingsScreen(
     onCcPaymentModeChange: (String) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
     onThemeModeChange: (String) -> Unit,
+    onAppStyleChange: (AppStyle) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showDateFormatDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showAppStyleDialog by remember { mutableStateOf(false) }
     var showExportColumnsDialog by remember { mutableStateOf(false) }
     var showCurrencyWarningDialog by remember { mutableStateOf(false) }
     var showCurrencyRatesInfoDialog by remember { mutableStateOf(false) }
@@ -205,6 +210,27 @@ fun settingsScreen(
                 title = stringResource(R.string.theme),
                 value = themeLabel,
                 onClick = { showThemeDialog = true },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            val styleLabel = when (currentAppStyle) {
+                AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
+                AppStyle.NORDIC -> stringResource(R.string.style_nordic)
+                AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
+                AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+            }
+            settingsListItem(
+                icon = Icons.Default.Palette,
+                title = stringResource(R.string.app_style),
+                value = styleLabel,
+                onClick = { showAppStyleDialog = true },
             )
         }
 
@@ -440,6 +466,45 @@ fun settingsScreen(
         )
     }
 
+    // Dialog Selezione Stile
+    if (showAppStyleDialog) {
+        AlertDialog(
+            onDismissRequest = { showAppStyleDialog = false },
+            title = { Text(stringResource(R.string.choose_app_style)) },
+            text = {
+                Column {
+                    AppStyle.entries.forEach { style ->
+                        Row(
+                            modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .clickable {
+                                    onAppStyleChange(style)
+                                    showAppStyleDialog = false
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = (style == currentAppStyle), onClick = null)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                when (style) {
+                                    AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
+                                    AppStyle.NORDIC -> stringResource(R.string.style_nordic)
+                                    AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
+                                    AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAppStyleDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
     // Dialog Selezione Formato Data
     if (showDateFormatDialog) {
         AlertDialog(
@@ -577,7 +642,7 @@ fun settingsListItem(
 @Composable
 private fun SettingsPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {})
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {})
     }
 }
 
@@ -585,6 +650,6 @@ private fun SettingsPreview() {
 @Composable
 private fun SettingsPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
-        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {})
+        settingsScreen(currentCurrency = "€", currentDateFormat = "dd/MM/yyyy", currentThemeMode = "system", currentAppStyle = AppStyle.MATERIAL_YOU, csvExportColumns = emptySet(), hasTransactions = false, currencyRates = emptyList(), lastRatesUpdate = null, allCreditCards = emptyList(), onRefreshCurrencyRates = {}, onForceCurrencyRatesUpdate = {}, onAddCreditCard = {}, onUpdateCreditCard = {}, onDeleteCreditCard = {}, onCurrencyChange = {}, onDateFormatChange = {}, onCcPaymentModeChange = {}, onCsvExportColumnsChange = {}, onThemeModeChange = {}, onAppStyleChange = {})
     }
 }

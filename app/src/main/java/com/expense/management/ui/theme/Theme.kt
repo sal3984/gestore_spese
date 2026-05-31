@@ -10,77 +10,221 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val LightColorScheme =
+private val MaterialYouLightScheme =
     lightColorScheme(
-        primary = PrimaryLight,
-        onPrimary = TextWhite,
-        primaryContainer = PrimaryContainerLight,
-        onPrimaryContainer = OnPrimaryContainerLight,
-        secondary = SecondaryLight,
-        onSecondary = TextWhite,
-        secondaryContainer = SecondaryContainerLight,
-        onSecondaryContainer = OnSecondaryContainerLight,
-        tertiary = TertiaryLight,
-        onTertiary = TextWhite,
-        background = BackgroundLight,
-        surface = SurfaceLight,
-        onBackground = OnBackgroundLight,
-        onSurface = OnSurfaceLight,
-        error = ExpenseRed,
-        onError = TextWhite,
+        primary = MyPrimaryLight,
+        onPrimary = MyOnPrimaryLight,
+        primaryContainer = MyPrimaryContainerLight,
+        onPrimaryContainer = MyOnPrimaryContainerLight,
+        secondary = MySecondaryLight,
+        onSecondary = MyOnSecondaryLight,
+        secondaryContainer = MySecondaryContainerLight,
+        onSecondaryContainer = MyOnSecondaryContainerLight,
+        tertiary = MyTertiaryLight,
+        onTertiary = MyOnTertiaryLight,
+        background = MyBackgroundLight,
+        onBackground = MyOnBackgroundLight,
+        surface = MySurfaceLight,
+        onSurface = MyOnSurfaceLight,
+        surfaceVariant = MySurfaceVariantLight,
+        onSurfaceVariant = MyOnSurfaceVariantLight,
+        outline = MyOutlineLight,
+        error = MyErrorLight,
+        onError = MyOnErrorLight,
     )
 
-private val DarkColorScheme =
+private val MaterialYouDarkScheme =
     darkColorScheme(
-        primary = PrimaryDarkTheme,
-        onPrimary = OnPrimaryDark,
-        primaryContainer = PrimaryContainerDark,
-        onPrimaryContainer = OnPrimaryContainerDark,
-        secondary = SecondaryDarkTheme,
-        onSecondary = OnSecondaryDark,
-        tertiary = TertiaryDarkTheme,
-        onTertiary = OnTertiaryDark,
-        background = BackgroundDark,
-        surface = SurfaceDark,
-        onBackground = OnBackgroundDark,
-        onSurface = OnSurfaceDark,
-        error = ErrorDark,
-        onError = OnErrorDark,
+        primary = MyPrimaryDark,
+        onPrimary = MyOnPrimaryDark,
+        primaryContainer = MyPrimaryContainerDark,
+        onPrimaryContainer = MyOnPrimaryContainerDark,
+        secondary = MySecondaryDark,
+        onSecondary = MyOnSecondaryDark,
+        secondaryContainer = MySecondaryContainerDark,
+        onSecondaryContainer = MyOnSecondaryContainerDark,
+        tertiary = MyTertiaryDark,
+        onTertiary = MyOnTertiaryDark,
+        background = MyBackgroundDark,
+        onBackground = MyOnBackgroundDark,
+        surface = MySurfaceDark,
+        onSurface = MyOnSurfaceDark,
+        surfaceVariant = MySurfaceVariantDark,
+        onSurfaceVariant = MyOnSurfaceVariantDark,
+        outline = MyOutlineDark,
+        error = MyErrorDark,
+        onError = MyOnErrorDark,
+    )
+
+private val NordicLightScheme =
+    lightColorScheme(
+        primary = NordicPrimaryLight,
+        onPrimary = NordicOnPrimaryLight,
+        primaryContainer = NordicPrimaryContainerLight,
+        onPrimaryContainer = NordicOnPrimaryContainerLight,
+        secondary = NordicSecondaryLight,
+        onSecondary = NordicOnSecondaryLight,
+        secondaryContainer = NordicSecondaryContainerLight,
+        onSecondaryContainer = NordicOnSecondaryContainerLight,
+        tertiary = NordicTertiaryLight,
+        onTertiary = NordicOnTertiaryLight,
+        background = NordicBackgroundLight,
+        onBackground = NordicOnBackgroundLight,
+        surface = NordicSurfaceLight,
+        onSurface = NordicOnSurfaceLight,
+        surfaceVariant = NordicSurfaceVariantLight,
+        onSurfaceVariant = NordicOnSurfaceVariantLight,
+        outline = NordicOutlineLight,
+        error = NordicErrorLight,
+        onError = NordicOnErrorLight,
+    )
+
+private val NordicDarkScheme =
+    darkColorScheme(
+        primary = NordicPrimaryDark,
+        onPrimary = NordicOnPrimaryDark,
+        primaryContainer = NordicPrimaryContainerDark,
+        onPrimaryContainer = NordicOnPrimaryContainerDark,
+        secondary = NordicSecondaryDark,
+        onSecondary = NordicOnSecondaryDark,
+        secondaryContainer = NordicSecondaryContainerDark,
+        onSecondaryContainer = NordicOnSecondaryContainerDark,
+        tertiary = NordicTertiaryDark,
+        onTertiary = NordicOnTertiaryDark,
+        background = NordicBackgroundDark,
+        onBackground = NordicOnBackgroundDark,
+        surface = NordicSurfaceDark,
+        onSurface = NordicOnSurfaceDark,
+        surfaceVariant = NordicSurfaceVariantDark,
+        onSurfaceVariant = NordicOnSurfaceVariantDark,
+        outline = NordicOutlineDark,
+        error = NordicErrorDark,
+        onError = NordicOnErrorDark,
+    )
+
+private val CyberpunkLightScheme =
+    lightColorScheme(
+        primary = CyberPrimaryLight,
+        onPrimary = CyberOnPrimaryLight,
+        primaryContainer = CyberPrimaryContainerLight,
+        onPrimaryContainer = CyberOnPrimaryContainerLight,
+        secondary = CyberSecondaryLight,
+        onSecondary = CyberOnSecondaryLight,
+        secondaryContainer = CyberSecondaryContainerLight,
+        onSecondaryContainer = CyberOnSecondaryContainerLight,
+        tertiary = CyberTertiaryLight,
+        onTertiary = CyberOnTertiaryLight,
+        background = CyberBackgroundLight,
+        onBackground = CyberOnBackgroundLight,
+        surface = CyberSurfaceLight,
+        onSurface = CyberOnSurfaceLight,
+        surfaceVariant = CyberSurfaceVariantLight,
+        onSurfaceVariant = CyberOnSurfaceVariantLight,
+        outline = CyberOutlineLight,
+        error = CyberErrorLight,
+        onError = CyberOnErrorLight,
+    )
+
+private val CyberpunkDarkScheme =
+    darkColorScheme(
+        primary = CyberPrimaryDark,
+        onPrimary = CyberOnPrimaryDark,
+        primaryContainer = CyberPrimaryContainerDark,
+        onPrimaryContainer = CyberOnPrimaryContainerDark,
+        secondary = CyberSecondaryDark,
+        onSecondary = CyberOnSecondaryDark,
+        secondaryContainer = CyberSecondaryContainerDark,
+        onSecondaryContainer = CyberOnSecondaryContainerDark,
+        tertiary = CyberTertiaryDark,
+        onTertiary = CyberOnTertiaryDark,
+        background = CyberBackgroundDark,
+        onBackground = CyberOnBackgroundDark,
+        surface = CyberSurfaceDark,
+        onSurface = CyberOnSurfaceDark,
+        surfaceVariant = CyberSurfaceVariantDark,
+        onSurfaceVariant = CyberOnSurfaceVariantDark,
+        outline = CyberOutlineDark,
+        error = CyberErrorDark,
+        onError = CyberOnErrorDark,
+    )
+
+private val CorporateLightScheme =
+    lightColorScheme(
+        primary = CorpPrimaryLight,
+        onPrimary = CorpOnPrimaryLight,
+        primaryContainer = CorpPrimaryContainerLight,
+        onPrimaryContainer = CorpOnPrimaryContainerLight,
+        secondary = CorpSecondaryLight,
+        onSecondary = CorpOnSecondaryLight,
+        secondaryContainer = CorpSecondaryContainerLight,
+        onSecondaryContainer = CorpOnSecondaryContainerLight,
+        tertiary = CorpTertiaryLight,
+        onTertiary = CorpOnTertiaryLight,
+        background = CorpBackgroundLight,
+        onBackground = CorpOnBackgroundLight,
+        surface = CorpSurfaceLight,
+        onSurface = CorpOnSurfaceLight,
+        surfaceVariant = CorpSurfaceVariantLight,
+        onSurfaceVariant = CorpOnSurfaceVariantLight,
+        outline = CorpOutlineLight,
+        error = CorpErrorLight,
+        onError = CorpOnErrorLight,
+    )
+
+private val CorporateDarkScheme =
+    darkColorScheme(
+        primary = CorpPrimaryDark,
+        onPrimary = CorpOnPrimaryDark,
+        primaryContainer = CorpPrimaryContainerDark,
+        onPrimaryContainer = CorpOnPrimaryContainerDark,
+        secondary = CorpSecondaryDark,
+        onSecondary = CorpOnSecondaryDark,
+        secondaryContainer = CorpSecondaryContainerDark,
+        onSecondaryContainer = CorpOnSecondaryContainerDark,
+        tertiary = CorpTertiaryDark,
+        onTertiary = CorpOnTertiaryDark,
+        background = CorpBackgroundDark,
+        onBackground = CorpOnBackgroundDark,
+        surface = CorpSurfaceDark,
+        onSurface = CorpOnSurfaceDark,
+        surfaceVariant = CorpSurfaceVariantDark,
+        onSurfaceVariant = CorpOnSurfaceVariantDark,
+        outline = CorpOutlineDark,
+        error = CorpErrorDark,
+        onError = CorpOnErrorDark,
     )
 
 @Composable
-fun gestoreSpeseTheme(
+fun AppTheme(
+    appStyle: AppStyle = AppStyle.MATERIAL_YOU,
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+ Disabling dynamic color to enforce our custom palette for consistency
-    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
     val colorScheme =
-        when {
-            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                val context = LocalContext.current
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        when (appStyle) {
+            AppStyle.MATERIAL_YOU -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+                } else {
+                    if (darkTheme) MaterialYouDarkScheme else MaterialYouLightScheme
+                }
             }
-            darkTheme -> DarkColorScheme
-            else -> LightColorScheme
+            AppStyle.NORDIC -> if (darkTheme) NordicDarkScheme else NordicLightScheme
+            AppStyle.CYBERPUNK -> if (darkTheme) CyberpunkDarkScheme else CyberpunkLightScheme
+            AppStyle.CORPORATE -> if (darkTheme) CorporateDarkScheme else CorporateLightScheme
         }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-
-            // Make status bar transparent
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = Color.Transparent.toArgb()
-
-            // 2. Gestisci il contrasto delle icone (scure su sfondo chiaro, chiare su sfondo scuro)
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !darkTheme
                 isAppearanceLightNavigationBars = !darkTheme
@@ -91,6 +235,15 @@ fun gestoreSpeseTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = Shapes,
         content = content,
     )
 }
+
+@Deprecated("Use AppTheme instead", ReplaceWith("AppTheme(AppStyle.MATERIAL_YOU, darkTheme, content = content)"))
+@Composable
+fun gestoreSpeseTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    @Suppress("UNUSED_PARAMETER") dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
+) = AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = darkTheme, content = content)

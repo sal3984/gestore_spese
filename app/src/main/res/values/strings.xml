@@ -222,6 +222,12 @@
     <string name="theme_system">System default</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="app_style">App Style</string>
+    <string name="choose_app_style">Choose App Style</string>
+    <string name="style_material_you">Material You</string>
+    <string name="style_nordic">Modern Minimalist</string>
+    <string name="style_cyberpunk">Cyberpunk</string>
+    <string name="style_corporate">Corporate</string>
 
     <!-- Donations -->
     <string name="support_us">Support Us</string>
