@@ -396,7 +396,7 @@ fun RecurrenceFields(
                         RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
                         RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
                         RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
-                        else -> stringResource(R.string.recurrence_monthly)
+                        else -> ""
                     },
                     onValueChange = {},
                     readOnly = true,

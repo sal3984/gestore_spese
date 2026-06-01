@@ -125,7 +125,7 @@ fun AddRegularTransactionScreen(
                 originalAmountText = transactionToEdit?.originalAmount?.toString() ?: "",
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isRecurrenceEnabled = transactionToEdit?.recurrenceType?.let { it != RecurrenceType.NONE } ?: false,
-                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.MONTHLY,
+                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
                 recurrenceLimit = transactionToEdit?.recurrenceLimit ?: 1,
                 dateStr = if (transactionToEdit != null) {
                     try {
@@ -579,7 +579,7 @@ private fun RegularRecurrenceFields(
                         RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
                         RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
                         RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
-                        else -> stringResource(R.string.recurrence_monthly)
+                        else -> ""
                     },
                     onValueChange = {},
                     readOnly = true,

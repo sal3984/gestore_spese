@@ -126,7 +126,7 @@ fun AddCreditCardTransactionScreen(
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1,
                 isRecurrenceEnabled = transactionToEdit?.recurrenceType?.let { it != RecurrenceType.NONE } ?: false,
-                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.MONTHLY,
+                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
                 recurrenceLimit = transactionToEdit?.recurrenceLimit ?: 12,
                 installmentsCount = transactionToEdit?.totalInstallments ?: 3,
                 dateStr = if (transactionToEdit != null) {
