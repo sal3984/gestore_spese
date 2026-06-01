@@ -27,8 +27,8 @@ class RegularTransactionSaveUseCase {
         locale: Locale,
     ): RegularTransactionSaveResult {
         val displayFormatter = DateTimeFormatter.ofPattern(dateFormat)
-        val amount = uiState.amountText.toDoubleOrNull() ?: 0.0
-        val originalAmount = uiState.originalAmountText.toDoubleOrNull() ?: amount
+        val amount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+        val originalAmount = uiState.originalAmountText.replace(',', '.').toDoubleOrNull() ?: amount
 
         if (amount <= 0 || uiState.description.isBlank()) {
             return RegularTransactionSaveResult.Error("error_invalid_input")

@@ -256,8 +256,8 @@ fun AddCreditCardTransactionScreen(
             is AddTransactionEvent.OnShowRecurrenceTypeDialog -> uiState = uiState.copy(showRecurrenceTypeDialog = event.show)
             is AddTransactionEvent.OnCalculationModeChange -> uiState = uiState.copy(calculationMode = event.mode)
             is AddTransactionEvent.OnInstallmentAmountChange -> {
-                val totalAmount = uiState.amountText.toDoubleOrNull() ?: 0.0
-                val installmentAmount = event.amount.toDoubleOrNull() ?: 0.0
+                val totalAmount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                val installmentAmount = event.amount.replace(',', '.').toDoubleOrNull() ?: 0.0
                 val newCount = if (totalAmount > 0 && installmentAmount > 0) {
                     ceil(totalAmount / installmentAmount).toInt()
                 } else {
@@ -374,7 +374,7 @@ fun AddCreditCardTransactionScreen(
             result = receiptScanResult,
             currencySymbol = currencySymbol,
             onApply = {
-                receiptScanResult.amount?.let { handleEvent(AddTransactionEvent.OnAmountChange(String.format(Locale.US, "%.2f", it).replace('.', ','))) }
+                receiptScanResult.amount?.let { handleEvent(AddTransactionEvent.OnAmountChange(String.format(Locale.US, "%.2f", it))) }
                 receiptScanResult.description?.let { handleEvent(AddTransactionEvent.OnDescriptionChange(it)) }
                 receiptScanResult.date?.let { handleEvent(AddTransactionEvent.OnDateChange(it)) }
                 onClearReceiptScanResult()

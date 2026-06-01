@@ -277,7 +277,7 @@ fun AddRegularTransactionScreen(
             result = receiptScanResult,
             currencySymbol = currencySymbol,
             onApply = {
-                receiptScanResult.amount?.let { handleEvent(RegularTransactionEvent.OnAmountChange(String.format(Locale.US, "%.2f", it).replace('.', ','))) }
+                receiptScanResult.amount?.let { handleEvent(RegularTransactionEvent.OnAmountChange(String.format(Locale.US, "%.2f", it))) }
                 receiptScanResult.description?.let { handleEvent(RegularTransactionEvent.OnDescriptionChange(it)) }
                 receiptScanResult.date?.let { handleEvent(RegularTransactionEvent.OnDateChange(it)) }
                 onClearReceiptScanResult()

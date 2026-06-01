@@ -289,7 +289,7 @@ fun BasicDetailsFields(
 
                     Button(
                         onClick = {
-                            onEvent(AddTransactionEvent.OnConvertAmount(uiState.originalCurrency, currencySymbol, uiState.originalAmountText.toDoubleOrNull() ?: 0.0))
+                            onEvent(AddTransactionEvent.OnConvertAmount(uiState.originalCurrency, currencySymbol, uiState.originalAmountText.replace(',', '.').toDoubleOrNull() ?: 0.0))
                         },
                         enabled = !uiState.isConverting && uiState.originalAmountText.isNotEmpty(),
                         modifier = Modifier
@@ -646,7 +646,7 @@ fun InstallmentSection(
                             activeTrackColor = MaterialTheme.colorScheme.primary,
                         ),
                     )
-                    val amount = uiState.amountText.toDoubleOrNull() ?: 0.0
+                    val amount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (amount > 0 && uiState.installmentsCount > 0) {
                         val amountPerInstallment = amount / uiState.installmentsCount
                         Text(
@@ -667,8 +667,8 @@ fun InstallmentSection(
                         shape = RoundedCornerShape(12.dp),
                     )
 
-                    val totalAmount = uiState.amountText.toDoubleOrNull() ?: 0.0
-                    val installmentAmount = uiState.installmentAmountText.toDoubleOrNull() ?: 0.0
+                    val totalAmount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                    val installmentAmount = uiState.installmentAmountText.replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (totalAmount > 0 && installmentAmount > 0) {
                         val calculatedInstallments = kotlin.math.ceil(totalAmount / installmentAmount).toInt()
                         Text(
