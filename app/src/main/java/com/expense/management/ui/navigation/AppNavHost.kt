@@ -91,6 +91,7 @@ fun AppNavHost(
     enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget>,
     receiptScanResult: ReceiptScanResult? = null,
     onClearReceiptScanResult: () -> Unit = {},
+    defaultPaymentMethodId: String = "__cash__",
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
@@ -229,6 +230,9 @@ fun AppNavHost(
                 onNavigateToPaymentMethods = onNavigateToPaymentMethods,
                 enabledWidgets = enabledWidgets,
                 onEnabledWidgetsChange = viewModel::updateEnabledWidgets,
+                allPaymentMethods = allPaymentMethods,
+                defaultPaymentMethodId = defaultPaymentMethodId,
+                onDefaultPaymentMethodChange = viewModel::updateDefaultPaymentMethod,
             )
         }
 
@@ -355,6 +359,7 @@ fun AppNavHost(
                         viewModel.updateCurrencyRate(amount, from, to)
                     },
                     allPaymentMethods = allPaymentMethods,
+                    defaultPaymentMethodId = defaultPaymentMethodId,
                     frequentExpenseCategories = frequentExpenseCategories,
                     frequentIncomeCategories = frequentIncomeCategories,
                     sharedTransitionScope = sharedTransitionScope,

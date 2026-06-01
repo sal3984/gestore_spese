@@ -312,6 +312,7 @@
     <string name="provider">Fornitore</string>
     <string name="add">Aggiungi</string>
     <string name="manage_payment_methods">Gestisci Metodi di Pagamento</string>
+    <string name="default_payment_method">Metodo di Pagamento di Default</string>
 
     <!-- Accessibility content descriptions -->
     <string name="bnpl_debt">Debiti BNPL</string>

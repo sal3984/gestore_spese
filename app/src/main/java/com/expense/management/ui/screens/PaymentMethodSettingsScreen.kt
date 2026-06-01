@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -468,6 +469,7 @@ private fun EditPaymentMethodDialog(
                     is PaymentMethodDetails.Satispay -> it.name
                     is PaymentMethodDetails.Paypal -> it.name
                     is PaymentMethodDetails.Klarna -> it.name
+                    is PaymentMethodDetails.Cash -> it.name
                 }
             } ?: "",
         )
@@ -682,11 +684,28 @@ private fun EditPaymentMethodDialog(
                 dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
             )
         }
+
+        PaymentProvider.CASH -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(providerLabel(provider)) },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.card_name)) }, modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { onSave(name, PaymentMethodDetails.Cash(name)) }) { Text(stringResource(R.string.save)) }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+            )
+        }
     }
 }
 
 private fun providerLabel(provider: PaymentProvider): String {
     return when (provider) {
+        PaymentProvider.CASH -> "Contante"
         PaymentProvider.CREDIT_CARD_SALDO -> "Carta di Credito (Saldo)"
         PaymentProvider.CREDIT_CARD_REVOLVING -> "Carta di Credito (Revolving)"
         PaymentProvider.DEBIT_CARD -> "Bancomat / Carta Ricaricabile"
@@ -699,6 +718,7 @@ private fun providerLabel(provider: PaymentProvider): String {
 
 private fun providerIcon(provider: PaymentProvider): ImageVector {
     return when (provider) {
+        PaymentProvider.CASH -> Icons.Default.Money
         PaymentProvider.CREDIT_CARD_SALDO -> Icons.Default.CreditCard
         PaymentProvider.CREDIT_CARD_REVOLVING -> Icons.Default.CreditCard
         PaymentProvider.DEBIT_CARD -> Icons.Default.CreditCard

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
@@ -65,6 +66,7 @@ import androidx.core.net.toUri
 import com.expense.management.R
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CurrencyRate
+import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import kotlinx.coroutines.launch
@@ -116,6 +118,9 @@ fun settingsScreen(
     onNavigateToPaymentMethods: () -> Unit,
     enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget>,
     onEnabledWidgetsChange: (Set<com.expense.management.domain.model.DashboardWidget>) -> Unit,
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
+    defaultPaymentMethodId: String = "__cash__",
+    onDefaultPaymentMethodChange: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -130,6 +135,7 @@ fun settingsScreen(
     var showEditCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
     var showDeleteCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
     var showWidgetsDialog by remember { mutableStateOf(false) }
+    var showDefaultPaymentDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         onRefreshCurrencyRates()
@@ -230,12 +236,20 @@ fun settingsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val defaultMethodName = allPaymentMethods.find { it.id == defaultPaymentMethodId }?.name ?: "Contante"
         AccordionSection(
             title = stringResource(R.string.payment_methods),
             initiallyExpanded = false,
             icon = Icons.Default.CreditCard,
         ) {
             Column {
+                settingsListItem(
+                    icon = Icons.Default.Payment,
+                    title = stringResource(R.string.default_payment_method),
+                    value = defaultMethodName,
+                    onClick = { showDefaultPaymentDialog = true },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 settingsListItem(
                     icon = Icons.Default.CreditCard,
                     title = stringResource(R.string.payment_methods),
@@ -672,6 +686,40 @@ fun settingsScreen(
             dismissButton = { TextButton(onClick = { showWidgetsDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+
+    if (showDefaultPaymentDialog) {
+        AlertDialog(
+            onDismissRequest = { showDefaultPaymentDialog = false },
+            title = { Text(stringResource(R.string.default_payment_method)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    allPaymentMethods.forEach { method ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDefaultPaymentMethodChange(method.id)
+                                    showDefaultPaymentDialog = false
+                                }
+                                .padding(vertical = 8.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = method.id == defaultPaymentMethodId,
+                                onClick = {
+                                    onDefaultPaymentMethodChange(method.id)
+                                    showDefaultPaymentDialog = false
+                                },
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(method.name, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showDefaultPaymentDialog = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
 }
 
 @Preview(showBackground = true, name = "Settings Light")
@@ -689,6 +737,9 @@ private fun SettingsPreview() {
             onNavigateToSecurity = {}, onNavigateToPaymentMethods = {},
             enabledWidgets = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
             onEnabledWidgetsChange = {},
+            allPaymentMethods = emptyList(),
+            defaultPaymentMethodId = "__cash__",
+            onDefaultPaymentMethodChange = {},
         )
     }
 }
@@ -708,6 +759,9 @@ private fun SettingsPreviewDark() {
             onNavigateToSecurity = {}, onNavigateToPaymentMethods = {},
             enabledWidgets = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
             onEnabledWidgetsChange = {},
+            allPaymentMethods = emptyList(),
+            defaultPaymentMethodId = "__cash__",
+            onDefaultPaymentMethodChange = {},
         )
     }
 }

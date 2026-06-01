@@ -312,6 +312,7 @@
     <string name="provider">Provider</string>
     <string name="add">Add</string>
     <string name="manage_payment_methods">Manage Payment Methods</string>
+    <string name="default_payment_method">Default Payment Method</string>
 
     <!-- Accessibility content descriptions -->
     <string name="bnpl_debt">BNPL Debt</string>

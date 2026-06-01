@@ -89,6 +89,7 @@ class ExpenseViewModel(
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_APP_STYLE = "app_style"
         private const val KEY_ENABLED_WIDGETS = "enabled_widgets"
+        private const val KEY_DEFAULT_PAYMENT_METHOD = "default_payment_method_id"
     }
 
     // Frequent Categories Caching
@@ -141,9 +142,18 @@ class ExpenseViewModel(
         getCreditCardsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // DATI METODI DI PAGAMENTO
+    // DATI METODI DI PAGAMENTO (inietta Contante come metodo built-in)
     val allPaymentMethods: StateFlow<List<PaymentMethodEntity>> =
         getPaymentMethodsUseCase()
+            .map { methods ->
+                val cash = PaymentMethodEntity(
+                    id = "__cash__",
+                    name = "Contante",
+                    provider = PaymentProvider.CASH.name,
+                    isActive = true,
+                )
+                methods + cash
+            }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // CARTE DI CREDITO ATTIVE: unisce nuovo sistema (payment_methods + credit_card_details)
@@ -272,6 +282,11 @@ class ExpenseViewModel(
         } ?: DashboardWidget.entries.toSet(),
     )
     val enabledWidgets = _enabledWidgets.asStateFlow()
+
+    private val _defaultPaymentMethodId = MutableStateFlow(
+        prefs?.getString(KEY_DEFAULT_PAYMENT_METHOD, "__cash__") ?: "__cash__",
+    )
+    val defaultPaymentMethodId = _defaultPaymentMethodId.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -498,6 +513,7 @@ class ExpenseViewModel(
                     )
                 }
             }
+            PaymentProvider.CASH -> PaymentMethodDetails.Cash(name = method.name)
         }
     }
 
@@ -553,6 +569,7 @@ class ExpenseViewModel(
                         notes = details.notes,
                     ),
                 )
+                is PaymentMethodDetails.Cash -> {}
             }
         }
     }
@@ -662,6 +679,12 @@ class ExpenseViewModel(
     fun updateEnabledWidgets(widgets: Set<DashboardWidget>) {
         _enabledWidgets.value = widgets
         prefs?.edit { putStringSet(KEY_ENABLED_WIDGETS, widgets.map { it.name }.toSet()) }
+    }
+
+    fun updateDefaultPaymentMethod(id: String?) {
+        val value = id ?: "__cash__"
+        _defaultPaymentMethodId.value = value
+        prefs?.edit { putString(KEY_DEFAULT_PAYMENT_METHOD, value) }
     }
 
     fun refreshCurrencyRates() {

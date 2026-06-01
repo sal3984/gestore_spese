@@ -81,6 +81,7 @@ fun AddRegularTransactionScreen(
     onDescriptionChange: (String) -> Unit,
     onConvertAmount: suspend (String, String, Double) -> Double? = { _, _, _ -> null },
     allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
+    defaultPaymentMethodId: String = "__cash__",
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
     frequentExpenseCategories: List<CategoryEntity> = emptyList(),
@@ -117,7 +118,8 @@ fun AddRegularTransactionScreen(
                     ?: transactionToEdit?.categoryId.takeIf { transactionToEdit != null }
                     ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
                     ?: "food",
-                selectedPaymentMethodId = transactionToEdit?.paymentMethodId,
+                selectedPaymentMethodId = transactionToEdit?.paymentMethodId
+                    ?: defaultPaymentMethodId.takeIf { allPaymentMethods.any { m -> m.id == it } },
                 originalAmountText = transactionToEdit?.originalAmount?.toString() ?: "",
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isRecurrenceEnabled = transactionToEdit?.recurrenceType?.let { it != RecurrenceType.NONE } ?: false,
@@ -132,7 +134,7 @@ fun AddRegularTransactionScreen(
                 } else {
                     LocalDate.now().format(displayFormatter)
                 },
-                isPaymentMethodEnabled = transactionToEdit?.paymentMethodId != null,
+                isPaymentMethodEnabled = transactionToEdit?.paymentMethodId != null || transactionToEdit == null && defaultPaymentMethodId.isNotBlank(),
             ),
         )
     }

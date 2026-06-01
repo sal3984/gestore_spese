@@ -113,6 +113,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val bnplProjections by viewModel.bnplProjections.collectAsStateWithLifecycle()
     val receiptScanResult by viewModel.receiptScanResult.collectAsStateWithLifecycle()
     val enabledWidgets by viewModel.enabledWidgets.collectAsStateWithLifecycle()
+    val defaultPaymentMethodId by viewModel.defaultPaymentMethodId.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
 
     LaunchedEffect(currentDashboardMonth) {
@@ -266,6 +267,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         enabledWidgets = enabledWidgets,
                         receiptScanResult = receiptScanResult,
                         onClearReceiptScanResult = viewModel::clearReceiptScanResult,
+                        defaultPaymentMethodId = defaultPaymentMethodId,
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
                         onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
