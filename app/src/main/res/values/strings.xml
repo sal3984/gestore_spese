@@ -344,4 +344,13 @@
     <string name="bnpl_installments">BNPL Installments</string>
     <string name="bnpl_cycle_days">BNPL Cycle Days</string>
     <string name="edit">Edit</string>
+    <string name="details_label">Details</string>
+    <string name="options_label">Options</string>
+    <string name="scan_receipt_camera">Scan with camera</string>
+    <string name="scan_receipt_gallery">Scan from gallery</string>
+    <string name="scan_result_title">Receipt Result</string>
+    <string name="merchant_label">Merchant</string>
+    <string name="scan_no_data">No data extracted from receipt</string>
+    <string name="apply">Apply</string>
+    <string name="discard">Discard</string>
 </resources>

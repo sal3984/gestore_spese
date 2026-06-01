@@ -344,4 +344,13 @@
     <string name="bnpl_installments">Rate BNPL</string>
     <string name="bnpl_cycle_days">Giorni Ciclo BNPL</string>
     <string name="edit">Modifica</string>
+    <string name="details_label">Dettagli</string>
+    <string name="options_label">Opzioni</string>
+    <string name="scan_receipt_camera">Scansiona con fotocamera</string>
+    <string name="scan_receipt_gallery">Scansiona da galleria</string>
+    <string name="scan_result_title">Risultato Ricevuta</string>
+    <string name="merchant_label">Esercizio</string>
+    <string name="scan_no_data">Nessun dato estratto dalla ricevuta</string>
+    <string name="apply">Applica</string>
+    <string name="discard">Scarta</string>
 </resources>

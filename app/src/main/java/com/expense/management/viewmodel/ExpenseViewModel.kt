@@ -25,6 +25,7 @@ import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
@@ -38,6 +39,7 @@ import com.expense.management.domain.usecase.ManageCreditCardUseCase
 import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
+import com.expense.management.domain.usecase.ScanReceiptUseCase
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
 import com.expense.management.ui.theme.AppStyle
@@ -321,6 +323,20 @@ class ExpenseViewModel(
             klarnaDetails = allKlarnaDetails.value,
             targetMonth = targetMonth,
         )
+    }
+
+    // SCANSIONE RICEVUTE (ML Kit OCR)
+    private val scanReceiptUseCase = ScanReceiptUseCase()
+    private val _receiptScanResult = MutableStateFlow<ReceiptScanResult?>(null)
+    val receiptScanResult: StateFlow<ReceiptScanResult?> = _receiptScanResult.asStateFlow()
+
+    fun scanReceipt(recognizedText: String) {
+        val result = scanReceiptUseCase(recognizedText)
+        _receiptScanResult.value = result
+    }
+
+    fun clearReceiptScanResult() {
+        _receiptScanResult.value = null
     }
 
     // GESTIONE METODI DI PAGAMENTO

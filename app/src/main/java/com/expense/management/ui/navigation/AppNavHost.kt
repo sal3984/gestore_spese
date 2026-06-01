@@ -1,10 +1,15 @@
 package com.expense.management.ui.navigation
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -13,10 +18,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -29,6 +36,7 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.ui.screens.AddCreditCardTransactionScreen
 import com.expense.management.ui.screens.AddRegularTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
@@ -42,6 +50,13 @@ import com.expense.management.ui.theme.AppStyle
 import com.expense.management.utils.BiometricUtils
 import com.expense.management.viewmodel.CreditCardViewModel
 import com.expense.management.viewmodel.ExpenseViewModel
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.YearMonth
 
 @Composable
@@ -74,6 +89,8 @@ fun AppNavHost(
     hasTransactions: Boolean,
     isBiometricEnabled: Boolean,
     enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget>,
+    receiptScanResult: ReceiptScanResult? = null,
+    onClearReceiptScanResult: () -> Unit = {},
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
@@ -278,6 +295,40 @@ fun AppNavHost(
                 }
             }
 
+            val scope = rememberCoroutineScope()
+            var isScanning by remember { mutableStateOf(false) }
+            var photoUri by remember { mutableStateOf<Uri?>(null) }
+            val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                if (success && photoUri != null) {
+                    isScanning = true
+                    scope.launch {
+                        val text = recognizeText(context, photoUri!!)
+                        viewModel.scanReceipt(text)
+                        isScanning = false
+                    }
+                }
+            }
+            val galleryLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.GetContent(),
+            ) { uri ->
+                if (uri != null) {
+                    isScanning = true
+                    scope.launch {
+                        val text = recognizeText(context, uri)
+                        viewModel.scanReceipt(text)
+                        isScanning = false
+                    }
+                }
+            }
+            val onLaunchCamera: () -> Unit = {
+                val file = java.io.File(context.cacheDir, "receipt_${System.currentTimeMillis()}.jpg")
+                photoUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                cameraLauncher.launch(photoUri!!)
+            }
+            val onLaunchGallery: () -> Unit = {
+                galleryLauncher.launch("image/*")
+            }
+
             if (isLoading && transactionId != "0") {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     CircularProgressIndicator()
@@ -308,7 +359,19 @@ fun AppNavHost(
                     frequentIncomeCategories = frequentIncomeCategories,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = this@composable,
+                    onLaunchCamera = onLaunchCamera,
+                    onLaunchGallery = onLaunchGallery,
+                    receiptScanResult = receiptScanResult,
+                    onClearReceiptScanResult = onClearReceiptScanResult,
                 )
+            }
+            if (isScanning) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
 
@@ -347,6 +410,40 @@ fun AppNavHost(
                 }
             }
 
+            val scopeC = rememberCoroutineScope()
+            var isScanningC by remember { mutableStateOf(false) }
+            var photoUriC by remember { mutableStateOf<Uri?>(null) }
+            val cameraLauncherC = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                if (success && photoUriC != null) {
+                    isScanningC = true
+                    scopeC.launch {
+                        val text = recognizeText(context, photoUriC!!)
+                        viewModel.scanReceipt(text)
+                        isScanningC = false
+                    }
+                }
+            }
+            val galleryLauncherC = rememberLauncherForActivityResult(
+                ActivityResultContracts.GetContent(),
+            ) { uri ->
+                if (uri != null) {
+                    isScanningC = true
+                    scopeC.launch {
+                        val text = recognizeText(context, uri)
+                        viewModel.scanReceipt(text)
+                        isScanningC = false
+                    }
+                }
+            }
+            val onLaunchCameraC: () -> Unit = {
+                val file = java.io.File(context.cacheDir, "receipt_${System.currentTimeMillis()}.jpg")
+                photoUriC = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                cameraLauncherC.launch(photoUriC!!)
+            }
+            val onLaunchGalleryC: () -> Unit = {
+                galleryLauncherC.launch("image/*")
+            }
+
             if (isLoading && transactionId != "0") {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     CircularProgressIndicator()
@@ -379,8 +476,32 @@ fun AppNavHost(
                     animatedVisibilityScope = this@composable,
                     frequentExpenseCategories = frequentExpenseCategories,
                     frequentIncomeCategories = frequentIncomeCategories,
+                    onLaunchCamera = onLaunchCameraC,
+                    onLaunchGallery = onLaunchGalleryC,
+                    receiptScanResult = receiptScanResult,
+                    onClearReceiptScanResult = onClearReceiptScanResult,
                 )
             }
+            if (isScanningC) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
+    }
+}
+
+private suspend fun recognizeText(context: android.content.Context, uri: Uri): String = withContext(Dispatchers.IO) {
+    try {
+        val bitmap = BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
+        val image = InputImage.fromBitmap(bitmap, 0)
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val result = Tasks.await(recognizer.process(image))
+        result.text
+    } catch (_: Exception) {
+        ""
     }
 }

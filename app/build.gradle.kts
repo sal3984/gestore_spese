@@ -119,4 +119,7 @@ dependencies {
 
     // Play Services Wearable (per WearableDataListenerService)
     implementation(libs.play.services.wearable)
+
+    // ML Kit Text Recognition (per scansione ricevute)
+    implementation(libs.mlkit.text.recognition)
 }

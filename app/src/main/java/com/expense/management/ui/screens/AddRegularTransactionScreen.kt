@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,8 +24,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +59,7 @@ import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.usecase.RegularTransactionSaveResult
 import com.expense.management.domain.usecase.RegularTransactionSaveUseCase
 import com.expense.management.ui.model.DeleteType
@@ -87,6 +89,10 @@ fun AddRegularTransactionScreen(
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
     frequentExpenseCategories: List<CategoryEntity> = emptyList(),
     frequentIncomeCategories: List<CategoryEntity> = emptyList(),
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
+    receiptScanResult: ReceiptScanResult? = null,
+    onClearReceiptScanResult: () -> Unit = {},
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val locale = ComposeLocale.current.platformLocale
@@ -222,7 +228,7 @@ fun AddRegularTransactionScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (transactionToEdit == null) stringResource(R.string.add_transaction) else stringResource(R.string.edit_transaction), fontWeight = FontWeight.SemiBold) },
+                title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -261,6 +267,22 @@ fun AddRegularTransactionScreen(
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             padding = padding,
+            onLaunchCamera = onLaunchCamera,
+            onLaunchGallery = onLaunchGallery,
+        )
+    }
+
+    if (receiptScanResult != null) {
+        ReceiptScanDialog(
+            result = receiptScanResult,
+            currencySymbol = currencySymbol,
+            onApply = {
+                receiptScanResult.amount?.let { handleEvent(RegularTransactionEvent.OnAmountChange(String.format(Locale.US, "%.2f", it).replace('.', ','))) }
+                receiptScanResult.description?.let { handleEvent(RegularTransactionEvent.OnDescriptionChange(it)) }
+                receiptScanResult.date?.let { handleEvent(RegularTransactionEvent.OnDateChange(it)) }
+                onClearReceiptScanResult()
+            },
+            onDiscard = onClearReceiptScanResult,
         )
     }
 
@@ -325,6 +347,8 @@ private fun RegularTransactionContent(
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope?,
     padding: PaddingValues,
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -335,188 +359,188 @@ private fun RegularTransactionContent(
             .padding(bottom = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        TypeSelector(
-            type = uiState.type,
-            onTypeChange = { onEvent(RegularTransactionEvent.OnTypeChange(it)) },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        RegularBasicDetailsCard(
-            transactionToEdit = transactionToEdit,
-            uiState = uiState,
-            onEvent = onEvent,
-            currencySymbol = currencySymbol,
-            dateFormat = dateFormat,
-            suggestions = suggestions,
-            sharedTransitionScope = sharedTransitionScope,
-            animatedVisibilityScope = animatedVisibilityScope,
-        )
-
-        if (!isEditing) {
-            Spacer(modifier = Modifier.height(12.dp))
-            RegularRecurrenceSection(
+        AccordionSection(
+            title = stringResource(R.string.details_label),
+            initiallyExpanded = true,
+        ) {
+            TypeSelector(
+                type = uiState.type,
+                onTypeChange = { onEvent(RegularTransactionEvent.OnTypeChange(it)) },
+            )
+            RegularBasicDetailsFields(
                 uiState = uiState,
                 onEvent = onEvent,
+                currencySymbol = currencySymbol,
+                dateFormat = dateFormat,
+                suggestions = suggestions,
+                transactionToEdit = transactionToEdit,
+                onLaunchCamera = onLaunchCamera,
+                onLaunchGallery = onLaunchGallery,
             )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        RegularPaymentMethodSection(
-            isPaymentMethodEnabled = uiState.isPaymentMethodEnabled,
-            selectedPaymentMethodId = uiState.selectedPaymentMethodId,
-            allPaymentMethods = nonCreditCardMethods,
-            onEnabledChange = { onEvent(RegularTransactionEvent.OnPaymentMethodEnabledChange(it)) },
-            onMethodSelected = { onEvent(RegularTransactionEvent.OnPaymentMethodSelected(it)) },
-        )
+        AccordionSection(
+            title = stringResource(R.string.payment_method_label),
+            initiallyExpanded = false,
+        ) {
+            RegularPaymentMethodFields(
+                isPaymentMethodEnabled = uiState.isPaymentMethodEnabled,
+                selectedPaymentMethodId = uiState.selectedPaymentMethodId,
+                allPaymentMethods = nonCreditCardMethods,
+                onEnabledChange = { onEvent(RegularTransactionEvent.OnPaymentMethodEnabledChange(it)) },
+                onMethodSelected = { onEvent(RegularTransactionEvent.OnPaymentMethodSelected(it)) },
+            )
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            stringResource(R.string.category_selection_label),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-        )
+        AccordionSection(
+            title = stringResource(R.string.category_selection_label),
+            initiallyExpanded = true,
+        ) {
+            CategorySelector(
+                type = uiState.type,
+                selectedCategoryId = uiState.selectedCategory,
+                onCategorySelected = { onEvent(RegularTransactionEvent.OnCategorySelected(it)) },
+                availableCategories = availableCategories,
+                frequentExpenseCategories = frequentExpenseCategories,
+                frequentIncomeCategories = frequentIncomeCategories,
+            )
+        }
 
-        CategorySelector(
-            type = uiState.type,
-            selectedCategoryId = uiState.selectedCategory,
-            onCategorySelected = { onEvent(RegularTransactionEvent.OnCategorySelected(it)) },
-            availableCategories = availableCategories,
-            frequentExpenseCategories = frequentExpenseCategories,
-            frequentIncomeCategories = frequentIncomeCategories,
-        )
+        if (!isEditing) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            AccordionSection(
+                title = stringResource(R.string.options_label),
+                initiallyExpanded = false,
+            ) {
+                RegularRecurrenceFields(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                )
+            }
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RegularBasicDetailsCard(
-    transactionToEdit: TransactionEntity?,
+private fun RegularBasicDetailsFields(
     uiState: RegularTransactionUiState,
     onEvent: (RegularTransactionEvent) -> Unit,
     currencySymbol: String,
     dateFormat: String,
     suggestions: List<String>,
-    sharedTransitionScope: SharedTransitionScope?,
-    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope?,
+    transactionToEdit: TransactionEntity?,
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (sharedTransitionScope != null && animatedVisibilityScope != null && transactionToEdit != null) {
-                    with(sharedTransitionScope) {
-                        Modifier.sharedElement(
-                            rememberSharedContentState(key = "transaction_${transactionToEdit.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                        )
-                    }
-                } else {
-                    Modifier
-                },
-            ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(R.string.basic_details_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+    Column(modifier = Modifier.padding(16.dp)) {
+        OutlinedTextField(
+            value = uiState.amountText,
+            onValueChange = { onEvent(RegularTransactionEvent.OnAmountChange(it.replace(',', '.'))) },
+            label = { Text(stringResource(R.string.amount_converted_label, currencySymbol)) },
+            placeholder = { Text("0.00") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+        )
 
-            OutlinedTextField(
-                value = uiState.amountText,
-                onValueChange = { onEvent(RegularTransactionEvent.OnAmountChange(it.replace(',', '.'))) },
-                label = { Text(stringResource(R.string.amount_converted_label, currencySymbol)) },
-                placeholder = { Text("0.00") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
-            )
+        Spacer(modifier = Modifier.height(4.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(
+                onClick = onLaunchCamera,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(R.string.scan_receipt_camera), modifier = Modifier.size(20.dp))
+            }
+            IconButton(
+                onClick = onLaunchGallery,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(Icons.Default.PhotoLibrary, contentDescription = stringResource(R.string.scan_receipt_gallery), modifier = Modifier.size(20.dp))
+            }
+        }
 
-            if (uiState.originalCurrency == currencySymbol) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                    TextButton(onClick = { onEvent(RegularTransactionEvent.OnShowCurrencyDialog(true)) }) {
-                        Text(stringResource(R.string.set_original_currency))
-                    }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (uiState.originalCurrency == currencySymbol) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                TextButton(onClick = { onEvent(RegularTransactionEvent.OnShowCurrencyDialog(true)) }) {
+                    Text(stringResource(R.string.set_original_currency))
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
+        OutlinedTextField(
+            value = uiState.dateStr,
+            onValueChange = { onEvent(RegularTransactionEvent.OnDateChange(it)) },
+            label = { Text(stringResource(R.string.transaction_date)) },
+            readOnly = true,
+            trailingIcon = {
+                IconButton(onClick = { onEvent(RegularTransactionEvent.OnShowDatePicker(true)) }) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        androidx.compose.material3.ExposedDropdownMenuBox(
+            expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
+            onExpandedChange = { onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(it)) },
+        ) {
             OutlinedTextField(
-                value = uiState.dateStr,
-                onValueChange = { onEvent(RegularTransactionEvent.OnDateChange(it)) },
-                label = { Text(stringResource(R.string.transaction_date)) },
-                readOnly = true,
+                value = uiState.description,
+                onValueChange = {
+                    onEvent(RegularTransactionEvent.OnDescriptionChange(it))
+                    onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(true))
+                },
+                label = { Text(stringResource(R.string.description)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                ),
+                shape = RoundedCornerShape(12.dp),
                 trailingIcon = {
-                    IconButton(onClick = { onEvent(RegularTransactionEvent.OnShowDatePicker(true)) }) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                    if (uiState.description.isNotEmpty()) {
+                        IconButton(onClick = {
+                            onEvent(RegularTransactionEvent.OnDescriptionChange(""))
+                            onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(false))
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
+                        }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            androidx.compose.material3.ExposedDropdownMenuBox(
+            androidx.compose.material3.DropdownMenu(
                 expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
-                onExpandedChange = { onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(it)) },
+                onDismissRequest = { onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(false)) },
             ) {
-                OutlinedTextField(
-                    value = uiState.description,
-                    onValueChange = {
-                        onEvent(RegularTransactionEvent.OnDescriptionChange(it))
-                        onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(true))
-                    },
-                    label = { Text(stringResource(R.string.description)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    trailingIcon = {
-                        if (uiState.description.isNotEmpty()) {
-                            IconButton(onClick = {
-                                onEvent(RegularTransactionEvent.OnDescriptionChange(""))
-                                onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(false))
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
-                            }
-                        }
-                    },
-                )
-                androidx.compose.material3.DropdownMenu(
-                    expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
-                    onDismissRequest = { onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(false)) },
-                ) {
-                    suggestions.forEach { suggestion ->
-                        androidx.compose.material3.DropdownMenuItem(
-                            text = { Text(suggestion) },
-                            onClick = {
-                                onEvent(RegularTransactionEvent.OnDescriptionChange(suggestion))
-                                onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(false))
-                            },
-                        )
-                    }
+                suggestions.forEach { suggestion ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(suggestion) },
+                        onClick = {
+                            onEvent(RegularTransactionEvent.OnDescriptionChange(suggestion))
+                            onEvent(RegularTransactionEvent.OnDescriptionExpandedChange(false))
+                        },
+                    )
                 }
             }
         }
@@ -525,78 +549,71 @@ private fun RegularBasicDetailsCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RegularRecurrenceSection(
+private fun RegularRecurrenceFields(
     uiState: RegularTransactionUiState,
     onEvent: (RegularTransactionEvent) -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.recurrence_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Switch(
-                    checked = uiState.isRecurrenceEnabled,
-                    onCheckedChange = { onEvent(RegularTransactionEvent.OnRecurrenceEnabledChange(it)) },
-                )
-            }
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.recurrence_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Switch(
+                checked = uiState.isRecurrenceEnabled,
+                onCheckedChange = { onEvent(RegularTransactionEvent.OnRecurrenceEnabledChange(it)) },
+            )
+        }
 
-            AnimatedVisibility(visible = uiState.isRecurrenceEnabled) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    OutlinedTextField(
-                        value = when (uiState.recurrenceType) {
-                            RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
-                            RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
-                            RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
-                            RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
-                            else -> stringResource(R.string.recurrence_monthly)
-                        },
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { onEvent(RegularTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
-                                Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().clickable { onEvent(RegularTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
-                        shape = RoundedCornerShape(12.dp),
+        AnimatedVisibility(visible = uiState.isRecurrenceEnabled) {
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                OutlinedTextField(
+                    value = when (uiState.recurrenceType) {
+                        RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                        RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                        RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                        RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                        else -> stringResource(R.string.recurrence_monthly)
+                    },
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { onEvent(RegularTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().clickable { onEvent(RegularTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
+                    shape = RoundedCornerShape(12.dp),
+                )
+
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text(
+                        stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
-
-                    Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text(
-                            stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Slider(
-                            value = uiState.recurrenceLimit.toFloat(),
-                            onValueChange = { onEvent(RegularTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
-                            valueRange = 1f..60f,
-                            steps = 59,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        )
-                        Text(
-                            stringResource(R.string.recurrence_occurrences_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
+                    Slider(
+                        value = uiState.recurrenceLimit.toFloat(),
+                        onValueChange = { onEvent(RegularTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
+                        valueRange = 1f..60f,
+                        steps = 59,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text(
+                        stringResource(R.string.recurrence_occurrences_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
         }
@@ -605,7 +622,7 @@ private fun RegularRecurrenceSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RegularPaymentMethodSection(
+private fun RegularPaymentMethodFields(
     isPaymentMethodEnabled: Boolean,
     selectedPaymentMethodId: String?,
     allPaymentMethods: List<PaymentMethodEntity>,
@@ -615,66 +632,59 @@ private fun RegularPaymentMethodSection(
     val selectedMethod = allPaymentMethods.find { it.id == selectedPaymentMethodId }
     var showPicker by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.payment_method_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Switch(
+                checked = isPaymentMethodEnabled,
+                onCheckedChange = onEnabledChange,
+            )
+        }
+
+        if (isPaymentMethodEnabled) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (allPaymentMethods.isEmpty()) {
                 Text(
-                    stringResource(R.string.payment_method_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
+                    stringResource(R.string.no_payment_methods_available),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
-                Switch(
-                    checked = isPaymentMethodEnabled,
-                    onCheckedChange = onEnabledChange,
+            } else {
+                OutlinedTextField(
+                    value = selectedMethod?.name ?: stringResource(R.string.select_payment_method),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.payment_method_label)) },
+                    trailingIcon = {
+                        IconButton(onClick = { showPicker = true }) {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_payment_method))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().clickable { showPicker = true },
+                    shape = RoundedCornerShape(12.dp),
                 )
-            }
 
-            if (isPaymentMethodEnabled) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (allPaymentMethods.isEmpty()) {
-                    Text(
-                        stringResource(R.string.no_payment_methods_available),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                    )
-                } else {
-                    OutlinedTextField(
-                        value = selectedMethod?.name ?: stringResource(R.string.select_payment_method),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.payment_method_label)) },
-                        trailingIcon = {
-                            IconButton(onClick = { showPicker = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_payment_method))
-                            }
+                if (showPicker) {
+                    PaymentMethodPickerDialog(
+                        allPaymentMethods = allPaymentMethods,
+                        currentMethodId = selectedPaymentMethodId,
+                        onMethodSelected = { methodId, _ ->
+                            onMethodSelected(methodId)
+                            showPicker = false
                         },
-                        modifier = Modifier.fillMaxWidth().clickable { showPicker = true },
-                        shape = RoundedCornerShape(12.dp),
+                        onDismiss = { showPicker = false },
                     )
-
-                    if (showPicker) {
-                        PaymentMethodPickerDialog(
-                            allPaymentMethods = allPaymentMethods,
-                            currentMethodId = selectedPaymentMethodId,
-                            onMethodSelected = { methodId, _ ->
-                                onMethodSelected(methodId)
-                                showPicker = false
-                            },
-                            onDismiss = { showPicker = false },
-                        )
-                    }
                 }
             }
         }
