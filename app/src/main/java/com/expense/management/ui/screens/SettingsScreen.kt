@@ -2,8 +2,6 @@ package com.expense.management.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -19,11 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BrightnessMedium
@@ -32,7 +28,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
@@ -60,8 +55,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -175,10 +168,10 @@ fun settingsScreen(
 
         val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A"
 
-        SettingsAccordion(
-            headerIcon = Icons.Default.AttachMoney,
-            headerTitle = stringResource(R.string.general),
+        AccordionSection(
+            title = stringResource(R.string.general),
             initiallyExpanded = false,
+            icon = Icons.Default.AttachMoney,
         ) {
             Column {
                 settingsListItem(
@@ -211,12 +204,12 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        SettingsAccordion(
-            headerIcon = Icons.Default.BrightnessMedium,
-            headerTitle = stringResource(R.string.theme),
+        AccordionSection(
+            title = stringResource(R.string.theme),
             initiallyExpanded = false,
+            icon = Icons.Default.BrightnessMedium,
         ) {
             Column {
                 settingsListItem(
@@ -235,12 +228,29 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        SettingsAccordion(
-            headerIcon = Icons.Default.Backup,
-            headerTitle = stringResource(R.string.management),
+        AccordionSection(
+            title = stringResource(R.string.payment_methods),
             initiallyExpanded = false,
+            icon = Icons.Default.CreditCard,
+        ) {
+            Column {
+                settingsListItem(
+                    icon = Icons.Default.CreditCard,
+                    title = stringResource(R.string.payment_methods),
+                    value = stringResource(R.string.manage_payment_methods),
+                    onClick = onNavigateToPaymentMethods,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AccordionSection(
+            title = stringResource(R.string.management),
+            initiallyExpanded = false,
+            icon = Icons.Default.Backup,
         ) {
             Column {
                 settingsListItem(
@@ -258,13 +268,6 @@ fun settingsScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 settingsListItem(
-                    icon = Icons.Default.CreditCard,
-                    title = stringResource(R.string.payment_methods),
-                    value = stringResource(R.string.manage_payment_methods),
-                    onClick = onNavigateToPaymentMethods,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                settingsListItem(
                     icon = Icons.Default.Description,
                     title = stringResource(R.string.dashboard_widgets),
                     value = stringResource(R.string.selected_widgets_count, enabledWidgets.size, com.expense.management.domain.model.DashboardWidget.entries.size),
@@ -273,12 +276,12 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        SettingsAccordion(
-            headerIcon = Icons.Default.Description,
-            headerTitle = stringResource(R.string.csv_export_settings),
+        AccordionSection(
+            title = stringResource(R.string.csv_export_settings),
             initiallyExpanded = false,
+            icon = Icons.Default.Description,
         ) {
             Column {
                 settingsListItem(
@@ -290,12 +293,12 @@ fun settingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        SettingsAccordion(
-            headerIcon = Icons.Default.Info,
-            headerTitle = stringResource(R.string.about),
+        AccordionSection(
+            title = stringResource(R.string.about),
             initiallyExpanded = false,
+            icon = Icons.Default.Info,
         ) {
             Column {
                 settingsListItem(
@@ -669,106 +672,6 @@ fun settingsScreen(
             dismissButton = { TextButton(onClick = { showWidgetsDialog = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
-}
-
-@Composable
-fun settingsSectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
-    )
-}
-
-@Composable
-fun SettingsAccordion(
-    headerIcon: ImageVector,
-    headerTitle: String,
-    initiallyExpanded: Boolean = false,
-    content: @Composable () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(initiallyExpanded) }
-    val rotation by animateFloatAsState(if (expanded) 180f else 0f)
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-    ) {
-        Column {
-            ListItem(
-                headlineContent = {
-                    Text(
-                        text = headerTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                leadingContent = {
-                    Icon(
-                        imageVector = headerIcon,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = null,
-                        modifier = Modifier.rotate(rotation),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                modifier = Modifier.clickable { expanded = !expanded },
-            )
-            AnimatedVisibility(visible = expanded) {
-                Column {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    content()
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun settingsListItem(
-    icon: ImageVector,
-    title: String,
-    value: String,
-    onClick: () -> Unit,
-    isClickable: Boolean = true,
-) {
-    val alpha = if (isClickable) 1f else 0.5f
-    ListItem(
-        headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
-        supportingContent = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = alpha),
-                modifier =
-                Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha), CircleShape)
-                    .padding(10.dp),
-            )
-        },
-        trailingContent = {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = stringResource(R.string.more),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-            )
-        },
-        modifier =
-        Modifier
-            .let { if (isClickable) it.clickable(onClick = onClick) else it }
-            .padding(vertical = 4.dp),
-    )
 }
 
 @Preview(showBackground = true, name = "Settings Light")

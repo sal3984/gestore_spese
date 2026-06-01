@@ -21,11 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -34,9 +35,10 @@ fun AccordionSection(
     title: String,
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false,
+    icon: ImageVector? = null,
     content: @Composable () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(initiallyExpanded) }
+    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f)
 
     Card(
@@ -52,6 +54,15 @@ fun AccordionSection(
                     .clickable { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
