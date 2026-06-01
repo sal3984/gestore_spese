@@ -17,9 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -33,8 +31,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -322,28 +318,16 @@ fun AddCreditCardTransactionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    if (transactionToEdit != null) {
-                        IconButton(onClick = { handleEvent(AddTransactionEvent.OnShowDeleteDialog(true)) }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
         bottomBar = {
-            SaveButton(
+            TransactionBottomBar(
                 isEditing = isEditing,
+                onCancel = onBack,
                 onSave = { handleEvent(AddTransactionEvent.OnSave) },
+                onDelete = if (transactionToEdit != null) {
+                    { handleEvent(AddTransactionEvent.OnShowDeleteDialog(true)) }
+                } else {
+                    null
+                },
             )
         },
     ) { padding ->
@@ -537,22 +521,6 @@ private fun AddCreditCardContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         AccordionSection(
-            title = stringResource(R.string.credit_card),
-            initiallyExpanded = false,
-        ) {
-            CreditCardPaymentFields(
-                uiState = uiState,
-                onEvent = onEvent,
-                isEditing = isEditing,
-                transactionToEdit = transactionToEdit,
-                activeCreditCards = activeCreditCards,
-                creditCardMethods = creditCardMethods,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        AccordionSection(
             title = stringResource(R.string.category_selection_label),
             initiallyExpanded = true,
         ) {
@@ -566,27 +534,29 @@ private fun AddCreditCardContent(
             )
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AccordionSection(
+            title = stringResource(R.string.credit_card),
+            initiallyExpanded = false,
+        ) {
+            CreditCardPaymentFields(
+                uiState = uiState,
+                onEvent = onEvent,
+                isEditing = isEditing,
+                transactionToEdit = transactionToEdit,
+                activeCreditCards = activeCreditCards,
+                creditCardMethods = creditCardMethods,
+            )
+        }
+
         if (!isEditing) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            AccordionSection(
-                title = stringResource(R.string.options_label),
-                initiallyExpanded = false,
-            ) {
-                RecurrenceFields(
-                    uiState = uiState,
-                    onEvent = onEvent,
-                )
-                InstallmentSection(
-                    uiState = uiState,
-                    onEvent = onEvent,
-                    isEditing = isEditing,
-                    transactionToEdit = transactionToEdit,
-                    currencySymbol = currencySymbol,
-                    dateFormat = dateFormat,
-                    activeCreditCards = activeCreditCards,
-                )
-            }
+            RecurrenceFields(
+                uiState = uiState,
+                onEvent = onEvent,
+            )
         }
     }
 }

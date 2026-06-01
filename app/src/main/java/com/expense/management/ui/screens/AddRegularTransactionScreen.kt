@@ -19,11 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,8 +37,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -226,28 +222,16 @@ fun AddRegularTransactionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    if (transactionToEdit != null) {
-                        IconButton(onClick = { handleEvent(RegularTransactionEvent.OnShowDeleteDialog(true)) }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
         bottomBar = {
-            SaveButton(
+            TransactionBottomBar(
                 isEditing = isEditing,
+                onCancel = onBack,
                 onSave = { handleEvent(RegularTransactionEvent.OnSave) },
+                onDelete = if (transactionToEdit != null) {
+                    { handleEvent(RegularTransactionEvent.OnShowDeleteDialog(true)) }
+                } else {
+                    null
+                },
             )
         },
     ) { padding ->
@@ -382,21 +366,6 @@ private fun RegularTransactionContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         AccordionSection(
-            title = stringResource(R.string.payment_method_label),
-            initiallyExpanded = false,
-        ) {
-            RegularPaymentMethodFields(
-                isPaymentMethodEnabled = uiState.isPaymentMethodEnabled,
-                selectedPaymentMethodId = uiState.selectedPaymentMethodId,
-                allPaymentMethods = nonCreditCardMethods,
-                onEnabledChange = { onEvent(RegularTransactionEvent.OnPaymentMethodEnabledChange(it)) },
-                onMethodSelected = { onEvent(RegularTransactionEvent.OnPaymentMethodSelected(it)) },
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        AccordionSection(
             title = stringResource(R.string.category_selection_label),
             initiallyExpanded = true,
         ) {
@@ -410,18 +379,23 @@ private fun RegularTransactionContent(
             )
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        RegularPaymentMethodFields(
+            isPaymentMethodEnabled = uiState.isPaymentMethodEnabled,
+            selectedPaymentMethodId = uiState.selectedPaymentMethodId,
+            allPaymentMethods = nonCreditCardMethods,
+            onEnabledChange = { onEvent(RegularTransactionEvent.OnPaymentMethodEnabledChange(it)) },
+            onMethodSelected = { onEvent(RegularTransactionEvent.OnPaymentMethodSelected(it)) },
+        )
+
         if (!isEditing) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            AccordionSection(
-                title = stringResource(R.string.options_label),
-                initiallyExpanded = false,
-            ) {
-                RegularRecurrenceFields(
-                    uiState = uiState,
-                    onEvent = onEvent,
-                )
-            }
+            RegularRecurrenceFields(
+                uiState = uiState,
+                onEvent = onEvent,
+            )
         }
     }
 }

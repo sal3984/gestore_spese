@@ -156,6 +156,9 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val bottomNavRoutes = listOf("dashboard", "report", "categories", "settings")
 
     val isBottomBarVisible = currentRoute in bottomNavRoutes
+    val isTopBarVisible = currentRoute?.let { route ->
+        !route.startsWith("add_transaction") && !route.startsWith("add_credit_card_transaction")
+    } ?: true
 
     BiometricGate(
         isBiometricEnabled = isBiometricEnabled,
@@ -165,11 +168,13 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
         var showAddMenu by remember { mutableStateOf(false) }
         Scaffold(
             topBar = {
-                AppTopBar(
-                    currentRoute = currentRoute,
-                    isAmountHidden = isAmountHidden,
-                    onToggleAmountHidden = viewModel::toggleAmountHidden,
-                )
+                if (isTopBarVisible) {
+                    AppTopBar(
+                        currentRoute = currentRoute,
+                        isAmountHidden = isAmountHidden,
+                        onToggleAmountHidden = viewModel::toggleAmountHidden,
+                    )
+                }
             },
             bottomBar = {
                 if (isBottomBarVisible) {

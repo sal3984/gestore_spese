@@ -25,8 +25,8 @@
     <string name="edit_transaction">Edit Transaction</string>
     <string name="back">Back</string>
     <string name="delete">Delete</string>
-    <string name="save_transaction">SAVE TRANSACTION</string>
-    <string name="update_transaction">UPDATE TRANSACTION</string>
+    <string name="save_transaction">Save</string>
+    <string name="update_transaction">Update</string>
     <string name="expense_type">EXPENSE</string>
     <string name="income_type">INCOME</string>
     <string name="amount_converted_label">Amount (%1$s - Converted)</string>
