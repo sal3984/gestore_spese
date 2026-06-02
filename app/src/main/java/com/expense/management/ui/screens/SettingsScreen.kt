@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -124,18 +123,7 @@ fun settingsScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var showCurrencyDialog by remember { mutableStateOf(false) }
-    var showDateFormatDialog by remember { mutableStateOf(false) }
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showAppStyleDialog by remember { mutableStateOf(false) }
-    var showExportColumnsDialog by remember { mutableStateOf(false) }
-    var showCurrencyWarningDialog by remember { mutableStateOf(false) }
     var showCurrencyRatesInfoDialog by remember { mutableStateOf(false) }
-    var showAddCardDialog by remember { mutableStateOf(false) }
-    var showEditCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
-    var showDeleteCardDialog by remember { mutableStateOf<CreditCardEntity?>(null) }
-    var showWidgetsDialog by remember { mutableStateOf(false) }
-    var showDefaultPaymentDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         onRefreshCurrencyRates()
@@ -159,19 +147,6 @@ fun settingsScreen(
             stringResource(R.string.no_rates_downloaded)
         }
 
-        val themeLabel = when (currentThemeMode) {
-            "light" -> stringResource(R.string.theme_light)
-            "dark" -> stringResource(R.string.theme_dark)
-            else -> stringResource(R.string.theme_system)
-        }
-
-        val styleLabel = when (currentAppStyle) {
-            AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
-            AppStyle.NORDIC -> stringResource(R.string.style_nordic)
-            AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
-            AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
-        }
-
         val appVersion = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "N/A"
 
         AccordionSection(
@@ -180,33 +155,101 @@ fun settingsScreen(
             icon = Icons.Default.AttachMoney,
         ) {
             Column {
-                settingsListItem(
-                    icon = Icons.Default.AttachMoney,
-                    title = stringResource(R.string.currency),
-                    value = stringResource(R.string.displayed_symbol, currentCurrency),
-                    onClick = {
-                        if (hasTransactions) {
-                            showCurrencyWarningDialog = true
-                        } else {
-                            showCurrencyDialog = true
-                        }
-                    },
-                    isClickable = !hasTransactions,
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = stringResource(R.string.currency),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.currency),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                if (hasTransactions) {
+                    Text(
+                        text = stringResource(R.string.currency_change_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 32.dp, top = 2.dp, bottom = 4.dp),
+                    )
+                }
+                listOf("€", "\$", "£", "CHF", "¥", "zł").forEach { symbol ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !hasTransactions) {
+                                onCurrencyChange(symbol)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = symbol == currentCurrency,
+                            onClick = null,
+                            enabled = !hasTransactions,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(symbol, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                 settingsListItem(
                     icon = Icons.Default.CurrencyExchange,
                     title = stringResource(R.string.currency_rates),
                     value = updateText,
                     onClick = { showCurrencyRatesInfoDialog = true },
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                settingsListItem(
-                    icon = Icons.Default.CalendarToday,
-                    title = stringResource(R.string.date_format),
-                    value = currentDateFormat,
-                    onClick = { showDateFormatDialog = true },
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = stringResource(R.string.date_format),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.date_format),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                val dateFormats = listOf("dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy")
+                dateFormats.forEach { format ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onDateFormatChange(format) }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = format == currentDateFormat, onClick = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(format, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
             }
         }
 
@@ -218,38 +261,143 @@ fun settingsScreen(
             icon = Icons.Default.BrightnessMedium,
         ) {
             Column {
-                settingsListItem(
-                    icon = Icons.Default.BrightnessMedium,
-                    title = stringResource(R.string.theme),
-                    value = themeLabel,
-                    onClick = { showThemeDialog = true },
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BrightnessMedium,
+                        contentDescription = stringResource(R.string.theme),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.theme),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                val themeModes = listOf("system", "light", "dark")
+                val themeLabels = mapOf(
+                    "system" to stringResource(R.string.theme_system),
+                    "light" to stringResource(R.string.theme_light),
+                    "dark" to stringResource(R.string.theme_dark),
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                settingsListItem(
-                    icon = Icons.Default.Palette,
-                    title = stringResource(R.string.app_style),
-                    value = styleLabel,
-                    onClick = { showAppStyleDialog = true },
+                themeModes.forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onThemeModeChange(mode) }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = mode == currentThemeMode, onClick = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(themeLabels[mode] ?: mode, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = stringResource(R.string.app_style),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.app_style),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                AppStyle.entries.forEach { style ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAppStyleChange(style) }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = style == currentAppStyle, onClick = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            when (style) {
+                                AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
+                                AppStyle.NORDIC -> stringResource(R.string.style_nordic)
+                                AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
+                                AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val defaultMethodName = allPaymentMethods.find { it.id == defaultPaymentMethodId }?.name ?: "Contante"
         AccordionSection(
             title = stringResource(R.string.payment_methods),
             initiallyExpanded = false,
             icon = Icons.Default.CreditCard,
         ) {
             Column {
-                settingsListItem(
-                    icon = Icons.Default.Payment,
-                    title = stringResource(R.string.default_payment_method),
-                    value = defaultMethodName,
-                    onClick = { showDefaultPaymentDialog = true },
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Payment,
+                        contentDescription = stringResource(R.string.default_payment_method),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.default_payment_method),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                allPaymentMethods.forEach { method ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onDefaultPaymentMethodChange(method.id)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = method.id == defaultPaymentMethodId,
+                            onClick = {
+                                onDefaultPaymentMethodChange(method.id)
+                            },
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(method.name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                 settingsListItem(
                     icon = Icons.Default.CreditCard,
                     title = stringResource(R.string.payment_methods),
@@ -280,13 +428,74 @@ fun settingsScreen(
                     value = stringResource(R.string.app_lock_desc),
                     onClick = onNavigateToSecurity,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                settingsListItem(
-                    icon = Icons.Default.Description,
-                    title = stringResource(R.string.dashboard_widgets),
-                    value = stringResource(R.string.selected_widgets_count, enabledWidgets.size, com.expense.management.domain.model.DashboardWidget.entries.size),
-                    onClick = { showWidgetsDialog = true },
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = stringResource(R.string.dashboard_widgets),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.dashboard_widgets),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                var selectedWidgets by remember(enabledWidgets) { mutableStateOf(enabledWidgets) }
+                com.expense.management.domain.model.DashboardWidget.entries.forEach { widget ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedWidgets = if (selectedWidgets.contains(widget)) {
+                                    selectedWidgets - widget
+                                } else {
+                                    selectedWidgets + widget
+                                }
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = selectedWidgets.contains(widget),
+                            onCheckedChange = { isChecked ->
+                                selectedWidgets = if (isChecked) {
+                                    selectedWidgets + widget
+                                } else {
+                                    selectedWidgets - widget
+                                }
+                            },
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            when (widget) {
+                                com.expense.management.domain.model.DashboardWidget.SUMMARY_CARDS -> "Summary Cards"
+                                com.expense.management.domain.model.DashboardWidget.CREDIT_CARD_INFO -> "Credit Card Info"
+                                com.expense.management.domain.model.DashboardWidget.BNPL_PROJECTIONS -> "BNPL Projections"
+                                com.expense.management.domain.model.DashboardWidget.TRANSACTION_LIST -> "Transaction List"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+                TextButton(
+                    onClick = {
+                        onEnabledWidgetsChange(selectedWidgets)
+                    },
+                    modifier = Modifier.padding(start = 28.dp, top = 4.dp),
+                ) {
+                    Text(stringResource(R.string.save))
+                }
             }
         }
 
@@ -298,12 +507,61 @@ fun settingsScreen(
             icon = Icons.Default.Description,
         ) {
             Column {
-                settingsListItem(
-                    icon = Icons.Default.Description,
-                    title = stringResource(R.string.customize_csv_export),
-                    value = stringResource(R.string.selected_columns_count, csvExportColumns.size, EXPORT_COLUMN_MAP.size),
-                    onClick = { showExportColumnsDialog = true },
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = stringResource(R.string.customize_csv_export),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.customize_csv_export),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                var selectedColumns by remember(csvExportColumns) { mutableStateOf(csvExportColumns) }
+                EXPORT_COLUMN_MAP.entries.forEach { (key, displayName) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedColumns = if (selectedColumns.contains(key)) {
+                                    selectedColumns - key
+                                } else {
+                                    selectedColumns + key
+                                }
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 32.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = selectedColumns.contains(key),
+                            onCheckedChange = { isChecked ->
+                                selectedColumns = if (isChecked) {
+                                    selectedColumns + key
+                                } else {
+                                    selectedColumns - key
+                                }
+                            },
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(displayName, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                TextButton(
+                    onClick = {
+                        onCsvExportColumnsChange(selectedColumns)
+                    },
+                    modifier = Modifier.padding(start = 28.dp, top = 4.dp),
+                ) {
+                    Text(stringResource(R.string.save))
+                }
             }
         }
 
@@ -347,50 +605,6 @@ fun settingsScreen(
         }
 
         Spacer(modifier = Modifier.height(80.dp))
-    }
-
-    // Dialogs (unchanged)...
-    if (showCurrencyDialog) {
-        AlertDialog(
-            onDismissRequest = { showCurrencyDialog = false },
-            title = { Text(stringResource(R.string.choose_currency_symbol)) },
-            text = {
-                Column {
-                    listOf("€", "\$", "£", "CHF", "¥", "zł").forEach { symbol ->
-                        Row(
-                            modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clickable {
-                                    onCurrencyChange(symbol)
-                                    showCurrencyDialog = false
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = (symbol == currentCurrency), onClick = null)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(symbol, style = MaterialTheme.typography.titleLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showCurrencyDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
-
-    if (showCurrencyWarningDialog) {
-        AlertDialog(
-            onDismissRequest = { showCurrencyWarningDialog = false },
-            title = { Text(stringResource(R.string.cannot_change_currency)) },
-            text = { Text(stringResource(R.string.currency_change_warning)) },
-            confirmButton = {
-                TextButton(onClick = { showCurrencyWarningDialog = false }) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-        )
     }
 
     if (showCurrencyRatesInfoDialog) {
@@ -475,250 +689,6 @@ fun settingsScreen(
                 }
             }
         }
-    }
-
-    if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text(stringResource(R.string.choose_theme)) },
-            text = {
-                Column {
-                    val themeModes = listOf("system", "light", "dark")
-                    val themeLabels = mapOf(
-                        "system" to stringResource(R.string.theme_system),
-                        "light" to stringResource(R.string.theme_light),
-                        "dark" to stringResource(R.string.theme_dark),
-                    )
-                    themeModes.forEach { mode ->
-                        Row(
-                            modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clickable {
-                                    onThemeModeChange(mode)
-                                    showThemeDialog = false
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = (mode == currentThemeMode), onClick = null)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(themeLabels[mode] ?: mode, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showThemeDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
-
-    if (showAppStyleDialog) {
-        AlertDialog(
-            onDismissRequest = { showAppStyleDialog = false },
-            title = { Text(stringResource(R.string.choose_app_style)) },
-            text = {
-                Column {
-                    AppStyle.entries.forEach { style ->
-                        Row(
-                            modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clickable {
-                                    onAppStyleChange(style)
-                                    showAppStyleDialog = false
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = (style == currentAppStyle), onClick = null)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                when (style) {
-                                    AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
-                                    AppStyle.NORDIC -> stringResource(R.string.style_nordic)
-                                    AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
-                                    AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
-                                },
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showAppStyleDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
-
-    if (showDateFormatDialog) {
-        AlertDialog(
-            onDismissRequest = { showDateFormatDialog = false },
-            title = { Text(stringResource(R.string.choose_date_format)) },
-            text = {
-                Column {
-                    val dateFormats = listOf("dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "dd-MM-yyyy")
-                    dateFormats.forEach { format ->
-                        Row(
-                            modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .clickable {
-                                    onDateFormatChange(format)
-                                    showDateFormatDialog = false
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = (format == currentDateFormat), onClick = null)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(format, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showDateFormatDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
-
-    if (showExportColumnsDialog) {
-        var selectedColumns by remember { mutableStateOf(csvExportColumns) }
-        AlertDialog(
-            onDismissRequest = { showExportColumnsDialog = false },
-            title = { Text(stringResource(R.string.select_columns_to_export)) },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                ) {
-                    EXPORT_COLUMN_MAP.entries.forEach { (key, displayName) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedColumns = if (selectedColumns.contains(key)) {
-                                        selectedColumns - key
-                                    } else {
-                                        selectedColumns + key
-                                    }
-                                }
-                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = selectedColumns.contains(key),
-                                onCheckedChange = { isChecked ->
-                                    selectedColumns = if (isChecked) {
-                                        selectedColumns + key
-                                    } else {
-                                        selectedColumns - key
-                                    }
-                                },
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(displayName)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onCsvExportColumnsChange(selectedColumns)
-                    showExportColumnsDialog = false
-                }) { Text(stringResource(R.string.save)) }
-            },
-            dismissButton = { TextButton(onClick = { showExportColumnsDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
-
-    if (showWidgetsDialog) {
-        var selectedWidgets by remember { mutableStateOf(enabledWidgets) }
-        AlertDialog(
-            onDismissRequest = { showWidgetsDialog = false },
-            title = { Text(stringResource(R.string.dashboard_widgets)) },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                ) {
-                    com.expense.management.domain.model.DashboardWidget.entries.forEach { widget ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedWidgets = if (selectedWidgets.contains(widget)) {
-                                        selectedWidgets - widget
-                                    } else {
-                                        selectedWidgets + widget
-                                    }
-                                }
-                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = selectedWidgets.contains(widget),
-                                onCheckedChange = { isChecked ->
-                                    selectedWidgets = if (isChecked) {
-                                        selectedWidgets + widget
-                                    } else {
-                                        selectedWidgets - widget
-                                    }
-                                },
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                when (widget) {
-                                    com.expense.management.domain.model.DashboardWidget.SUMMARY_CARDS -> "Summary Cards"
-                                    com.expense.management.domain.model.DashboardWidget.CREDIT_CARD_INFO -> "Credit Card Info"
-                                    com.expense.management.domain.model.DashboardWidget.BNPL_PROJECTIONS -> "BNPL Projections"
-                                    com.expense.management.domain.model.DashboardWidget.TRANSACTION_LIST -> "Transaction List"
-                                },
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onEnabledWidgetsChange(selectedWidgets)
-                    showWidgetsDialog = false
-                }) { Text(stringResource(R.string.save)) }
-            },
-            dismissButton = { TextButton(onClick = { showWidgetsDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
-
-    if (showDefaultPaymentDialog) {
-        AlertDialog(
-            onDismissRequest = { showDefaultPaymentDialog = false },
-            title = { Text(stringResource(R.string.default_payment_method)) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    allPaymentMethods.forEach { method ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onDefaultPaymentMethodChange(method.id)
-                                    showDefaultPaymentDialog = false
-                                }
-                                .padding(vertical = 8.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = method.id == defaultPaymentMethodId,
-                                onClick = {
-                                    onDefaultPaymentMethodChange(method.id)
-                                    showDefaultPaymentDialog = false
-                                },
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(method.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showDefaultPaymentDialog = false }) { Text(stringResource(R.string.cancel)) } },
-        )
     }
 }
 
