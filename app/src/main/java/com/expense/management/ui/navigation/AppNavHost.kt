@@ -37,6 +37,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.ReceiptScanResult
+import com.expense.management.domain.model.ReportData
 import com.expense.management.ui.screens.AddCreditCardTransactionScreen
 import com.expense.management.ui.screens.AddRegularTransactionScreen
 import com.expense.management.ui.screens.DashboardScreen
@@ -67,6 +68,7 @@ fun AppNavHost(
     creditCardViewModel: CreditCardViewModel,
     allTransactions: List<TransactionEntity>,
     reportTransactions: List<TransactionEntity>,
+    reportData: ReportData,
     allCategories: List<CategoryEntity>,
     currentCurrency: String,
     currentDateFormat: String,
@@ -141,8 +143,8 @@ fun AppNavHost(
             exitTransition = { fadeOut(animationSpec = tween(300)) },
         ) {
             ReportScreen(
+                reportData = reportData,
                 transactions = reportTransactions,
-                categories = allCategories,
                 currencySymbol = currentCurrency,
                 dateFormat = currentDateFormat,
                 isAmountHidden = isAmountHidden,

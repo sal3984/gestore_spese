@@ -26,7 +26,9 @@ import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
+import com.expense.management.domain.model.ReportData
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
+import com.expense.management.domain.usecase.CalculateReportUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -75,6 +77,7 @@ class ExpenseViewModel(
     private val getBackupDataUseCase: GetBackupDataUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
+    private val calculateReportUseCase: CalculateReportUseCase,
 ) : ViewModel() {
 
     companion object {
@@ -136,6 +139,14 @@ class ExpenseViewModel(
     val allCategories: StateFlow<List<CategoryEntity>> =
         getCategoriesUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val reportData: StateFlow<ReportData> = combine(
+        reportTransactions,
+        allCategories,
+        reportRangeState,
+    ) { tx, cats, range ->
+        calculateReportUseCase.execute(tx, cats, range.first, range.second)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReportData.EMPTY)
 
     // DATI CARTE DI CREDITO
     val allCreditCards: StateFlow<List<CreditCardEntity>> =

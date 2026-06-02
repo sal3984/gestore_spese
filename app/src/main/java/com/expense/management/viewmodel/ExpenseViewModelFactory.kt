@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.expense.management.data.AppDatabase
 import com.expense.management.data.ExpenseRepository
+import com.expense.management.domain.usecase.CalculateReportUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -50,6 +51,7 @@ class ExpenseViewModelFactory(private val context: Context) : ViewModelProvider.
                 getBackupDataUseCase = GetBackupDataUseCase(repository),
                 restoreDataUseCase = RestoreDataUseCase(repository),
                 getFrequentCategoriesUseCase = GetFrequentCategoriesUseCase(repository),
+                calculateReportUseCase = CalculateReportUseCase(),
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

@@ -88,6 +88,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
 
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val reportTransactions by viewModel.reportTransactions.collectAsStateWithLifecycle()
+    val reportData by viewModel.reportData.collectAsStateWithLifecycle()
     val allCategories by viewModel.allCategories.collectAsStateWithLifecycle()
     val currentCurrency by viewModel.currency.collectAsStateWithLifecycle()
     val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsStateWithLifecycle()
@@ -243,6 +244,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         creditCardViewModel = creditCardViewModel,
                         allTransactions = allTransactions,
                         reportTransactions = reportTransactions,
+                        reportData = reportData,
                         allCategories = allCategories,
                         currentCurrency = currentCurrency,
                         currentDateFormat = currentDateFormat,
