@@ -78,6 +78,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
@@ -112,6 +113,8 @@ fun DashboardScreen(
     onRetry: () -> Unit = {},
     allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
     enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget> = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
+    dashboardFilteredTransactions: List<TransactionEntity> = emptyList(),
+    creditCardSummaries: Map<String, CreditCardSummary> = emptyMap(),
 ) {
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -139,17 +142,7 @@ fun DashboardScreen(
     val locale = ComposeLocale.current.platformLocale
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
 
-    val currentTrans = remember(transactions, currentDashboardMonth) {
-        transactions
-            .filter {
-                try {
-                    YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
-                } catch (_: Exception) {
-                    false
-                }
-            }
-            .sortedByDescending { it.effectiveDate }
-    }
+    val currentTrans = dashboardFilteredTransactions
 
     val groupedTransactions = remember(currentTrans) {
         currentTrans.groupBy { it.effectiveDate }
@@ -454,44 +447,12 @@ fun DashboardScreen(
                                 modifier = Modifier.fillMaxWidth(),
                             ) { page ->
                                 val card = creditCards[page]
+                                val summary = creditCardSummaries[card.id]
 
-                                val (displayedSpent, totalUtilizedForDisplay, totalPaidForDisplay) = remember(card.id, transactions, currentDashboardMonth) {
-                                    if (card.cardType == CreditCardType.REVOLVING) {
-                                        val totalUtilized = transactions
-                                            .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                            .sumOf { it.amount }
-
-                                        val totalPaid = transactions
-                                            .filter {
-                                                it.creditCardId == card.id &&
-                                                    it.type == TransactionType.EXPENSE &&
-                                                    it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
-                                                    try {
-                                                        YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
-                                                    } catch (_: Exception) {
-                                                        false
-                                                    }
-                                            }
-                                            .sumOf { it.amount }
-
-                                        Triple(totalUtilized - totalPaid, totalUtilized, totalPaid)
-                                    } else {
-                                        val spent = transactions
-                                            .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                            .filter { t ->
-                                                try {
-                                                    YearMonth.from(LocalDate.parse(t.date)) == currentDashboardMonth
-                                                } catch (_: Exception) {
-                                                    false
-                                                }
-                                            }
-                                            .sumOf { it.amount }
-
-                                        Triple(spent, spent, 0.0)
-                                    }
-                                }
-
-                                val progress = if (card.limit > 0) (displayedSpent / card.limit).toFloat() else 0f
+                                val displayedSpent = summary?.displayedSpent ?: 0.0
+                                val totalUtilizedForDisplay = summary?.totalUtilized ?: 0.0
+                                val totalPaidForDisplay = summary?.totalPaid ?: 0.0
+                                val progress = summary?.progress ?: 0f
 
                                 CreditCardItem(
                                     name = card.name,

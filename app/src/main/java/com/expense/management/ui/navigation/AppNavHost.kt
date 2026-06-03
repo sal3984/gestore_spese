@@ -36,6 +36,7 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.model.ReportData
 import com.expense.management.ui.screens.AddCreditCardTransactionScreen
@@ -94,6 +95,8 @@ fun AppNavHost(
     receiptScanResult: ReceiptScanResult? = null,
     onClearReceiptScanResult: () -> Unit = {},
     defaultPaymentMethodId: String = "__cash__",
+    dashboardFilteredTransactions: List<TransactionEntity> = emptyList(),
+    creditCardSummaries: Map<String, CreditCardSummary> = emptyMap(),
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
@@ -134,6 +137,8 @@ fun AppNavHost(
                 animatedVisibilityScope = this@composable,
                 allPaymentMethods = allPaymentMethods,
                 enabledWidgets = enabledWidgets,
+                dashboardFilteredTransactions = dashboardFilteredTransactions,
+                creditCardSummaries = creditCardSummaries,
             )
         }
 

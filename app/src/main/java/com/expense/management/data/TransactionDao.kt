@@ -49,4 +49,7 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET paymentMethodId = NULL WHERE paymentMethodId = :methodId")
     suspend fun nullifyPaymentMethodId(methodId: String)
+
+    @Query("SELECT categoryId FROM transactions WHERE type = :type GROUP BY categoryId ORDER BY COUNT(*) DESC LIMIT :limit")
+    fun getTopCategoryIds(type: TransactionType, limit: Int): Flow<List<String>>
 }
