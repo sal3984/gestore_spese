@@ -86,6 +86,7 @@
     <string name="app_lock_desc">Enable screen lock on app startup.</string>
     <string name="management">Management</string>
     <string name="dashboard_widgets">Dashboard Widgets</string>
+    <string name="display_widgets_csv">Display &amp; CSV Export</string>
     <string name="selected_widgets_count">%1$d of %2$d enabled</string>
     <string name="data_management">Data Management</string>
     <string name="export_csv">Export CSV</string>
