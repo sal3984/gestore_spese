@@ -4,15 +4,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -49,68 +54,92 @@ fun ThemeSettingsScreen(
             "light" to stringResource(R.string.theme_light),
             "dark" to stringResource(R.string.theme_dark),
         )
-        themeModes.forEach { mode ->
-            ListItem(
-                headlineContent = {
-                    Text(
-                        themeLabels[mode] ?: mode,
-                        style = MaterialTheme.typography.bodyLarge,
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                themeModes.forEachIndexed { index, mode ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                themeLabels[mode] ?: mode,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.BrightnessMedium,
+                                contentDescription = themeLabels[mode] ?: mode,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        },
+                        trailingContent = {
+                            RadioButton(selected = mode == currentThemeMode, onClick = null)
+                        },
+                        modifier = Modifier
+                            .clickable { onThemeModeChange(mode) }
+                            .heightIn(min = 48.dp),
                     )
-                },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.BrightnessMedium,
-                        contentDescription = themeLabels[mode] ?: mode,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-                },
-                trailingContent = {
-                    RadioButton(selected = mode == currentThemeMode, onClick = null)
-                },
-                modifier = Modifier
-                    .clickable { onThemeModeChange(mode) }
-                    .heightIn(min = 48.dp),
-            )
+                    if (index < themeModes.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                    }
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         settingsSectionHeader(stringResource(R.string.app_style))
 
-        AppStyle.entries.forEach { style ->
-            ListItem(
-                headlineContent = {
-                    Text(
-                        when (style) {
-                            AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
-                            AppStyle.NORDIC -> stringResource(R.string.style_nordic)
-                            AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
-                            AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                AppStyle.entries.forEachIndexed { index, style ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                when (style) {
+                                    AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
+                                    AppStyle.NORDIC -> stringResource(R.string.style_nordic)
+                                    AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
+                                    AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                         },
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.Palette,
-                        contentDescription = when (style) {
-                            AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
-                            AppStyle.NORDIC -> stringResource(R.string.style_nordic)
-                            AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
-                            AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.Palette,
+                                contentDescription = when (style) {
+                                    AppStyle.MATERIAL_YOU -> stringResource(R.string.style_material_you)
+                                    AppStyle.NORDIC -> stringResource(R.string.style_nordic)
+                                    AppStyle.CYBERPUNK -> stringResource(R.string.style_cyberpunk)
+                                    AppStyle.CORPORATE -> stringResource(R.string.style_corporate)
+                                },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
                         },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
+                        trailingContent = {
+                            RadioButton(selected = style == currentAppStyle, onClick = null)
+                        },
+                        modifier = Modifier
+                            .clickable { onAppStyleChange(style) }
+                            .heightIn(min = 48.dp),
                     )
-                },
-                trailingContent = {
-                    RadioButton(selected = style == currentAppStyle, onClick = null)
-                },
-                modifier = Modifier
-                    .clickable { onAppStyleChange(style) }
-                    .heightIn(min = 48.dp),
-            )
+                    if (index < AppStyle.entries.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                    }
+                }
+            }
         }
     }
 }

@@ -78,6 +78,10 @@
     <string name="display_widgets_csv">Visualizzazione ed Esportazione CSV</string>
     <string name="display">Visualizzazione</string>
     <string name="selected_widgets_count">%1$d di %2$d abilitati</string>
+    <string name="widget_summary_cards">Carte Riepilogo</string>
+    <string name="widget_credit_card_info">Info Carte di Credito</string>
+    <string name="widget_bnpl_projections">Proiezioni BNPL</string>
+    <string name="widget_transaction_list">Lista Transazioni</string>
     <string name="data_management">Gestione Dati</string>
     <string name="export_csv">Esporta CSV</string>
     <string name="export_csv_desc">Salva un report delle spese</string>

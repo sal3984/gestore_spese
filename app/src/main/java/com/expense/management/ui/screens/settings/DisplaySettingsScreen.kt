@@ -4,15 +4,24 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Summarize
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -43,90 +52,119 @@ fun DisplaySettingsScreen(
     ) {
         settingsSectionHeader(stringResource(R.string.dashboard_widgets))
 
-        DashboardWidget.entries.forEach { widget ->
-            ListItem(
-                headlineContent = {
-                    Text(
-                        when (widget) {
-                            DashboardWidget.SUMMARY_CARDS -> "Summary Cards"
-                            DashboardWidget.CREDIT_CARD_INFO -> "Credit Card Info"
-                            DashboardWidget.BNPL_PROJECTIONS -> "BNPL Projections"
-                            DashboardWidget.TRANSACTION_LIST -> "Transaction List"
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.Description,
-                        contentDescription = widget.name,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-                },
-                trailingContent = {
-                    Checkbox(
-                        checked = enabledWidgets.contains(widget),
-                        onCheckedChange = { isChecked ->
-                            onEnabledWidgetsChange(
-                                if (isChecked) enabledWidgets + widget else enabledWidgets - widget,
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                DashboardWidget.entries.forEachIndexed { index, widget ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                when (widget) {
+                                    DashboardWidget.SUMMARY_CARDS -> stringResource(R.string.widget_summary_cards)
+                                    DashboardWidget.CREDIT_CARD_INFO -> stringResource(R.string.widget_credit_card_info)
+                                    DashboardWidget.BNPL_PROJECTIONS -> stringResource(R.string.widget_bnpl_projections)
+                                    DashboardWidget.TRANSACTION_LIST -> stringResource(R.string.widget_transaction_list)
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
                             )
                         },
+                        leadingContent = {
+                            Icon(
+                                when (widget) {
+                                    DashboardWidget.SUMMARY_CARDS -> Icons.Default.Summarize
+                                    DashboardWidget.CREDIT_CARD_INFO -> Icons.Default.CreditCard
+                                    DashboardWidget.BNPL_PROJECTIONS -> Icons.AutoMirrored.Filled.TrendingUp
+                                    DashboardWidget.TRANSACTION_LIST -> Icons.AutoMirrored.Filled.ListAlt
+                                },
+                                contentDescription = widget.name,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        },
+                        trailingContent = {
+                            Checkbox(
+                                checked = enabledWidgets.contains(widget),
+                                onCheckedChange = { isChecked ->
+                                    onEnabledWidgetsChange(
+                                        if (isChecked) enabledWidgets + widget else enabledWidgets - widget,
+                                    )
+                                },
+                            )
+                        },
+                        modifier = Modifier
+                            .clickable {
+                                onEnabledWidgetsChange(
+                                    if (enabledWidgets.contains(widget)) {
+                                        enabledWidgets - widget
+                                    } else {
+                                        enabledWidgets + widget
+                                    },
+                                )
+                            }
+                            .heightIn(min = 48.dp),
                     )
-                },
-                modifier = Modifier
-                    .clickable {
-                        onEnabledWidgetsChange(
-                            if (enabledWidgets.contains(widget)) {
-                                enabledWidgets - widget
-                            } else {
-                                enabledWidgets + widget
-                            },
-                        )
+                    if (index < DashboardWidget.entries.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                     }
-                    .heightIn(min = 48.dp),
-            )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         settingsSectionHeader(stringResource(R.string.customize_csv_export))
 
-        EXPORT_COLUMN_MAP.entries.forEach { (key, displayName) ->
-            ListItem(
-                headlineContent = {
-                    Text(displayName, style = MaterialTheme.typography.bodyLarge)
-                },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.Description,
-                        contentDescription = displayName,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-                },
-                trailingContent = {
-                    Checkbox(
-                        checked = csvExportColumns.contains(key),
-                        onCheckedChange = { isChecked ->
-                            onCsvExportColumnsChange(
-                                if (isChecked) csvExportColumns + key else csvExportColumns - key,
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                EXPORT_COLUMN_MAP.entries.forEachIndexed { index, (key, displayName) ->
+                    ListItem(
+                        headlineContent = {
+                            Text(displayName, style = MaterialTheme.typography.bodyLarge)
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.Description,
+                                contentDescription = displayName,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
                             )
                         },
+                        trailingContent = {
+                            Checkbox(
+                                checked = csvExportColumns.contains(key),
+                                onCheckedChange = { isChecked ->
+                                    onCsvExportColumnsChange(
+                                        if (isChecked) csvExportColumns + key else csvExportColumns - key,
+                                    )
+                                },
+                            )
+                        },
+                        modifier = Modifier
+                            .clickable {
+                                onCsvExportColumnsChange(
+                                    if (csvExportColumns.contains(key)) {
+                                        csvExportColumns - key
+                                    } else {
+                                        csvExportColumns + key
+                                    },
+                                )
+                            }
+                            .heightIn(min = 48.dp),
                     )
-                },
-                modifier = Modifier
-                    .clickable {
-                        onCsvExportColumnsChange(
-                            if (csvExportColumns.contains(key)) {
-                                csvExportColumns - key
-                            } else {
-                                csvExportColumns + key
-                            },
-                        )
+                    if (index < EXPORT_COLUMN_MAP.entries.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                     }
-                    .heightIn(min = 48.dp),
-            )
+                }
+            }
         }
     }
 }

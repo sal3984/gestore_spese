@@ -89,6 +89,10 @@
     <string name="display_widgets_csv">Display &amp; CSV Export</string>
     <string name="display">Display</string>
     <string name="selected_widgets_count">%1$d of %2$d enabled</string>
+    <string name="widget_summary_cards">Summary Cards</string>
+    <string name="widget_credit_card_info">Credit Card Info</string>
+    <string name="widget_bnpl_projections">BNPL Projections</string>
+    <string name="widget_transaction_list">Transaction List</string>
     <string name="data_management">Data Management</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_csv_desc">Save an expense report</string>
