@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -157,16 +158,21 @@ fun MonthlyBarChart(
         selectedMonth?.let { month ->
             val index = data.indexOfFirst { it.first == month }
             if (index >= 0) {
-                val xOffset = (barWidth * index) + (barWidth / 2)
-                val extraOffset = if (index <= 9) (-16).dp else (-40).dp
+                val barCenterX = barWidth * index + barWidth / 2
                 val tooltipBalance = remember(month, data) {
                     data.find { it.first == month }?.second ?: 0.0
                 }
                 val isPositive = tooltipBalance >= 0
 
+                val estimatedTooltipWidthDp = 160.dp
+
+                val clampedX = (barCenterX - estimatedTooltipWidthDp / 2)
+                    .coerceIn(0.dp, maxWidth - estimatedTooltipWidthDp)
+
                 Box(
                     modifier = Modifier
-                        .absoluteOffset(x = xOffset + extraOffset, y = 0.dp)
+                        .absoluteOffset(x = clampedX, y = 0.dp)
+                        .widthIn(max = estimatedTooltipWidthDp)
                         .zIndex(1f),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
