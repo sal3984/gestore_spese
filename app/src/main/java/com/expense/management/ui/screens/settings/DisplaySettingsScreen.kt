@@ -20,11 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.ui.screens.EXPORT_COLUMN_MAP
 import com.expense.management.ui.screens.settingsSectionHeader
+import com.expense.management.ui.theme.gestoreSpeseTheme
 
 @Composable
 fun DisplaySettingsScreen(
@@ -126,5 +128,31 @@ fun DisplaySettingsScreen(
                     .heightIn(min = 48.dp),
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Display Settings Light")
+@Composable
+private fun DisplaySettingsPreviewLight() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        DisplaySettingsScreen(
+            enabledWidgets = DashboardWidget.entries.toSet(),
+            csvExportColumns = EXPORT_COLUMN_MAP.keys,
+            onEnabledWidgetsChange = {},
+            onCsvExportColumnsChange = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Display Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DisplaySettingsPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        DisplaySettingsScreen(
+            enabledWidgets = DashboardWidget.entries.toSet(),
+            csvExportColumns = EXPORT_COLUMN_MAP.keys,
+            onEnabledWidgetsChange = {},
+            onCsvExportColumnsChange = {},
+        )
     }
 }

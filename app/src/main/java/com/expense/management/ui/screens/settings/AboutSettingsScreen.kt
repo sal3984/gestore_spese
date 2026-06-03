@@ -26,10 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.expense.management.R
 import com.expense.management.ui.screens.settingsSectionHeader
+import com.expense.management.ui.theme.gestoreSpeseTheme
 
 @Composable
 fun AboutSettingsScreen() {
@@ -135,5 +137,21 @@ fun AboutSettingsScreen() {
         )
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Preview(showBackground = true, name = "About Light")
+@Composable
+private fun AboutPreviewLight() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        AboutSettingsScreen()
+    }
+}
+
+@Preview(showBackground = true, name = "About Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AboutPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        AboutSettingsScreen()
     }
 }

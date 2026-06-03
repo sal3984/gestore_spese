@@ -24,10 +24,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.ui.screens.settingsSectionHeader
+import com.expense.management.ui.theme.gestoreSpeseTheme
 
 @Composable
 fun PaymentSettingsScreen(
@@ -97,6 +99,32 @@ fun PaymentSettingsScreen(
                 )
             },
             modifier = Modifier.clickable { onNavigateToPaymentMethods() },
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Payment Settings Light")
+@Composable
+private fun PaymentSettingsPreviewLight() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        PaymentSettingsScreen(
+            allPaymentMethods = emptyList(),
+            defaultPaymentMethodId = "__cash__",
+            onDefaultPaymentMethodChange = {},
+            onNavigateToPaymentMethods = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Payment Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun PaymentSettingsPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        PaymentSettingsScreen(
+            allPaymentMethods = emptyList(),
+            defaultPaymentMethodId = "__cash__",
+            onDefaultPaymentMethodChange = {},
+            onNavigateToPaymentMethods = {},
         )
     }
 }

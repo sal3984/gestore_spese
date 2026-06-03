@@ -41,11 +41,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.expense.management.R
 import com.expense.management.data.CurrencyRate
 import com.expense.management.ui.screens.settingsSectionHeader
+import com.expense.management.ui.theme.gestoreSpeseTheme
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
@@ -269,5 +271,41 @@ private fun CurrencyRatesInfoDialog(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "General Settings Light")
+@Composable
+private fun GeneralSettingsPreviewLight() {
+    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+        GeneralSettingsScreen(
+            currentCurrency = "€",
+            currentDateFormat = "dd/MM/yyyy",
+            hasTransactions = false,
+            currencyRates = emptyList(),
+            lastRatesUpdate = null,
+            onCurrencyChange = {},
+            onDateFormatChange = {},
+            onRefreshCurrencyRates = {},
+            onForceCurrencyRatesUpdate = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "General Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun GeneralSettingsPreviewDark() {
+    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+        GeneralSettingsScreen(
+            currentCurrency = "€",
+            currentDateFormat = "dd/MM/yyyy",
+            hasTransactions = false,
+            currencyRates = emptyList(),
+            lastRatesUpdate = null,
+            onCurrencyChange = {},
+            onDateFormatChange = {},
+            onRefreshCurrencyRates = {},
+            onForceCurrencyRatesUpdate = {},
+        )
     }
 }

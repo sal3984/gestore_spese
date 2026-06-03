@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,6 +22,8 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -185,125 +189,150 @@ private fun SettingsList(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        settingsSectionHeader(
-            title = stringResource(R.string.general),
-            icon = Icons.Default.AttachMoney,
-            onClick = { onSectionSelected(SettingsSection.GENERAL) },
-        )
-
-        settingsSectionHeader(
-            title = stringResource(R.string.theme),
-            icon = Icons.Default.BrightnessMedium,
-            onClick = { onSectionSelected(SettingsSection.THEME) },
-        )
-
-        settingsSectionHeader(
-            title = stringResource(R.string.payment_methods),
-            icon = Icons.Default.CreditCard,
-            onClick = { onSectionSelected(SettingsSection.PAYMENT) },
-        )
-
-        settingsSectionHeader(
-            title = stringResource(R.string.display_widgets_csv),
-            icon = Icons.Default.Description,
-            onClick = { onSectionSelected(SettingsSection.DISPLAY) },
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ListItem(
-            headlineContent = {
-                Text(
-                    stringResource(R.string.data_management),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                settingsSectionHeader(
+                    title = stringResource(R.string.general),
+                    icon = Icons.Default.AttachMoney,
+                    onClick = { onSectionSelected(SettingsSection.GENERAL) },
                 )
-            },
-            supportingContent = {
-                Text(
-                    stringResource(R.string.data_management_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                settingsSectionHeader(
+                    title = stringResource(R.string.theme),
+                    icon = Icons.Default.BrightnessMedium,
+                    onClick = { onSectionSelected(SettingsSection.THEME) },
                 )
-            },
-            leadingContent = {
-                Icon(
-                    Icons.Default.Backup,
-                    contentDescription = stringResource(R.string.data_management),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                settingsSectionHeader(
+                    title = stringResource(R.string.payment_methods),
+                    icon = Icons.Default.CreditCard,
+                    onClick = { onSectionSelected(SettingsSection.PAYMENT) },
                 )
-            },
-            trailingContent = {
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = stringResource(R.string.more),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                settingsSectionHeader(
+                    title = stringResource(R.string.display_widgets_csv),
+                    icon = Icons.Default.Description,
+                    onClick = { onSectionSelected(SettingsSection.DISPLAY) },
                 )
-            },
-            modifier = Modifier.clickable { onNavigateToDataManagement() },
-        )
-
-        ListItem(
-            headlineContent = {
-                Text(
-                    stringResource(R.string.security_usability),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            },
-            supportingContent = {
-                Text(
-                    stringResource(R.string.app_lock_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            leadingContent = {
-                Icon(
-                    Icons.Default.Security,
-                    contentDescription = stringResource(R.string.security_usability),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
-                )
-            },
-            trailingContent = {
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = stringResource(R.string.more),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            modifier = Modifier.clickable { onNavigateToSecurity() },
-        )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        ListItem(
-            headlineContent = {
-                Text(
-                    stringResource(R.string.about),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            stringResource(R.string.data_management),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            stringResource(R.string.data_management_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Backup,
+                            contentDescription = stringResource(R.string.data_management),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    },
+                    trailingContent = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = stringResource(R.string.more),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    modifier = Modifier.clickable { onNavigateToDataManagement() },
                 )
-            },
-            leadingContent = {
-                Icon(
-                    Icons.Default.Info,
-                    contentDescription = stringResource(R.string.about),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            stringResource(R.string.security_usability),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            stringResource(R.string.app_lock_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Default.Security,
+                            contentDescription = stringResource(R.string.security_usability),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    },
+                    trailingContent = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = stringResource(R.string.more),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    modifier = Modifier.clickable { onNavigateToSecurity() },
                 )
-            },
-            trailingContent = {
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = stringResource(R.string.more),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            modifier = Modifier.clickable { onSectionSelected(SettingsSection.ABOUT) },
-        )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        stringResource(R.string.about),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = stringResource(R.string.about),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = stringResource(R.string.more),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                modifier = Modifier.clickable { onSectionSelected(SettingsSection.ABOUT) },
+            )
+        }
 
         Spacer(modifier = Modifier.height(80.dp))
     }
@@ -342,12 +371,13 @@ private fun settingsSectionHeader(
     )
 }
 
+@Composable
 private fun sectionTitle(section: SettingsSection): String = when (section) {
-    SettingsSection.GENERAL -> "Generale"
-    SettingsSection.THEME -> "Tema"
-    SettingsSection.PAYMENT -> "Metodi di Pagamento"
-    SettingsSection.DISPLAY -> "Visualizzazione"
-    SettingsSection.ABOUT -> "Info"
+    SettingsSection.GENERAL -> stringResource(R.string.general)
+    SettingsSection.THEME -> stringResource(R.string.theme)
+    SettingsSection.PAYMENT -> stringResource(R.string.payment_methods)
+    SettingsSection.DISPLAY -> stringResource(R.string.display)
+    SettingsSection.ABOUT -> stringResource(R.string.about)
 }
 
 @Preview(showBackground = true, name = "Settings List Light")

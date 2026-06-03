@@ -76,6 +76,7 @@
     <string name="management">Gestione</string>
     <string name="dashboard_widgets">Widget Dashboard</string>
     <string name="display_widgets_csv">Visualizzazione ed Esportazione CSV</string>
+    <string name="display">Visualizzazione</string>
     <string name="selected_widgets_count">%1$d di %2$d abilitati</string>
     <string name="data_management">Gestione Dati</string>
     <string name="export_csv">Esporta CSV</string>
