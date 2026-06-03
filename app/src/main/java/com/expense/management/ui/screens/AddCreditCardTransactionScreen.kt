@@ -12,14 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -33,8 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +57,7 @@ import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.usecase.AddTransactionSaveResult
 import com.expense.management.domain.usecase.AddTransactionSaveUseCase
 import com.expense.management.ui.model.DeleteType
@@ -90,6 +91,10 @@ fun AddCreditCardTransactionScreen(
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     frequentExpenseCategories: List<CategoryEntity> = emptyList(),
     frequentIncomeCategories: List<CategoryEntity> = emptyList(),
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
+    receiptScanResult: ReceiptScanResult? = null,
+    onClearReceiptScanResult: () -> Unit = {},
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val locale = ComposeLocale.current.platformLocale
@@ -121,7 +126,7 @@ fun AddCreditCardTransactionScreen(
                 originalCurrency = transactionToEdit?.originalCurrency ?: currencySymbol,
                 isInstallment = (transactionToEdit?.totalInstallments ?: 1) > 1,
                 isRecurrenceEnabled = transactionToEdit?.recurrenceType?.let { it != RecurrenceType.NONE } ?: false,
-                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.MONTHLY,
+                recurrenceType = transactionToEdit?.recurrenceType ?: RecurrenceType.NONE,
                 recurrenceLimit = transactionToEdit?.recurrenceLimit ?: 12,
                 installmentsCount = transactionToEdit?.totalInstallments ?: 3,
                 dateStr = if (transactionToEdit != null) {
@@ -251,8 +256,8 @@ fun AddCreditCardTransactionScreen(
             is AddTransactionEvent.OnShowRecurrenceTypeDialog -> uiState = uiState.copy(showRecurrenceTypeDialog = event.show)
             is AddTransactionEvent.OnCalculationModeChange -> uiState = uiState.copy(calculationMode = event.mode)
             is AddTransactionEvent.OnInstallmentAmountChange -> {
-                val totalAmount = uiState.amountText.toDoubleOrNull() ?: 0.0
-                val installmentAmount = event.amount.toDoubleOrNull() ?: 0.0
+                val totalAmount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                val installmentAmount = event.amount.replace(',', '.').toDoubleOrNull() ?: 0.0
                 val newCount = if (totalAmount > 0 && installmentAmount > 0) {
                     ceil(totalAmount / installmentAmount).toInt()
                 } else {
@@ -317,28 +322,16 @@ fun AddCreditCardTransactionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(if (transactionToEdit == null) stringResource(R.string.credit_card_transaction) else stringResource(R.string.edit_transaction), fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    if (transactionToEdit != null) {
-                        IconButton(onClick = { handleEvent(AddTransactionEvent.OnShowDeleteDialog(true)) }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
         bottomBar = {
-            SaveButton(
+            TransactionBottomBar(
                 isEditing = isEditing,
+                onCancel = onBack,
                 onSave = { handleEvent(AddTransactionEvent.OnSave) },
+                onDelete = if (transactionToEdit != null) {
+                    { handleEvent(AddTransactionEvent.OnShowDeleteDialog(true)) }
+                } else {
+                    null
+                },
             )
         },
     ) { padding ->
@@ -359,6 +352,22 @@ fun AddCreditCardTransactionScreen(
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = animatedVisibilityScope,
             padding = padding,
+            onLaunchCamera = onLaunchCamera,
+            onLaunchGallery = onLaunchGallery,
+        )
+    }
+
+    if (receiptScanResult != null) {
+        ReceiptScanDialog(
+            result = receiptScanResult,
+            currencySymbol = currencySymbol,
+            onApply = {
+                receiptScanResult.amount?.let { handleEvent(AddTransactionEvent.OnAmountChange(String.format(Locale.US, "%.2f", it))) }
+                receiptScanResult.description?.let { handleEvent(AddTransactionEvent.OnDescriptionChange(it)) }
+                receiptScanResult.date?.let { handleEvent(AddTransactionEvent.OnDateChange(it)) }
+                onClearReceiptScanResult()
+            },
+            onDiscard = onClearReceiptScanResult,
         )
     }
 
@@ -482,6 +491,8 @@ private fun AddCreditCardContent(
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?,
     padding: PaddingValues,
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -492,75 +503,86 @@ private fun AddCreditCardContent(
             .padding(bottom = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        TypeSelector(
-            type = uiState.type,
-            onTypeChange = { onEvent(AddTransactionEvent.OnTypeChange(it)) },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        BasicDetailsCard(
-            uiState = uiState,
-            onEvent = onEvent,
-            transactionToEdit = transactionToEdit,
-            currencySymbol = currencySymbol,
-            dateFormat = dateFormat,
-            suggestions = suggestions,
-            sharedTransitionScope = sharedTransitionScope,
-            animatedVisibilityScope = animatedVisibilityScope,
-        )
-
-        if (!isEditing) {
-            Spacer(modifier = Modifier.height(12.dp))
-            RecurrenceSection(
+        AccordionSection(
+            title = stringResource(R.string.details_label),
+            initiallyExpanded = true,
+        ) {
+            TypeSelector(
+                type = uiState.type,
+                onTypeChange = { onEvent(AddTransactionEvent.OnTypeChange(it)) },
+            )
+            BasicDetailsFields(
                 uiState = uiState,
                 onEvent = onEvent,
+                currencySymbol = currencySymbol,
+                dateFormat = dateFormat,
+                suggestions = suggestions,
+                onLaunchCamera = onLaunchCamera,
+                onLaunchGallery = onLaunchGallery,
             )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        CreditCardPaymentSection(
-            uiState = uiState,
-            onEvent = onEvent,
-            isEditing = isEditing,
-            transactionToEdit = transactionToEdit,
-            activeCreditCards = activeCreditCards,
-            creditCardMethods = creditCardMethods,
-        )
+        AccordionSection(
+            title = stringResource(R.string.category_selection_label),
+            initiallyExpanded = true,
+        ) {
+            CategorySelector(
+                type = uiState.type,
+                selectedCategoryId = uiState.selectedCategory,
+                onCategorySelected = { onEvent(AddTransactionEvent.OnCategorySelected(it)) },
+                availableCategories = availableCategories,
+                frequentExpenseCategories = frequentExpenseCategories,
+                frequentIncomeCategories = frequentIncomeCategories,
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        InstallmentSection(
-            uiState = uiState,
-            onEvent = onEvent,
-            isEditing = isEditing,
-            transactionToEdit = transactionToEdit,
-            currencySymbol = currencySymbol,
-            dateFormat = dateFormat,
-            activeCreditCards = activeCreditCards,
-        )
+        AccordionSection(
+            title = stringResource(R.string.credit_card),
+            initiallyExpanded = false,
+        ) {
+            CreditCardPaymentFields(
+                uiState = uiState,
+                onEvent = onEvent,
+                isEditing = isEditing,
+                transactionToEdit = transactionToEdit,
+                activeCreditCards = activeCreditCards,
+                creditCardMethods = creditCardMethods,
+            )
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        if (isEditing) {
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(
+                onClick = { onEvent(AddTransactionEvent.OnShowDeleteDialog(true)) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.delete))
+            }
+        }
 
-        Text(
-            stringResource(R.string.category_selection_label),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-        )
+        if (!isEditing) {
+            Spacer(modifier = Modifier.height(12.dp))
 
-        CategorySelector(
-            type = uiState.type,
-            selectedCategoryId = uiState.selectedCategory,
-            onCategorySelected = { onEvent(AddTransactionEvent.OnCategorySelected(it)) },
-            availableCategories = availableCategories,
-            frequentExpenseCategories = frequentExpenseCategories,
-            frequentIncomeCategories = frequentIncomeCategories,
-        )
+            RecurrenceFields(
+                uiState = uiState,
+                onEvent = onEvent,
+            )
+        }
     }
 }
 
@@ -580,71 +602,91 @@ fun CreditCardPaymentSection(
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.credit_card),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
+        CreditCardPaymentFields(
+            uiState = uiState,
+            onEvent = onEvent,
+            isEditing = isEditing,
+            transactionToEdit = transactionToEdit,
+            activeCreditCards = activeCreditCards,
+            creditCardMethods = creditCardMethods,
+        )
+    }
+}
 
-            if (creditCardMethods.isNotEmpty() || activeCreditCards.isNotEmpty()) {
-                val selectedName = when {
-                    uiState.selectedPaymentMethodId != null ->
-                        creditCardMethods.find { it.id == uiState.selectedPaymentMethodId }?.name
-                            ?: activeCreditCards.find { it.id == uiState.selectedPaymentMethodId }?.name
-                    uiState.creditCardId != null ->
-                        activeCreditCards.find { it.id == uiState.creditCardId }?.name
-                            ?: creditCardMethods.find { it.id == uiState.creditCardId }?.name
-                    else -> null
-                }
-                OutlinedTextField(
-                    value = selectedName ?: stringResource(R.string.select_credit_card),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.credit_card)) },
-                    trailingIcon = {
-                        IconButton(onClick = { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) }) {
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_payment_method))
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) },
-                )
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreditCardPaymentFields(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+    isEditing: Boolean,
+    transactionToEdit: TransactionEntity?,
+    activeCreditCards: List<ActiveCreditCard>,
+    creditCardMethods: List<PaymentMethodEntity>,
+) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = stringResource(R.string.credit_card),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
+
+        if (creditCardMethods.isNotEmpty() || activeCreditCards.isNotEmpty()) {
+            val selectedName = when {
+                uiState.selectedPaymentMethodId != null ->
+                    creditCardMethods.find { it.id == uiState.selectedPaymentMethodId }?.name
+                        ?: activeCreditCards.find { it.id == uiState.selectedPaymentMethodId }?.name
+                uiState.creditCardId != null ->
+                    activeCreditCards.find { it.id == uiState.creditCardId }?.name
+                        ?: creditCardMethods.find { it.id == uiState.creditCardId }?.name
+                else -> null
             }
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            OutlinedTextField(
+                value = selectedName ?: stringResource(R.string.select_credit_card),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.credit_card)) },
+                trailingIcon = {
+                    IconButton(onClick = { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) }) {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_payment_method))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowCreditCardDialog(true)) },
             )
+        }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (!isEditing) {
-                            Modifier.clickable { onEvent(AddTransactionEvent.OnIsInstallmentChange(!uiState.isInstallment)) }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(
-                    checked = uiState.isInstallment,
-                    onCheckedChange = { if (!isEditing) onEvent(AddTransactionEvent.OnIsInstallmentChange(it)) },
-                    enabled = !isEditing,
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (!isEditing) {
+                        Modifier.clickable { onEvent(AddTransactionEvent.OnIsInstallmentChange(!uiState.isInstallment)) }
+                    } else {
+                        Modifier
+                    },
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                    Text(
-                        text = stringResource(R.string.installment_payment_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = uiState.isInstallment,
+                onCheckedChange = { if (!isEditing) onEvent(AddTransactionEvent.OnIsInstallmentChange(it)) },
+                enabled = !isEditing,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(stringResource(R.string.installment_payment), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                    text = stringResource(R.string.installment_payment_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

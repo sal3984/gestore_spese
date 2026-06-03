@@ -78,6 +78,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
@@ -111,6 +112,9 @@ fun DashboardScreen(
     error: String? = null,
     onRetry: () -> Unit = {},
     allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
+    enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget> = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
+    dashboardFilteredTransactions: List<TransactionEntity> = emptyList(),
+    creditCardSummaries: Map<String, CreditCardSummary> = emptyMap(),
 ) {
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -138,17 +142,7 @@ fun DashboardScreen(
     val locale = ComposeLocale.current.platformLocale
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
 
-    val currentTrans = remember(transactions, currentDashboardMonth) {
-        transactions
-            .filter {
-                try {
-                    YearMonth.from(LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)) == currentDashboardMonth
-                } catch (_: Exception) {
-                    false
-                }
-            }
-            .sortedByDescending { it.effectiveDate }
-    }
+    val currentTrans = dashboardFilteredTransactions
 
     val groupedTransactions = remember(currentTrans) {
         currentTrans.groupBy { it.effectiveDate }
@@ -308,343 +302,320 @@ fun DashboardScreen(
                 }
 
                 // --- CARDS ---
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset(y = (-40).dp)
-                        .padding(horizontal = 16.dp),
-                ) {
-                    // Card Entrate/Uscite
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.fillMaxWidth(),
+                val showSummary = com.expense.management.domain.model.DashboardWidget.SUMMARY_CARDS in enabledWidgets
+                val showBnpl = com.expense.management.domain.model.DashboardWidget.BNPL_PROJECTIONS in enabledWidgets
+                val showCreditCards = com.expense.management.domain.model.DashboardWidget.CREDIT_CARD_INFO in enabledWidgets
+                if (showSummary || showBnpl || showCreditCards) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-40).dp)
+                            .padding(horizontal = 16.dp),
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            // Entrate
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
+                        if (showSummary) {
+                            // Card Entrate/Uscite
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
                                     modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center,
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Icon(
-                                        Icons.Default.ArrowUpward,
-                                        stringResource(R.string.income),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                    Text(
-                                        stringResource(R.string.income),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalIncome)}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                    )
-                                }
-                            }
+                                    // Entrate
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                Icons.Default.ArrowUpward,
+                                                stringResource(R.string.income),
+                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column {
+                                            Text(
+                                                stringResource(R.string.income),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalIncome)}",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.secondary,
+                                            )
+                                        }
+                                    }
 
-                            // Uscite
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        stringResource(R.string.expenses),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalExpense)}",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.errorContainer),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        Icons.Default.ArrowDownward,
-                                        stringResource(R.string.expenses),
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(24.dp),
-                                    )
+                                    // Uscite
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                stringResource(R.string.expenses),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalExpense)}",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.error,
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.errorContainer),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                Icons.Default.ArrowDownward,
+                                                stringResource(R.string.expenses),
+                                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    // Card Debiti Previsti BNPL
-                    if (bnplProjections.isNotEmpty()) {
-                        val totalBnplDebt = bnplProjections.sumOf { it.totalExpected }
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Payment,
-                                        contentDescription = stringResource(R.string.bnpl_debt),
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                        // Card Debiti Previsti BNPL
+                        if (showBnpl && bnplProjections.isNotEmpty()) {
+                            val totalBnplDebt = bnplProjections.sumOf { it.totalExpected }
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Payment,
+                                            contentDescription = stringResource(R.string.bnpl_debt),
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            stringResource(R.string.bnpl_debt),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        stringResource(R.string.bnpl_debt),
-                                        style = MaterialTheme.typography.titleSmall,
+                                        text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalBnplDebt)}",
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     )
+                                    bnplProjections.forEach { proj ->
+                                        Text(
+                                            text = "${proj.methodName}: ${proj.installments.size} rate",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalBnplDebt)}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            }
+                        }
+
+                        // Card Carte di Credito
+                        if (showCreditCards && creditCards.isNotEmpty()) {
+                            val pagerState = rememberPagerState(pageCount = { creditCards.size })
+                            HorizontalPager(
+                                state = pagerState,
+                                pageSpacing = 16.dp,
+                                contentPadding = PaddingValues(horizontal = if (creditCards.size > 1) 32.dp else 0.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { page ->
+                                val card = creditCards[page]
+                                val summary = creditCardSummaries[card.id]
+
+                                val displayedSpent = summary?.displayedSpent ?: 0.0
+                                val totalUtilizedForDisplay = summary?.totalUtilized ?: 0.0
+                                val totalPaidForDisplay = summary?.totalPaid ?: 0.0
+                                val progress = summary?.progress ?: 0f
+
+                                CreditCardItem(
+                                    name = card.name,
+                                    limit = card.limit,
+                                    spent = displayedSpent,
+                                    progress = progress,
+                                    currencySymbol = currencySymbol,
+                                    isAmountHidden = isAmountHidden,
+                                    type = card.cardType,
+                                    totalUtilized = totalUtilizedForDisplay,
+                                    totalPaid = totalPaidForDisplay,
+                                    locale = locale,
                                 )
-                                bnplProjections.forEach { proj ->
-                                    Text(
-                                        text = "${proj.methodName}: ${proj.installments.size} rate",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Card Carte di Credito
-                    if (creditCards.isNotEmpty()) {
-                        val pagerState = rememberPagerState(pageCount = { creditCards.size })
-                        HorizontalPager(
-                            state = pagerState,
-                            pageSpacing = 16.dp,
-                            contentPadding = PaddingValues(horizontal = if (creditCards.size > 1) 32.dp else 0.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { page ->
-                            val card = creditCards[page]
-
-                            val (displayedSpent, totalUtilizedForDisplay, totalPaidForDisplay) = remember(card.id, transactions, currentDashboardMonth) {
-                                if (card.cardType == CreditCardType.REVOLVING) {
-                                    val totalUtilized = transactions
-                                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                        .sumOf { it.amount }
-
-                                    val totalPaid = transactions
-                                        .filter {
-                                            it.creditCardId == card.id &&
-                                                it.type == TransactionType.EXPENSE &&
-                                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
-                                                try {
-                                                    YearMonth.from(LocalDate.parse(it.effectiveDate)) <= currentDashboardMonth
-                                                } catch (_: Exception) {
-                                                    false
-                                                }
-                                        }
-                                        .sumOf { it.amount }
-
-                                    Triple(totalUtilized - totalPaid, totalUtilized, totalPaid)
-                                } else {
-                                    val spent = transactions
-                                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                                        .filter { t ->
-                                            try {
-                                                YearMonth.from(LocalDate.parse(t.date)) == currentDashboardMonth
-                                            } catch (_: Exception) {
-                                                false
-                                            }
-                                        }
-                                        .sumOf { it.amount }
-
-                                    Triple(spent, spent, 0.0)
-                                }
                             }
 
-                            val progress = if (card.limit > 0) (displayedSpent / card.limit).toFloat() else 0f
-
-                            CreditCardItem(
-                                name = card.name,
-                                limit = card.limit,
-                                spent = displayedSpent,
-                                progress = progress,
-                                currencySymbol = currencySymbol,
-                                isAmountHidden = isAmountHidden,
-                                type = card.cardType,
-                                totalUtilized = totalUtilizedForDisplay,
-                                totalPaid = totalPaidForDisplay,
-                                locale = locale,
-                            )
-                        }
-
-                        if (creditCards.size > 1) {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.Center,
-                            ) {
-                                repeat(pagerState.pageCount) { iteration ->
-                                    val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(2.dp)
-                                            .clip(CircleShape)
-                                            .background(color)
-                                            .size(8.dp),
-                                    )
+                            if (creditCards.size > 1) {
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    repeat(pagerState.pageCount) { iteration ->
+                                        val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(2.dp)
+                                                .clip(CircleShape)
+                                                .background(color)
+                                                .size(8.dp),
+                                        )
+                                    }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
         }
 
         // Lista Transazioni
-        if (groupedTransactions.isEmpty()) {
-            item {
-                AnimatedVisibility(
-                    visibleState = visibleState,
-                    enter = fadeIn(animationSpec = tween(durationMillis = 600)) + slideInVertically(initialOffsetY = { it / 2 }),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 40.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountBalanceWallet,
-                            contentDescription = stringResource(R.string.report_no_transaction_this_month),
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.surfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.report_no_transaction_this_month),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.report_message_add_transaction),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-            }
-        } else {
-            groupedTransactions.forEach { (dateString, transactionsOnDate) ->
-                val dailyTotal = transactionsOnDate.sumOf { t ->
-                    if (t.type == TransactionType.INCOME) t.amount else -t.amount
-                }
-
-                stickyHeader {
-                    DateHeader(Modifier, dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
-                }
-
-                items(transactionsOnDate, key = { it.id }) { t ->
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = {
-                            if (it == SwipeToDismissBoxValue.EndToStart) {
-                                showDeleteDialog = TransactionToDelete(
-                                    transaction = t,
-                                    isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1,
-                                )
-                                false
-                            } else {
-                                false
-                            }
-                        },
-                    )
-
+        if (com.expense.management.domain.model.DashboardWidget.TRANSACTION_LIST in enabledWidgets) {
+            if (groupedTransactions.isEmpty()) {
+                item {
                     AnimatedVisibility(
                         visibleState = visibleState,
-                        enter = fadeIn(animationSpec = tween(500)) + slideInVertically(initialOffsetY = { 50 }),
-                        modifier = Modifier.animateItem(),
+                        enter = fadeIn(animationSpec = tween(durationMillis = 600)) + slideInVertically(initialOffsetY = { it / 2 }),
                     ) {
-                        SwipeToDismissBox(
-                            state = dismissState,
+                        Column(
                             modifier = Modifier
-                                .padding(vertical = 4.dp, horizontal = 16.dp)
-                                .clip(RoundedCornerShape(16.dp)),
-                            enableDismissFromStartToEnd = false,
-                            enableDismissFromEndToStart = true,
-                            backgroundContent = {
-                                val color = when (dismissState.targetValue) {
-                                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                                    else -> Color.Transparent
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(color)
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = stringResource(R.string.delete),
-                                        tint = MaterialTheme.colorScheme.onError,
-                                    )
-                                }
-                            },
-                            content = {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    shape = RoundedCornerShape(16.dp),
-                                    tonalElevation = 2.dp,
-                                    shadowElevation = 1.dp,
-                                ) {
-                                    TransactionItem(
+                                .fillMaxWidth()
+                                .padding(top = 40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountBalanceWallet,
+                                contentDescription = stringResource(R.string.report_no_transaction_this_month),
+                                modifier = Modifier.size(80.dp),
+                                tint = MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = stringResource(R.string.report_no_transaction_this_month),
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.report_message_add_transaction),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            } else {
+                groupedTransactions.forEach { (dateString, transactionsOnDate) ->
+                    val dailyTotal = transactionsOnDate.sumOf { t ->
+                        if (t.type == TransactionType.INCOME) t.amount else -t.amount
+                    }
+
+                    stickyHeader {
+                        DateHeader(Modifier, dateString, dailyTotal, currencySymbol, isAmountHidden, locale)
+                    }
+
+                    items(transactionsOnDate, key = { it.id }) { t ->
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = {
+                                if (it == SwipeToDismissBoxValue.EndToStart) {
+                                    showDeleteDialog = TransactionToDelete(
                                         transaction = t,
-                                        categories = categories,
-                                        currencySymbol = currencySymbol,
-                                        dateFormat = dateFormat,
-                                        isAmountHidden = isAmountHidden,
-                                        onDelete = { /* Gestito da SwipeToDismissBox */ },
-                                        onEdit = onEdit,
-                                        locale = locale,
-                                        sharedTransitionScope = sharedTransitionScope,
-                                        animatedVisibilityScope = animatedVisibilityScope,
-                                        allPaymentMethods = allPaymentMethods,
+                                        isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1,
                                     )
+                                    false
+                                } else {
+                                    false
                                 }
                             },
                         )
+
+                        AnimatedVisibility(
+                            visibleState = visibleState,
+                            enter = fadeIn(animationSpec = tween(500)) + slideInVertically(initialOffsetY = { 50 }),
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                modifier = Modifier
+                                    .padding(vertical = 4.dp, horizontal = 16.dp)
+                                    .clip(RoundedCornerShape(16.dp)),
+                                enableDismissFromStartToEnd = false,
+                                enableDismissFromEndToStart = true,
+                                backgroundContent = {
+                                    val color = when (dismissState.targetValue) {
+                                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                                        else -> Color.Transparent
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(color)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd,
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = stringResource(R.string.delete),
+                                            tint = MaterialTheme.colorScheme.onError,
+                                        )
+                                    }
+                                },
+                                content = {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                        shape = RoundedCornerShape(16.dp),
+                                        tonalElevation = 2.dp,
+                                        shadowElevation = 1.dp,
+                                    ) {
+                                        TransactionItem(
+                                            transaction = t,
+                                            categories = categories,
+                                            currencySymbol = currencySymbol,
+                                            dateFormat = dateFormat,
+                                            isAmountHidden = isAmountHidden,
+                                            onDelete = { /* Gestito da SwipeToDismissBox */ },
+                                            onEdit = onEdit,
+                                            locale = locale,
+                                            sharedTransitionScope = sharedTransitionScope,
+                                            animatedVisibilityScope = animatedVisibilityScope,
+                                            allPaymentMethods = allPaymentMethods,
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }

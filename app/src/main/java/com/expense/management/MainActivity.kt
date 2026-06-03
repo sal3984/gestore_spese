@@ -1,6 +1,5 @@
 package com.expense.management
 
-import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,17 +15,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,7 +40,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.navigation.AppBottomBar
-import com.expense.management.ui.navigation.AppDrawer
 import com.expense.management.ui.navigation.AppNavHost
 import com.expense.management.ui.navigation.AppTopBar
 import com.expense.management.ui.navigation.BiometricGate
@@ -90,10 +85,10 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val context = LocalContext.current
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val reportTransactions by viewModel.reportTransactions.collectAsStateWithLifecycle()
+    val reportData by viewModel.reportData.collectAsStateWithLifecycle()
     val allCategories by viewModel.allCategories.collectAsStateWithLifecycle()
     val currentCurrency by viewModel.currency.collectAsStateWithLifecycle()
     val currentCcPaymentMode by viewModel.ccPaymentMode.collectAsStateWithLifecycle()
@@ -117,6 +112,11 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
 
     val isAuthenticated by viewModel.isAppUnlocked.collectAsStateWithLifecycle()
     val bnplProjections by viewModel.bnplProjections.collectAsStateWithLifecycle()
+    val receiptScanResult by viewModel.receiptScanResult.collectAsStateWithLifecycle()
+    val enabledWidgets by viewModel.enabledWidgets.collectAsStateWithLifecycle()
+    val defaultPaymentMethodId by viewModel.defaultPaymentMethodId.collectAsStateWithLifecycle()
+    val dashboardFilteredTransactions by viewModel.dashboardFilteredTransactions.collectAsStateWithLifecycle()
+    val creditCardSummaries by viewModel.creditCardSummaries.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
 
     LaunchedEffect(currentDashboardMonth) {
@@ -157,132 +157,130 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val bottomNavRoutes = listOf("dashboard", "report", "categories")
-    val drawerRoutes = listOf("data_management", "security", "payment_methods", "settings")
+    val bottomNavRoutes = listOf("dashboard", "report", "categories", "settings")
 
     val isBottomBarVisible = currentRoute in bottomNavRoutes
-    val isTopBarVisible = isBottomBarVisible || currentRoute in drawerRoutes
+    val isTopBarVisible = currentRoute?.let { route ->
+        !route.startsWith("add_transaction") && !route.startsWith("add_credit_card_transaction")
+    } ?: true
 
     BiometricGate(
         isBiometricEnabled = isBiometricEnabled,
         isAuthenticated = isAuthenticated,
         onUnlock = viewModel::unlockApp,
     ) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                AppDrawer(
-                    drawerState = drawerState,
-                    navController = navController,
-                    coroutineScope = coroutineScope,
-                    currentRoute = currentRoute,
-                    onExit = { (context as? Activity)?.finish() },
-                )
+        var showAddMenu by remember { mutableStateOf(false) }
+        Scaffold(
+            topBar = {
+                if (isTopBarVisible) {
+                    AppTopBar(
+                        currentRoute = currentRoute,
+                        isAmountHidden = isAmountHidden,
+                        onToggleAmountHidden = viewModel::toggleAmountHidden,
+                    )
+                }
             },
-        ) {
-            var showAddMenu by remember { mutableStateOf(false) }
-            Scaffold(
-                topBar = {
-                    if (isTopBarVisible) {
-                        AppTopBar(
-                            drawerState = drawerState,
-                            coroutineScope = coroutineScope,
-                            currentRoute = currentRoute,
-                        )
-                    }
-                },
-                bottomBar = {
-                    if (isBottomBarVisible) {
-                        AppBottomBar(
-                            navController = navController,
-                            currentRoute = currentRoute,
-                        )
-                    }
-                },
-                floatingActionButton = {
-                    if (currentRoute == "dashboard") {
-                        Box {
-                            FloatingActionButton(
-                                onClick = { showAddMenu = true },
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = stringResource(R.string.new_transaction),
-                                )
-                            }
+            bottomBar = {
+                if (isBottomBarVisible) {
+                    AppBottomBar(
+                        navController = navController,
+                        currentRoute = currentRoute,
+                    )
+                }
+            },
+            floatingActionButton = {
+                if (currentRoute == "dashboard") {
+                    Box {
+                        FloatingActionButton(
+                            onClick = { showAddMenu = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = stringResource(R.string.new_transaction),
+                            )
+                        }
 
-                            DropdownMenu(
-                                expanded = showAddMenu,
-                                onDismissRequest = { showAddMenu = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.transaction)) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.AttachMoney, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        showAddMenu = false
-                                        navController.navigate("add_transaction/0")
-                                    },
-                                )
+                        DropdownMenu(
+                            expanded = showAddMenu,
+                            onDismissRequest = { showAddMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.transaction)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AttachMoney, contentDescription = null)
+                                },
+                                onClick = {
+                                    showAddMenu = false
+                                    navController.navigate("add_transaction/0")
+                                },
+                            )
 
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.credit_card_transaction)) },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.CreditCard, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        showAddMenu = false
-                                        navController.navigate("add_credit_card_transaction/0")
-                                    },
-                                )
-                            }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.credit_card_transaction)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CreditCard, contentDescription = null)
+                                },
+                                onClick = {
+                                    showAddMenu = false
+                                    navController.navigate("add_credit_card_transaction/0")
+                                },
+                            )
                         }
                     }
-                },
-            ) { innerPadding ->
-                Box(
-                    modifier =
-                    Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
-                ) {
-                    SharedTransitionLayout {
-                        AppNavHost(
-                            navController = navController,
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                            viewModel = viewModel,
-                            creditCardViewModel = creditCardViewModel,
-                            allTransactions = allTransactions,
-                            reportTransactions = reportTransactions,
-                            allCategories = allCategories,
-                            currentCurrency = currentCurrency,
-                            currentDateFormat = currentDateFormat,
-                            currentCcPaymentMode = currentCcPaymentMode,
-                            earliestMonth = earliestMonth,
-                            currentDashboardMonth = currentDashboardMonth,
-                            isAmountHidden = isAmountHidden,
-                            activeCreditCards = activeCreditCards,
-                            allPaymentMethods = allPaymentMethods,
-                            bnplProjections = bnplProjections,
-                            csvExportColumns = csvExportColumns,
-                            suggestions = suggestions,
-                            allCreditCards = allCreditCards,
-                            frequentExpenseCategories = frequentExpenseCategories,
-                            frequentIncomeCategories = frequentIncomeCategories,
-                            currencyRates = currencyRates,
-                            lastRatesUpdate = lastRatesUpdate,
-                            currentThemeMode = currentThemeMode,
-                            currentAppStyle = currentAppStyle,
-                            hasTransactions = hasTransactions,
-                            isBiometricEnabled = isBiometricEnabled,
-                            onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
-                            onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
-                            onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
-                        )
-                    }
+                }
+            },
+        ) { innerPadding ->
+            Box(
+                modifier =
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+            ) {
+                SharedTransitionLayout {
+                    AppNavHost(
+                        navController = navController,
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        viewModel = viewModel,
+                        creditCardViewModel = creditCardViewModel,
+                        allTransactions = allTransactions,
+                        reportTransactions = reportTransactions,
+                        reportData = reportData,
+                        allCategories = allCategories,
+                        currentCurrency = currentCurrency,
+                        currentDateFormat = currentDateFormat,
+                        currentCcPaymentMode = currentCcPaymentMode,
+                        earliestMonth = earliestMonth,
+                        currentDashboardMonth = currentDashboardMonth,
+                        isAmountHidden = isAmountHidden,
+                        activeCreditCards = activeCreditCards,
+                        allPaymentMethods = allPaymentMethods,
+                        bnplProjections = bnplProjections,
+                        csvExportColumns = csvExportColumns,
+                        suggestions = suggestions,
+                        allCreditCards = allCreditCards,
+                        frequentExpenseCategories = frequentExpenseCategories,
+                        frequentIncomeCategories = frequentIncomeCategories,
+                        currencyRates = currencyRates,
+                        lastRatesUpdate = lastRatesUpdate,
+                        currentThemeMode = currentThemeMode,
+                        currentAppStyle = currentAppStyle,
+                        hasTransactions = hasTransactions,
+                        isBiometricEnabled = isBiometricEnabled,
+                        enabledWidgets = enabledWidgets,
+                        receiptScanResult = receiptScanResult,
+                        onClearReceiptScanResult = viewModel::clearReceiptScanResult,
+                        defaultPaymentMethodId = defaultPaymentMethodId,
+                        dashboardFilteredTransactions = dashboardFilteredTransactions,
+                        creditCardSummaries = creditCardSummaries,
+                        onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
+                        onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
+                        onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
+                        onNavigateToDataManagement = { navController.navigate("data_management") },
+                        onNavigateToSecurity = { navController.navigate("security") },
+                        onNavigateToPaymentMethods = { navController.navigate("payment_methods") },
+                    )
                 }
             }
         }

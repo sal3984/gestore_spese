@@ -13,10 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -36,9 +34,7 @@ import com.expense.management.ui.theme.gestoreSpeseTheme
 @Composable
 fun securityScreen(
     modifier: Modifier = Modifier,
-    isAmountHidden: Boolean,
     isBiometricEnabled: Boolean,
-    onAmountHiddenChange: (Boolean) -> Unit,
     onBiometricEnabledChange: (Boolean) -> Unit,
 ) {
     Column(
@@ -59,14 +55,6 @@ fun securityScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
             Column {
-                settingsSwitchItem(
-                    icon = Icons.Default.VisibilityOff,
-                    title = stringResource(R.string.hide_amounts),
-                    subtitle = stringResource(R.string.hide_amounts_desc),
-                    checked = isAmountHidden,
-                    onCheckedChange = onAmountHiddenChange,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 settingsSwitchItem(
                     icon = Icons.Default.Security,
                     title = stringResource(R.string.app_lock),
@@ -123,7 +111,7 @@ fun settingsSwitchItem(
 @Composable
 private fun SecurityPreview() {
     gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
-        securityScreen(isAmountHidden = false, isBiometricEnabled = false, onAmountHiddenChange = {}, onBiometricEnabledChange = {})
+        securityScreen(isBiometricEnabled = false, onBiometricEnabledChange = {})
     }
 }
 
@@ -131,6 +119,6 @@ private fun SecurityPreview() {
 @Composable
 private fun SecurityPreviewDark() {
     gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
-        securityScreen(isAmountHidden = false, isBiometricEnabled = false, onAmountHiddenChange = {}, onBiometricEnabledChange = {})
+        securityScreen(isBiometricEnabled = false, onBiometricEnabledChange = {})
     }
 }

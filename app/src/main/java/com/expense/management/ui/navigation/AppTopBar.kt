@@ -1,9 +1,9 @@
 package com.expense.management.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -14,15 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.expense.management.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
-    drawerState: DrawerState,
-    coroutineScope: CoroutineScope,
     currentRoute: String?,
+    isAmountHidden: Boolean = false,
+    onToggleAmountHidden: (() -> Unit)? = null,
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -39,12 +37,15 @@ fun AppTopBar(
                 }
             Text(text = title, fontWeight = FontWeight.SemiBold)
         },
-        navigationIcon = {
-            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = stringResource(R.string.menu),
-                )
+        actions = {
+            if (currentRoute in listOf("dashboard", "report") && onToggleAmountHidden != null) {
+                IconButton(onClick = onToggleAmountHidden) {
+                    Icon(
+                        imageVector = if (isAmountHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = stringResource(R.string.hide_amounts),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             }
         },
         colors =

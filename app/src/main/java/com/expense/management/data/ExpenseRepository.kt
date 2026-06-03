@@ -39,6 +39,9 @@ class ExpenseRepository(
 
     suspend fun getDescriptionSuggestions(query: String): List<String> = transactionDao.getDescriptionSuggestions(query)
 
+    fun getTopCategoryIds(type: TransactionType, limit: Int): Flow<List<String>> =
+        transactionDao.getTopCategoryIds(type, limit)
+
     // Categories
     val allCategoriesFlow: Flow<List<CategoryEntity>> = categoryDao.getAllCategoriesFlow()
 

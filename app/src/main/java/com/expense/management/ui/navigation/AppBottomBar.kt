@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -46,6 +47,18 @@ fun AppBottomBar(
             selected = currentRoute == "categories",
             onClick = {
                 navController.navigate("categories") {
+                    popUpTo("dashboard") { saveState = true }
+                    restoreState = true
+                    launchSingleTop = true
+                }
+            },
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings)) },
+            label = { Text(stringResource(R.string.settings)) },
+            selected = currentRoute == "settings",
+            onClick = {
+                navController.navigate("settings") {
                     popUpTo("dashboard") { saveState = true }
                     restoreState = true
                     launchSingleTop = true

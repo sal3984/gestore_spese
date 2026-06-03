@@ -21,10 +21,15 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.model.ReceiptScanResult
+import com.expense.management.domain.model.ReportData
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
+import com.expense.management.domain.usecase.CalculateReportUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -37,6 +42,7 @@ import com.expense.management.domain.usecase.ManageCreditCardUseCase
 import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
+import com.expense.management.domain.usecase.ScanReceiptUseCase
 import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.screens.category.CATEGORIES
 import com.expense.management.ui.theme.AppStyle
@@ -48,7 +54,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -72,12 +78,11 @@ class ExpenseViewModel(
     private val getBackupDataUseCase: GetBackupDataUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
+    private val calculateReportUseCase: CalculateReportUseCase,
 ) : ViewModel() {
 
     companion object {
         private const val KEY_CURRENCY = "currency"
-        private const val KEY_CC_LIMIT = "cc_limit"
-        private const val KEY_CC_DELAY = "cc_delay"
         private const val KEY_DATE_FORMAT = "date_format"
         private const val KEY_HIDE_AMOUNT = "hide_amount"
         private const val KEY_BIOMETRIC_ENABLED = "is_biometric_enabled"
@@ -85,6 +90,8 @@ class ExpenseViewModel(
         private const val KEY_CSV_EXPORT_COLUMNS = "csv_export_columns"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_APP_STYLE = "app_style"
+        private const val KEY_ENABLED_WIDGETS = "enabled_widgets"
+        private const val KEY_DEFAULT_PAYMENT_METHOD = "default_payment_method_id"
     }
 
     // Frequent Categories Caching
@@ -114,14 +121,19 @@ class ExpenseViewModel(
         Pair(YearMonth.now().minusMonths(2), YearMonth.now()),
     )
 
-    val reportTransactions: StateFlow<List<TransactionEntity>> = reportRangeState
-        .flatMapLatest { (start, end) ->
-            repository.getTransactionsBetween(
-                start.atDay(1).toString(),
-                end.atEndOfMonth().toString(),
-            )
+    val reportTransactions: StateFlow<List<TransactionEntity>> = combine(
+        repository.allTransactions,
+        reportRangeState,
+    ) { allTx, (start, end) ->
+        allTx.filter { tx ->
+            try {
+                val date = LocalDate.parse(tx.effectiveDate)
+                !date.isBefore(start.atDay(1)) && !date.isAfter(end.atEndOfMonth())
+            } catch (_: Exception) {
+                false
+            }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setReportRange(start: YearMonth, end: YearMonth) {
         reportRangeState.value = start to end
@@ -132,14 +144,31 @@ class ExpenseViewModel(
         getCategoriesUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val reportData: StateFlow<ReportData> = combine(
+        reportTransactions,
+        allCategories,
+        reportRangeState,
+    ) { tx, cats, range ->
+        calculateReportUseCase.execute(tx, cats, range.first, range.second)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReportData.EMPTY)
+
     // DATI CARTE DI CREDITO
     val allCreditCards: StateFlow<List<CreditCardEntity>> =
         getCreditCardsUseCase()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // DATI METODI DI PAGAMENTO
+    // DATI METODI DI PAGAMENTO (inietta Contante come metodo built-in)
     val allPaymentMethods: StateFlow<List<PaymentMethodEntity>> =
         getPaymentMethodsUseCase()
+            .map { methods ->
+                val cash = PaymentMethodEntity(
+                    id = "__cash__",
+                    name = "Contante",
+                    provider = PaymentProvider.CASH.name,
+                    isActive = true,
+                )
+                methods + cash
+            }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // CARTE DI CREDITO ATTIVE: unisce nuovo sistema (payment_methods + credit_card_details)
@@ -182,15 +211,88 @@ class ExpenseViewModel(
             newCards + fallbackCards
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
+    val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
+
+    val dashboardFilteredTransactions: StateFlow<List<TransactionEntity>> = combine(
+        allTransactions,
+        _currentDashboardMonth,
+    ) { tx, month ->
+        tx.filter {
+            try {
+                YearMonth.from(LocalDate.parse(it.effectiveDate)) == month
+            } catch (_: Exception) {
+                false
+            }
+        }.sortedByDescending { it.effectiveDate }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val creditCardSummaries: StateFlow<Map<String, CreditCardSummary>> = combine(
+        allTransactions,
+        activeCreditCards,
+        _currentDashboardMonth,
+    ) { tx, cards, month ->
+        cards.associate { card ->
+            card.id to when (card.cardType) {
+                CreditCardType.REVOLVING -> {
+                    val totalUtilized = tx
+                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                        .sumOf { it.amount }
+                    val totalPaid = tx
+                        .filter {
+                            it.creditCardId == card.id &&
+                                it.type == TransactionType.EXPENSE &&
+                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                                try {
+                                    YearMonth.from(LocalDate.parse(it.effectiveDate)) <= month
+                                } catch (_: Exception) {
+                                    false
+                                }
+                        }
+                        .sumOf { it.amount }
+                    val displayed = totalUtilized - totalPaid
+                    CreditCardSummary(
+                        cardId = card.id,
+                        name = card.name,
+                        limit = card.limit,
+                        cardType = card.cardType,
+                        displayedSpent = displayed,
+                        totalUtilized = totalUtilized,
+                        totalPaid = totalPaid,
+                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
+                    )
+                }
+                CreditCardType.SALDO -> {
+                    val spent = tx
+                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                        .filter { t ->
+                            try {
+                                YearMonth.from(LocalDate.parse(t.date)) == month
+                            } catch (_: Exception) {
+                                false
+                            }
+                        }
+                        .sumOf { it.amount }
+                    CreditCardSummary(
+                        cardId = card.id,
+                        name = card.name,
+                        limit = card.limit,
+                        cardType = card.cardType,
+                        displayedSpent = spent,
+                        totalUtilized = spent,
+                        totalPaid = 0.0,
+                        progress = if (card.limit > 0) (spent / card.limit).toFloat() else 0f,
+                    )
+                }
+            }
+        }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs?.getString(KEY_CURRENCY, "€") ?: "€")
     val currency = _currency.asStateFlow()
-
-    private val _ccLimit = MutableStateFlow(prefs?.getFloat(KEY_CC_LIMIT, 1500f) ?: 1500f)
-    val ccLimit = _ccLimit.asStateFlow()
-
-    private val _ccDelay = MutableStateFlow(prefs?.getInt(KEY_CC_DELAY, 1) ?: 1)
-    val ccDelay = _ccDelay.asStateFlow()
 
     private val _dateFormat = MutableStateFlow(prefs?.getString(KEY_DATE_FORMAT, "dd/MM/yyyy") ?: "dd/MM/yyyy")
     val dateFormat = _dateFormat.asStateFlow()
@@ -205,22 +307,16 @@ class ExpenseViewModel(
     val ccPaymentMode = _ccPaymentMode.asStateFlow()
 
     val earliestMonth: StateFlow<YearMonth> = repository.allTransactions
-        .map {
-            val minDateString = repository.getMinEffectiveDate()
-            if (minDateString != null) {
+        .map { transactions ->
+            transactions.minOfOrNull { tx ->
                 try {
-                    YearMonth.from(LocalDate.parse(minDateString))
+                    LocalDate.parse(tx.effectiveDate)
                 } catch (_: Exception) {
-                    YearMonth.now()
+                    LocalDate.now()
                 }
-            } else {
-                YearMonth.now()
-            }
+            }?.let { YearMonth.from(it) } ?: YearMonth.now()
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), YearMonth.now())
-
-    private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
-    val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
 
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
@@ -256,9 +352,29 @@ class ExpenseViewModel(
     )
     val appStyle = _appStyle.asStateFlow()
 
+    private val _enabledWidgets = MutableStateFlow(
+        prefs?.getStringSet(KEY_ENABLED_WIDGETS, null)?.let { saved ->
+            saved.mapNotNull {
+                try {
+                    DashboardWidget.valueOf(it)
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+            }.toSet()
+        } ?: DashboardWidget.entries.toSet(),
+    )
+    val enabledWidgets = _enabledWidgets.asStateFlow()
+
+    private val _defaultPaymentMethodId = MutableStateFlow(
+        prefs?.getString(KEY_DEFAULT_PAYMENT_METHOD, "__cash__") ?: "__cash__",
+    )
+    val defaultPaymentMethodId = _defaultPaymentMethodId.asStateFlow()
+
     init {
         viewModelScope.launch {
             initializeCategoriesUseCase()
+        }
+        viewModelScope.launch {
             _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
             refreshCurrencyRatesData()
         }
@@ -298,14 +414,30 @@ class ExpenseViewModel(
     val bnplProjections: StateFlow<List<BnplProjection>> = _bnplProjections.asStateFlow()
 
     fun refreshBnplProjections(targetMonth: YearMonth) {
-        val useCase = CalculateBnplProjectionsUseCase()
-        _bnplProjections.value = useCase.execute(
-            allTransactions = allTransactions.value,
-            allPaymentMethods = allPaymentMethods.value,
-            paypalDetails = allPaypalDetails.value,
-            klarnaDetails = allKlarnaDetails.value,
-            targetMonth = targetMonth,
-        )
+        viewModelScope.launch(Dispatchers.Default) {
+            val useCase = CalculateBnplProjectionsUseCase()
+            _bnplProjections.value = useCase.execute(
+                allTransactions = allTransactions.value,
+                allPaymentMethods = allPaymentMethods.value,
+                paypalDetails = allPaypalDetails.value,
+                klarnaDetails = allKlarnaDetails.value,
+                targetMonth = targetMonth,
+            )
+        }
+    }
+
+    // SCANSIONE RICEVUTE (ML Kit OCR)
+    private val scanReceiptUseCase = ScanReceiptUseCase()
+    private val _receiptScanResult = MutableStateFlow<ReceiptScanResult?>(null)
+    val receiptScanResult: StateFlow<ReceiptScanResult?> = _receiptScanResult.asStateFlow()
+
+    fun scanReceipt(recognizedText: String) {
+        val result = scanReceiptUseCase(recognizedText)
+        _receiptScanResult.value = result
+    }
+
+    fun clearReceiptScanResult() {
+        _receiptScanResult.value = null
     }
 
     // GESTIONE METODI DI PAGAMENTO
@@ -467,6 +599,7 @@ class ExpenseViewModel(
                     )
                 }
             }
+            PaymentProvider.CASH -> PaymentMethodDetails.Cash(name = method.name)
         }
     }
 
@@ -522,6 +655,7 @@ class ExpenseViewModel(
                         notes = details.notes,
                     ),
                 )
+                is PaymentMethodDetails.Cash -> {}
             }
         }
     }
@@ -582,16 +716,6 @@ class ExpenseViewModel(
         prefs?.edit { putString(KEY_DATE_FORMAT, format) }
     }
 
-    fun updateCcLimit(limit: Float) {
-        _ccLimit.value = limit
-        prefs?.edit { putFloat(KEY_CC_LIMIT, limit) }
-    }
-
-    fun updateCcDelay(delay: Int) {
-        _ccDelay.value = delay
-        prefs?.edit { putInt(KEY_CC_DELAY, delay) }
-    }
-
     fun updateCcPaymentMode(mode: String) {
         _ccPaymentMode.value = mode
         prefs?.edit { putString(KEY_CC_PAYMENT_MODE, mode) }
@@ -600,6 +724,12 @@ class ExpenseViewModel(
     fun updateIsAmountHidden(isHidden: Boolean) {
         _isAmountHidden.value = isHidden
         prefs?.edit { putBoolean(KEY_HIDE_AMOUNT, isHidden) }
+    }
+
+    fun toggleAmountHidden() {
+        val newValue = !_isAmountHidden.value
+        _isAmountHidden.value = newValue
+        prefs?.edit { putBoolean(KEY_HIDE_AMOUNT, newValue) }
     }
 
     fun updateBiometricEnabled(isEnabled: Boolean) {
@@ -620,6 +750,17 @@ class ExpenseViewModel(
     fun updateAppStyle(style: AppStyle) {
         _appStyle.value = style
         prefs?.edit { putString(KEY_APP_STYLE, style.name) }
+    }
+
+    fun updateEnabledWidgets(widgets: Set<DashboardWidget>) {
+        _enabledWidgets.value = widgets
+        prefs?.edit { putStringSet(KEY_ENABLED_WIDGETS, widgets.map { it.name }.toSet()) }
+    }
+
+    fun updateDefaultPaymentMethod(id: String?) {
+        val value = id ?: "__cash__"
+        _defaultPaymentMethodId.value = value
+        prefs?.edit { putString(KEY_DEFAULT_PAYMENT_METHOD, value) }
     }
 
     fun refreshCurrencyRates() {

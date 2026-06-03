@@ -8,17 +8,10 @@ import kotlinx.coroutines.flow.combine
 
 class GetFrequentCategoriesUseCase(private val repository: ExpenseRepository) {
     operator fun invoke(type: TransactionType, limit: Int = 4): Flow<List<CategoryEntity>> {
-        return combine(repository.allTransactions, repository.allCategoriesFlow) { transactions, categories ->
-            val topCategoryIds = transactions
-                .filter { it.type == type }
-                .groupBy { it.categoryId }
-                .mapValues { it.value.size }
-                .toList()
-                .sortedByDescending { it.second }
-                .take(limit)
-                .map { it.first }
-
-            categories.filter { it.id in topCategoryIds && it.type == type }
+        return combine(repository.getTopCategoryIds(type, limit), repository.allCategoriesFlow) { topIds, categories ->
+            val idSet = topIds.toSet()
+            categories.filter { it.id in idSet && it.type == type }
+                .sortedBy { topIds.indexOf(it.id) }
         }
     }
 }

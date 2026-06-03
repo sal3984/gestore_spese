@@ -24,9 +24,10 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -48,6 +49,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -120,6 +122,8 @@ fun BasicDetailsCard(
     suggestions: List<String>,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -140,166 +144,208 @@ fun BasicDetailsCard(
                 },
             ),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.basic_details_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+        BasicDetailsFields(
+            uiState = uiState,
+            onEvent = onEvent,
+            currencySymbol = currencySymbol,
+            dateFormat = dateFormat,
+            suggestions = suggestions,
+            onLaunchCamera = onLaunchCamera,
+            onLaunchGallery = onLaunchGallery,
+        )
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BasicDetailsFields(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+    currencySymbol: String,
+    dateFormat: String,
+    suggestions: List<String>,
+    onLaunchCamera: () -> Unit = {},
+    onLaunchGallery: () -> Unit = {},
+) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = stringResource(R.string.basic_details_label),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+
+        OutlinedTextField(
+            value = uiState.dateStr,
+            onValueChange = { onEvent(AddTransactionEvent.OnDateChange(it)) },
+            label = { Text(stringResource(R.string.transaction_date)) },
+            readOnly = true,
+            trailingIcon = {
+                IconButton(onClick = { onEvent(AddTransactionEvent.OnShowDatePicker(true)) }) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
+            onExpandedChange = { onEvent(AddTransactionEvent.OnDescriptionExpandedChange(it)) },
+        ) {
             OutlinedTextField(
-                value = uiState.dateStr,
-                onValueChange = { onEvent(AddTransactionEvent.OnDateChange(it)) },
-                label = { Text(stringResource(R.string.transaction_date)) },
-                readOnly = true,
+                value = uiState.description,
+                onValueChange = {
+                    onEvent(AddTransactionEvent.OnDescriptionChange(it))
+                    onEvent(AddTransactionEvent.OnDescriptionExpandedChange(true))
+                },
+                label = { Text(stringResource(R.string.description)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                shape = RoundedCornerShape(12.dp),
                 trailingIcon = {
-                    IconButton(onClick = { onEvent(AddTransactionEvent.OnShowDatePicker(true)) }) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.select_date_desc))
+                    if (uiState.description.isNotEmpty()) {
+                        IconButton(onClick = {
+                            onEvent(AddTransactionEvent.OnDescriptionChange(""))
+                            onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false))
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
+                        }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            ExposedDropdownMenuBox(
+            ExposedDropdownMenu(
                 expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
-                onExpandedChange = { onEvent(AddTransactionEvent.OnDescriptionExpandedChange(it)) },
+                onDismissRequest = { onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false)) },
             ) {
-                OutlinedTextField(
-                    value = uiState.description,
-                    onValueChange = {
-                        onEvent(AddTransactionEvent.OnDescriptionChange(it))
-                        onEvent(AddTransactionEvent.OnDescriptionExpandedChange(true))
-                    },
-                    label = { Text(stringResource(R.string.description)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    shape = RoundedCornerShape(12.dp),
-                    trailingIcon = {
-                        if (uiState.description.isNotEmpty()) {
-                            IconButton(onClick = {
-                                onEvent(AddTransactionEvent.OnDescriptionChange(""))
-                                onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false))
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
-                            }
-                        }
-                    },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                )
-                ExposedDropdownMenu(
-                    expanded = uiState.isDescriptionExpanded && suggestions.isNotEmpty(),
-                    onDismissRequest = { onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false)) },
-                ) {
-                    suggestions.forEach { suggestion ->
-                        DropdownMenuItem(
-                            text = { Text(text = suggestion) },
-                            onClick = {
-                                onEvent(AddTransactionEvent.OnDescriptionChange(suggestion))
-                                onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false))
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                        )
-                    }
+                suggestions.forEach { suggestion ->
+                    DropdownMenuItem(
+                        text = { Text(text = suggestion) },
+                        onClick = {
+                            onEvent(AddTransactionEvent.OnDescriptionChange(suggestion))
+                            onEvent(AddTransactionEvent.OnDescriptionExpandedChange(false))
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                    )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            if (uiState.originalCurrency == currencySymbol) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                    androidx.compose.material3.TextButton(
-                        onClick = { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
+        if (uiState.originalCurrency == currencySymbol) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                androidx.compose.material3.TextButton(
+                    onClick = { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
+                ) {
+                    Text(stringResource(R.string.set_original_currency))
+                }
+            }
+        } else {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        AnimatedVisibility(visible = uiState.originalCurrency != currencySymbol) {
+            Card(
+                modifier = Modifier.padding(top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.set_original_currency))
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+                        OutlinedTextField(
+                            value = uiState.originalAmountText,
+                            onValueChange = { onEvent(AddTransactionEvent.OnOriginalAmountChange(it.replace(',', '.'))) },
+                            label = { Text(stringResource(R.string.amount_original_label)) },
+                            placeholder = { Text("0.00") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
 
-            AnimatedVisibility(visible = uiState.originalCurrency != currencySymbol) {
-                Card(
-                    modifier = Modifier.padding(top = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(16.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.originalAmountText,
-                                onValueChange = { onEvent(AddTransactionEvent.OnOriginalAmountChange(it.replace(',', '.'))) },
-                                label = { Text(stringResource(R.string.amount_original_label)) },
-                                placeholder = { Text("0.00") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            OutlinedTextField(
-                                value = uiState.originalCurrency,
-                                onValueChange = { onEvent(AddTransactionEvent.OnOriginalCurrencyChange(it.uppercase(Locale.ROOT))) },
-                                label = { Text(stringResource(R.string.currency_original_label)) },
-                                readOnly = true,
-                                trailingIcon = { Icon(Icons.Default.Check, contentDescription = stringResource(R.string.currency_selected), tint = MaterialTheme.colorScheme.primary) },
-                                modifier = Modifier
-                                    .weight(0.7f)
-                                    .clickable { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                        }
-
-                        Button(
-                            onClick = {
-                                onEvent(AddTransactionEvent.OnConvertAmount(uiState.originalCurrency, currencySymbol, uiState.originalAmountText.toDoubleOrNull() ?: 0.0))
-                            },
-                            enabled = !uiState.isConverting && uiState.originalAmountText.isNotEmpty(),
+                        OutlinedTextField(
+                            value = uiState.originalCurrency,
+                            onValueChange = { onEvent(AddTransactionEvent.OnOriginalCurrencyChange(it.uppercase(Locale.ROOT))) },
+                            label = { Text(stringResource(R.string.currency_original_label)) },
+                            readOnly = true,
+                            trailingIcon = { Icon(Icons.Default.Check, contentDescription = stringResource(R.string.currency_selected), tint = MaterialTheme.colorScheme.primary) },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                        ) {
-                            if (uiState.isConverting) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.converting))
-                            } else {
-                                Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.convert_currency_desc))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.convert_currency_desc))
-                            }
-                        }
-
-                        Text(
-                            text = stringResource(R.string.main_currency_hint, currencySymbol),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp),
+                                .weight(0.7f)
+                                .clickable { onEvent(AddTransactionEvent.OnShowCurrencyDialog(true)) },
+                            shape = RoundedCornerShape(12.dp),
                         )
                     }
+
+                    Button(
+                        onClick = {
+                            onEvent(AddTransactionEvent.OnConvertAmount(uiState.originalCurrency, currencySymbol, uiState.originalAmountText.replace(',', '.').toDoubleOrNull() ?: 0.0))
+                        },
+                        enabled = !uiState.isConverting && uiState.originalAmountText.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                    ) {
+                        if (uiState.isConverting) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.converting))
+                        } else {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.convert_currency_desc))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.convert_currency_desc))
+                        }
+                    }
+
+                    Text(
+                        text = stringResource(R.string.main_currency_hint, currencySymbol),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
             }
+        }
 
-            OutlinedTextField(
-                value = uiState.amountText,
-                onValueChange = { onEvent(AddTransactionEvent.OnAmountChange(it.replace(',', '.'))) },
-                label = { Text(stringResource(R.string.amount_converted_label, currencySymbol)) },
-                placeholder = { Text("0.00") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            )
+        OutlinedTextField(
+            value = uiState.amountText,
+            onValueChange = { onEvent(AddTransactionEvent.OnAmountChange(it.replace(',', '.'))) },
+            label = { Text(stringResource(R.string.amount_converted_label, currencySymbol)) },
+            placeholder = { Text("0.00") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(
+                onClick = onLaunchCamera,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(R.string.scan_receipt_camera), modifier = Modifier.size(20.dp))
+            }
+            IconButton(
+                onClick = onLaunchGallery,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(Icons.Default.PhotoLibrary, contentDescription = stringResource(R.string.scan_receipt_gallery), modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
@@ -315,68 +361,76 @@ fun RecurrenceSection(
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.recurrence_label),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Switch(
-                    checked = uiState.isRecurrenceEnabled,
-                    onCheckedChange = { onEvent(AddTransactionEvent.OnRecurrenceEnabledChange(it)) },
-                )
-            }
+        RecurrenceFields(uiState = uiState, onEvent = onEvent)
+    }
+}
 
-            AnimatedVisibility(visible = uiState.isRecurrenceEnabled) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    OutlinedTextField(
-                        value = when (uiState.recurrenceType) {
-                            RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
-                            RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
-                            RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
-                            RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
-                            else -> stringResource(R.string.recurrence_monthly)
-                        },
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
-                        shape = RoundedCornerShape(12.dp),
+@Composable
+fun RecurrenceFields(
+    uiState: AddTransactionUiState,
+    onEvent: (AddTransactionEvent) -> Unit,
+) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.recurrence_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Switch(
+                checked = uiState.isRecurrenceEnabled,
+                onCheckedChange = { onEvent(AddTransactionEvent.OnRecurrenceEnabledChange(it)) },
+            )
+        }
+
+        AnimatedVisibility(visible = uiState.isRecurrenceEnabled) {
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                OutlinedTextField(
+                    value = when (uiState.recurrenceType) {
+                        RecurrenceType.DAILY -> stringResource(R.string.recurrence_daily)
+                        RecurrenceType.WEEKLY -> stringResource(R.string.recurrence_weekly)
+                        RecurrenceType.MONTHLY -> stringResource(R.string.recurrence_monthly)
+                        RecurrenceType.YEARLY -> stringResource(R.string.recurrence_yearly)
+                        else -> ""
+                    },
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) }) {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.select_recurrence))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().clickable { onEvent(AddTransactionEvent.OnShowRecurrenceTypeDialog(true)) },
+                    shape = RoundedCornerShape(12.dp),
+                )
+
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text(
+                        text = stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
-
-                    Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text(
-                            text = stringResource(R.string.recurrence_occurrences, uiState.recurrenceLimit),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Slider(
-                            value = uiState.recurrenceLimit.toFloat(),
-                            onValueChange = { onEvent(AddTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
-                            valueRange = 1f..60f,
-                            steps = 59,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        )
-                        Text(
-                            text = stringResource(R.string.recurrence_occurrences_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
+                    Slider(
+                        value = uiState.recurrenceLimit.toFloat(),
+                        onValueChange = { onEvent(AddTransactionEvent.OnRecurrenceLimitChange(it.toInt())) },
+                        valueRange = 1f..60f,
+                        steps = 59,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text(
+                        text = stringResource(R.string.recurrence_occurrences_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
         }
@@ -592,7 +646,7 @@ fun InstallmentSection(
                             activeTrackColor = MaterialTheme.colorScheme.primary,
                         ),
                     )
-                    val amount = uiState.amountText.toDoubleOrNull() ?: 0.0
+                    val amount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (amount > 0 && uiState.installmentsCount > 0) {
                         val amountPerInstallment = amount / uiState.installmentsCount
                         Text(
@@ -613,8 +667,8 @@ fun InstallmentSection(
                         shape = RoundedCornerShape(12.dp),
                     )
 
-                    val totalAmount = uiState.amountText.toDoubleOrNull() ?: 0.0
-                    val installmentAmount = uiState.installmentAmountText.toDoubleOrNull() ?: 0.0
+                    val totalAmount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                    val installmentAmount = uiState.installmentAmountText.replace(',', '.').toDoubleOrNull() ?: 0.0
                     if (totalAmount > 0 && installmentAmount > 0) {
                         val calculatedInstallments = kotlin.math.ceil(totalAmount / installmentAmount).toInt()
                         Text(
@@ -735,9 +789,11 @@ fun InstallmentSection(
 }
 
 @Composable
-fun SaveButton(
+fun TransactionBottomBar(
     isEditing: Boolean,
+    onCancel: () -> Unit,
     onSave: () -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -745,36 +801,38 @@ fun SaveButton(
         color = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp)
                 .navigationBarsPadding()
-                .padding(bottom = 16.dp),
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            TextButton(onClick = onCancel) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(stringResource(R.string.cancel))
+            }
             Button(
                 onClick = onSave,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(4.dp),
+                modifier = Modifier.height(48.dp),
+                shape = RoundedCornerShape(12.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isEditing) stringResource(R.string.update_transaction) else stringResource(R.string.save_transaction),
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
                 )
             }
         }

@@ -4,6 +4,7 @@
     <string name="previous_month">Mese Precedente</string>
     <string name="next_month">Mese Successivo</string>
     <string name="monthly_balance">Saldo Mensile</string>
+    <string name="balance">Saldo</string>
     <string name="income">Entrate</string>
     <string name="expenses">Uscite</string>
     <string name="credit_card_limit_label">Plafond Carta di Credito</string>
@@ -25,8 +26,8 @@
     <string name="edit_transaction">Modifica Movimento</string>
     <string name="back">Indietro</string>
     <string name="delete">Elimina</string>
-    <string name="save_transaction">SALVA MOVIMENTO</string>
-    <string name="update_transaction">AGGIORNA MOVIMENTO</string>
+    <string name="save_transaction">Salva</string>
+    <string name="update_transaction">Aggiorna</string>
     <string name="expense_type">SPESA</string>
     <string name="income_type">ENTRATA</string>
     <string name="amount_converted_label">Importo (%1$s - Convertito)</string>
@@ -72,6 +73,15 @@
     <string name="hide_amounts_desc">Sostituisce gli importi con asterischi nella Dashboard.</string>
     <string name="app_lock">Blocco App (PIN/Biometrica)</string>
     <string name="app_lock_desc">Abilita il blocco schermo all\'avvio dell\'app.</string>
+    <string name="management">Gestione</string>
+    <string name="dashboard_widgets">Widget Dashboard</string>
+    <string name="display_widgets_csv">Visualizzazione ed Esportazione CSV</string>
+    <string name="display">Visualizzazione</string>
+    <string name="selected_widgets_count">%1$d di %2$d abilitati</string>
+    <string name="widget_summary_cards">Carte Riepilogo</string>
+    <string name="widget_credit_card_info">Info Carte di Credito</string>
+    <string name="widget_bnpl_projections">Proiezioni BNPL</string>
+    <string name="widget_transaction_list">Lista Transazioni</string>
     <string name="data_management">Gestione Dati</string>
     <string name="export_csv">Esporta CSV</string>
     <string name="export_csv_desc">Salva un report delle spese</string>
@@ -308,6 +318,7 @@
     <string name="provider">Fornitore</string>
     <string name="add">Aggiungi</string>
     <string name="manage_payment_methods">Gestisci Metodi di Pagamento</string>
+    <string name="default_payment_method">Metodo di Pagamento di Default</string>
 
     <!-- Accessibility content descriptions -->
     <string name="bnpl_debt">Debiti BNPL</string>
@@ -340,4 +351,13 @@
     <string name="bnpl_installments">Rate BNPL</string>
     <string name="bnpl_cycle_days">Giorni Ciclo BNPL</string>
     <string name="edit">Modifica</string>
+    <string name="details_label">Dettagli</string>
+    <string name="options_label">Opzioni</string>
+    <string name="scan_receipt_camera">Scansiona con fotocamera</string>
+    <string name="scan_receipt_gallery">Scansiona da galleria</string>
+    <string name="scan_result_title">Risultato Ricevuta</string>
+    <string name="merchant_label">Esercizio</string>
+    <string name="scan_no_data">Nessun dato estratto dalla ricevuta</string>
+    <string name="apply">Applica</string>
+    <string name="discard">Scarta</string>
 </resources>

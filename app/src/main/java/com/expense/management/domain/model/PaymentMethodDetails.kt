@@ -42,4 +42,8 @@ sealed class PaymentMethodDetails {
         val bnplInstallmentCount: Int,
         val bnplCycleDays: Int,
     ) : PaymentMethodDetails()
+
+    data class Cash(
+        val name: String,
+    ) : PaymentMethodDetails()
 }
