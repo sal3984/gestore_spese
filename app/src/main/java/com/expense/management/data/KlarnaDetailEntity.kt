@@ -20,5 +20,5 @@ import androidx.room.PrimaryKey
 data class KlarnaDetailEntity(
     @PrimaryKey val paymentMethodId: String,
     val bnplInstallmentCount: Int = 4,
-    val bnplCycleDays: Int = 30,
+    val bnplCycleDays: Int = 14,
 )

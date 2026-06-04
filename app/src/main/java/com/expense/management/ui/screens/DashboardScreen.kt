@@ -80,7 +80,7 @@ import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
-import com.expense.management.ui.model.DeleteType
+import com.expense.management.domain.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.TransactionItem

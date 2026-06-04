@@ -37,6 +37,8 @@ fun MonthSelector(
     val months = remember {
         (-24..0).map { YearMonth.now().plusMonths(it.toLong()) }.sortedByDescending { it }
     }
+    val shortFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMM yyyy", locale) }
+    val fullFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -44,7 +46,7 @@ fun MonthSelector(
         modifier = modifier,
     ) {
         OutlinedTextField(
-            value = selectedMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", locale)).capitalizeFirstLetter(locale),
+            value = selectedMonth.format(shortFormatter).capitalizeFirstLetter(locale),
             onValueChange = { },
             readOnly = true,
             singleLine = true,
@@ -64,9 +66,7 @@ fun MonthSelector(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            month.format(
-                                DateTimeFormatter.ofPattern("MMMM yyyy", locale),
-                            ).capitalizeFirstLetter(locale),
+                            month.format(fullFormatter).capitalizeFirstLetter(locale),
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             softWrap = false,

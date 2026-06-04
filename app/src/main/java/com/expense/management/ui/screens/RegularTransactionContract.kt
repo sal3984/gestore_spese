@@ -2,7 +2,7 @@ package com.expense.management.ui.screens
 
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionType
-import com.expense.management.ui.model.DeleteType
+import com.expense.management.domain.model.DeleteType
 
 data class RegularTransactionUiState(
     val type: TransactionType = TransactionType.EXPENSE,

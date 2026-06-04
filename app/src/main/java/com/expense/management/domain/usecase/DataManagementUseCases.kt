@@ -70,9 +70,9 @@ class RestoreDataUseCase(private val repository: ExpenseRepository) {
                 id = card.id,
                 name = card.name,
                 provider = if (card.type == com.expense.management.data.CardType.SALDO) {
-                    PaymentProvider.CREDIT_CARD_SALDO.name
+                    PaymentProvider.CREDIT_CARD_SALDO
                 } else {
-                    PaymentProvider.CREDIT_CARD_REVOLVING.name
+                    PaymentProvider.CREDIT_CARD_REVOLVING
                 },
                 isActive = true,
                 issuer = null,

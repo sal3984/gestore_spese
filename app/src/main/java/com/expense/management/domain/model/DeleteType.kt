@@ -1,4 +1,4 @@
-package com.expense.management.ui.model
+package com.expense.management.domain.model
 
 enum class DeleteType {
     SINGLE,

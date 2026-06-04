@@ -25,11 +25,16 @@ class CalculateReportUseCase {
         var totalExpense = 0.0
 
         for (tx in transactions) {
-            val ym = YearMonth.from(
-                dateCache.getOrPut(tx.effectiveDate) {
-                    LocalDate.parse(tx.effectiveDate)
-                },
-            )
+            val cached = dateCache[tx.effectiveDate]
+            val date = cached ?: try {
+                val parsed = LocalDate.parse(tx.effectiveDate)
+                dateCache[tx.effectiveDate] = parsed
+                parsed
+            } catch (_: Exception) {
+                null
+            }
+            if (date == null) continue
+            val ym = YearMonth.from(date)
 
             if (tx.type == TransactionType.EXPENSE) {
                 totalExpense += tx.amount

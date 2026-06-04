@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
+import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
-import com.expense.management.ui.model.DeleteType
 import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

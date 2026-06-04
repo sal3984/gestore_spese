@@ -32,8 +32,8 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentProvider
-import com.expense.management.ui.model.DeleteType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -117,8 +117,8 @@ fun PaymentMethodPickerDialog(
         text = {
             Column {
                 allPaymentMethods.forEach { method ->
-                    val isCreditCard = method.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
-                        method.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                    val isCreditCard = method.provider == PaymentProvider.CREDIT_CARD_SALDO ||
+                        method.provider == PaymentProvider.CREDIT_CARD_REVOLVING
                     Text(
                         text = method.name,
                         style = MaterialTheme.typography.titleMedium,

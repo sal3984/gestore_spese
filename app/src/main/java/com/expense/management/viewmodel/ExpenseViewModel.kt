@@ -21,15 +21,19 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CATEGORIES
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DashboardWidget
+import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.model.ReportData
+import com.expense.management.domain.model.SatispayStatus
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.CalculateReportUseCase
+import com.expense.management.domain.usecase.CalculateSatispayStatusUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -43,8 +47,6 @@ import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.domain.usecase.ScanReceiptUseCase
-import com.expense.management.ui.model.DeleteType
-import com.expense.management.ui.screens.category.CATEGORIES
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
@@ -164,7 +166,7 @@ class ExpenseViewModel(
                 val cash = PaymentMethodEntity(
                     id = "__cash__",
                     name = "Contante",
-                    provider = PaymentProvider.CASH.name,
+                    provider = PaymentProvider.CASH,
                     isActive = true,
                 )
                 methods + cash
@@ -177,17 +179,18 @@ class ExpenseViewModel(
         combine(allPaymentMethods, repository.allCreditCardDetails, allCreditCards) { methods, details, legacyCards ->
             val newCards = methods
                 .filter {
-                    it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
-                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                    it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
+                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING
                 }
                 .mapNotNull { method ->
                     val detail = details.find { it.paymentMethodId == method.id }
+                    val provider = method.provider
                     detail?.let {
                         ActiveCreditCard(
                             id = method.id,
                             name = method.name,
-                            provider = PaymentProvider.valueOf(method.provider),
-                            cardType = CreditCardType.valueOf(it.cardType),
+                            provider = provider,
+                            cardType = CreditCardType.safeValueOf(it.cardType) ?: return@mapNotNull null,
                             limit = it.limit,
                             closingDay = it.closingDay,
                             paymentDay = it.paymentDay,
@@ -236,14 +239,14 @@ class ExpenseViewModel(
         cards.associate { card ->
             card.id to when (card.cardType) {
                 CreditCardType.REVOLVING -> {
-                    val totalUtilized = tx
-                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
-                        .sumOf { it.amount }
-                    val totalPaid = tx
+                    val cardTx = tx.filter {
+                        (it.creditCardId == card.id || it.paymentMethodId == card.id) &&
+                            it.type == TransactionType.EXPENSE
+                    }
+                    val totalUtilized = cardTx.sumOf { it.amount }
+                    val totalPaid = cardTx
                         .filter {
-                            it.creditCardId == card.id &&
-                                it.type == TransactionType.EXPENSE &&
-                                it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
+                            it.installmentNumber != null && (it.totalInstallments ?: 0) > 1 &&
                                 try {
                                     YearMonth.from(LocalDate.parse(it.effectiveDate)) <= month
                                 } catch (_: Exception) {
@@ -265,7 +268,7 @@ class ExpenseViewModel(
                 }
                 CreditCardType.SALDO -> {
                     val spent = tx
-                        .filter { it.creditCardId == card.id && it.type == TransactionType.EXPENSE }
+                        .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
                         .filter { t ->
                             try {
                                 YearMonth.from(LocalDate.parse(t.date)) == month
@@ -445,6 +448,7 @@ class ExpenseViewModel(
         paymentMethod: PaymentMethodEntity,
         closingDay: Int = 0,
         paymentDay: Int = 0,
+        creditLimit: Double = 0.0,
         debitIssuer: String? = null,
         debitCardNumber: String? = null,
         debitNotes: String? = null,
@@ -452,23 +456,23 @@ class ExpenseViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             managePaymentMethodUseCase.add(paymentMethod)
             if (
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO ||
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING
             ) {
                 repository.insertCreditCardDetail(
                     CreditCardDetailEntity(
                         paymentMethodId = paymentMethod.id,
-                        cardType = if (paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO.name) {
+                        cardType = if (paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO) {
                             CreditCardType.SALDO.name
                         } else {
                             CreditCardType.REVOLVING.name
                         },
-                        limit = 0.0,
+                        limit = creditLimit,
                         closingDay = closingDay,
                         paymentDay = paymentDay,
                     ),
                 )
-            } else if (paymentMethod.provider == PaymentProvider.DEBIT_CARD.name) {
+            } else if (paymentMethod.provider == PaymentProvider.DEBIT_CARD) {
                 repository.insertDebitCardDetail(
                     DebitCardDetailEntity(
                         paymentMethodId = paymentMethod.id,
@@ -536,7 +540,8 @@ class ExpenseViewModel(
     }
 
     suspend fun getPaymentMethodDetails(method: PaymentMethodEntity): PaymentMethodDetails? {
-        return when (PaymentProvider.valueOf(method.provider)) {
+        val provider = method.provider
+        return when (provider) {
             PaymentProvider.CREDIT_CARD_SALDO,
             PaymentProvider.CREDIT_CARD_REVOLVING,
             -> {
@@ -601,6 +606,11 @@ class ExpenseViewModel(
             }
             PaymentProvider.CASH -> PaymentMethodDetails.Cash(name = method.name)
         }
+    }
+
+    suspend fun calculateSatispayStatus(method: PaymentMethodEntity, detail: SatispayDetailEntity): SatispayStatus {
+        val useCase = CalculateSatispayStatusUseCase(repository)
+        return useCase.execute(method, detail)
     }
 
     fun updatePaymentMethodWithDetails(method: PaymentMethodEntity, details: PaymentMethodDetails) {
@@ -794,7 +804,10 @@ class ExpenseViewModel(
     }
 
     fun restoreLegacyData(list: List<TransactionEntity>) {
-        viewModelScope.launch(Dispatchers.IO) { repository.insertAllTransactions(list) }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteAllTransactions()
+            repository.insertAllTransactions(list)
+        }
     }
 
     suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE }

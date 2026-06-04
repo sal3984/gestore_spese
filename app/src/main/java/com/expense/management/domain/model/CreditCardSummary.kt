@@ -1,8 +1,5 @@
 package com.expense.management.domain.model
 
-import androidx.compose.runtime.Immutable
-
-@Immutable
 data class CreditCardSummary(
     val cardId: String,
     val name: String,

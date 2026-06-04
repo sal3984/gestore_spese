@@ -2,7 +2,7 @@ package com.expense.management.domain.usecase
 
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.ExpenseRepository
-import com.expense.management.ui.screens.category.CATEGORIES
+import com.expense.management.domain.model.CATEGORIES
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

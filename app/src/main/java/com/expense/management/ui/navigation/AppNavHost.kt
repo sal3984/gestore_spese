@@ -248,8 +248,8 @@ fun AppNavHost(
                 allPaymentMethods = allPaymentMethods,
                 legacyCreditCards = allCreditCards,
                 onNavigateBack = { navController.popBackStack() },
-                onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes ->
-                    viewModel.addPaymentMethod(method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes)
+                onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit ->
+                    viewModel.addPaymentMethod(method, closingDay, paymentDay, creditLimit, debitIssuer, debitCardNumber, debitNotes)
                 },
                 onDelete = { viewModel.deletePaymentMethod(it) },
                 onEditPaymentMethod = { method, details ->

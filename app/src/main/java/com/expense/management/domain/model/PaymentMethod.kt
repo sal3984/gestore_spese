@@ -75,7 +75,7 @@ sealed class PaymentMethod {
         override val issuer: String? = null,
         override val currency: String? = null,
         val bnplInstallmentCount: Int = 4,
-        val bnplCycleDays: Int = 30,
+        val bnplCycleDays: Int = 14,
     ) : PaymentMethod() {
         override val provider: PaymentProvider
             get() = PaymentProvider.KLARNA

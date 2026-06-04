@@ -1,5 +1,6 @@
 package com.expense.management.data
 
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 class ExpenseRepository(
@@ -25,6 +26,16 @@ class ExpenseRepository(
 
     suspend fun deleteTransactionGroup(groupId: String) {
         transactionDao.deleteByGroupId(groupId)
+    }
+
+    @Transaction
+    suspend fun deleteTransactionsByIds(ids: List<String>) {
+        ids.forEach { id -> transactionDao.delete(id) }
+    }
+
+    @Transaction
+    suspend fun updateTransactionsCategory(transactions: List<TransactionEntity>) {
+        transactions.forEach { tx -> transactionDao.insert(tx) }
     }
 
     suspend fun getTransactionById(id: String): TransactionEntity? = transactionDao.getById(id)
@@ -81,6 +92,7 @@ class ExpenseRepository(
         creditCardDao.updateCreditCard(creditCard)
     }
 
+    @Transaction
     suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
         transactionDao.nullifyCreditCardId(creditCard.id)
         transactionDao.nullifyPaymentMethodId(creditCard.id)
@@ -121,9 +133,9 @@ class ExpenseRepository(
         paymentMethodDao.insertPaymentMethod(paymentMethod)
     }
 
+    @Transaction
     suspend fun deletePaymentMethod(id: String) {
         transactionDao.nullifyPaymentMethodId(id)
-        transactionDao.nullifyCreditCardId(id)
         paymentMethodDao.deletePaymentMethod(id)
     }
 

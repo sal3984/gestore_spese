@@ -1,6 +1,7 @@
 package com.expense.management.data
 
 import androidx.room.TypeConverter
+import com.expense.management.domain.model.PaymentProvider
 
 class TransactionTypeConverter {
 
@@ -15,7 +16,7 @@ class TransactionTypeConverter {
             when (it) {
                 "income" -> TransactionType.INCOME
                 "expense" -> TransactionType.EXPENSE
-                else -> throw IllegalArgumentException("Unknown transaction type value: $it")
+                else -> null
             }
         }
     }
@@ -37,5 +38,31 @@ class TransactionTypeConverter {
                 else -> RecurrenceType.NONE
             }
         }
+    }
+
+    @TypeConverter
+    fun fromCardType(cardType: CardType?): String? {
+        return cardType?.name
+    }
+
+    @TypeConverter
+    fun toCardType(value: String?): CardType? {
+        return value?.let {
+            try {
+                CardType.valueOf(it)
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    @TypeConverter
+    fun fromPaymentProvider(provider: PaymentProvider?): String? {
+        return provider?.name
+    }
+
+    @TypeConverter
+    fun toPaymentProvider(value: String?): PaymentProvider? {
+        return value?.let { PaymentProvider.safeValueOf(it) }
     }
 }

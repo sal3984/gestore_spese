@@ -56,11 +56,11 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.usecase.AddTransactionSaveResult
 import com.expense.management.domain.usecase.AddTransactionSaveUseCase
-import com.expense.management.ui.model.DeleteType
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -104,8 +104,8 @@ fun AddCreditCardTransactionScreen(
 
     val creditCardMethods = remember(allPaymentMethods) {
         allPaymentMethods.filter {
-            it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
-                it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+            it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
+                it.provider == PaymentProvider.CREDIT_CARD_REVOLVING
         }
     }
 
@@ -387,7 +387,7 @@ fun AddCreditCardTransactionScreen(
                     PaymentMethodEntity(
                         id = card.id,
                         name = card.name,
-                        provider = card.provider.name,
+                        provider = card.provider,
                         isActive = true,
                     )
                 }

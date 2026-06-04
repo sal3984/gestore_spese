@@ -449,8 +449,8 @@ fun PaymentMethodSection(
     isCC: Boolean = false,
 ) {
     val nonCardMethods = allPaymentMethods.filter {
-        it.provider != PaymentProvider.CREDIT_CARD_SALDO.name &&
-            it.provider != PaymentProvider.CREDIT_CARD_REVOLVING.name
+        it.provider != PaymentProvider.CREDIT_CARD_SALDO &&
+            it.provider != PaymentProvider.CREDIT_CARD_REVOLVING
     }
     val showNonCardSection = nonCardMethods.isNotEmpty()
 
@@ -498,8 +498,8 @@ fun PaymentMethodSection(
             val selectedMethodId = uiState.selectedPaymentMethodId ?: uiState.creditCardId
             val isCreditCardSelected = selectedMethodId != null &&
                 allPaymentMethods.find { it.id == selectedMethodId }?.let {
-                    it.provider == PaymentProvider.CREDIT_CARD_SALDO.name ||
-                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING.name
+                    it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
+                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING
                 } ?: uiState.isCreditCard
 
             AnimatedVisibility(visible = isCreditCardSelected || uiState.isCreditCard) {

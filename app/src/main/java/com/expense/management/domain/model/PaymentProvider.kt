@@ -9,4 +9,10 @@ enum class PaymentProvider {
     SATISPAY,
     PAYPAL,
     KLARNA,
+    ;
+
+    companion object {
+        fun safeValueOf(name: String): PaymentProvider? =
+            entries.find { it.name == name }
+    }
 }

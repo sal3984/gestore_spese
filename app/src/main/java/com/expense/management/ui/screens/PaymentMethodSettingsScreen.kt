@@ -69,7 +69,7 @@ fun PaymentMethodSettingsScreen(
     allPaymentMethods: List<PaymentMethodEntity>,
     legacyCreditCards: List<CreditCardEntity>,
     onNavigateBack: () -> Unit,
-    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int, debitIssuer: String?, debitCardNumber: String?, debitNotes: String?) -> Unit,
+    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int, debitIssuer: String?, debitCardNumber: String?, debitNotes: String?, creditLimit: Double) -> Unit,
     onDelete: (String) -> Unit,
     onEditPaymentMethod: (PaymentMethodEntity, PaymentMethodDetails) -> Unit,
     onLoadDetails: suspend (String) -> PaymentMethodDetails?,
@@ -162,16 +162,16 @@ fun PaymentMethodSettingsScreen(
     if (showAddDialog) {
         AddPaymentMethodDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { provider, name, closingDay, _, paymentDay, debitIssuer, debitCardNumber, debitNotes ->
+            onConfirm = { provider, name, closingDay, _, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit ->
                 val newMethod = PaymentMethodEntity(
                     id = java.util.UUID.randomUUID().toString(),
                     name = name,
-                    provider = provider.name,
+                    provider = provider,
                     isActive = true,
                     issuer = null,
                     currency = null,
                 )
-                onAdd(newMethod, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes)
+                onAdd(newMethod, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit)
                 showAddDialog = false
             },
         )
@@ -183,11 +183,7 @@ fun PaymentMethodSettingsScreen(
         LaunchedEffect(method.id) {
             currentDetails = onLoadDetails(method.id)
         }
-        val provider = try {
-            PaymentProvider.valueOf(method.provider)
-        } catch (_: Exception) {
-            null
-        } ?: return@let
+        val provider = method.provider
         EditPaymentMethodDialog(
             provider = provider,
             currentDetails = currentDetails,
@@ -310,7 +306,7 @@ private fun paymentMethodListItem(
 @Composable
 private fun AddPaymentMethodDialog(
     onDismiss: () -> Unit,
-    onConfirm: (PaymentProvider, String, Int, Boolean, Int, String?, String?, String?) -> Unit,
+    onConfirm: (PaymentProvider, String, Int, Boolean, Int, String?, String?, String?, Double) -> Unit,
 ) {
     var selectedProvider by remember { mutableStateOf(PaymentProvider.CREDIT_CARD_SALDO) }
     var name by remember { mutableStateOf("") }
@@ -440,6 +436,7 @@ private fun AddPaymentMethodDialog(
                             debitIssuer.ifBlank { null },
                             debitCardNumber.ifBlank { null },
                             debitNotes.ifBlank { null },
+                            limitText.toDoubleOrNull() ?: 0.0,
                         )
                     }
                 },
@@ -660,7 +657,7 @@ private fun EditPaymentMethodDialog(
         PaymentProvider.KLARNA -> {
             val details = currentDetails as? PaymentMethodDetails.Klarna
             var bnplCountText by remember(details) { mutableStateOf(if (details != null) details.bnplInstallmentCount.toString() else "4") }
-            var bnplCycleText by remember(details) { mutableStateOf(if (details != null) details.bnplCycleDays.toString() else "30") }
+            var bnplCycleText by remember(details) { mutableStateOf(if (details != null) details.bnplCycleDays.toString() else "14") }
 
             AlertDialog(
                 onDismissRequest = onDismiss,
@@ -730,17 +727,11 @@ private fun providerIcon(provider: PaymentProvider): ImageVector {
 }
 
 private fun providerLabel(provider: String): String {
-    return try {
-        providerLabel(PaymentProvider.valueOf(provider))
-    } catch (_: Exception) {
-        provider
-    }
+    val safe = PaymentProvider.safeValueOf(provider)
+    return if (safe != null) providerLabel(safe) else provider
 }
 
 private fun providerIcon(provider: String): ImageVector {
-    return try {
-        providerIcon(PaymentProvider.valueOf(provider))
-    } catch (_: Exception) {
-        Icons.Default.Payment
-    }
+    val safe = PaymentProvider.safeValueOf(provider)
+    return if (safe != null) providerIcon(safe) else Icons.Default.Payment
 }

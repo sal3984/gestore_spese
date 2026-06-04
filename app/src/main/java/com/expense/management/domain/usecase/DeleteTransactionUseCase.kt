@@ -1,7 +1,7 @@
 package com.expense.management.domain.usecase
 
 import com.expense.management.data.ExpenseRepository
-import com.expense.management.ui.model.DeleteType
+import com.expense.management.domain.model.DeleteType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -24,9 +24,8 @@ class DeleteTransactionUseCase(private val repository: ExpenseRepository) {
                             }
                         }
 
-                    transactionsInGroup.forEach { installment ->
-                        repository.deleteTransaction(installment.id)
-                    }
+                    val idsToDelete = transactionsInGroup.map { it.id }
+                    repository.deleteTransactionsByIds(idsToDelete)
                 } else {
                     repository.deleteTransaction(transactionId)
                 }

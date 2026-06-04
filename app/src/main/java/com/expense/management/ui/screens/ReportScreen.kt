@@ -335,11 +335,13 @@ fun ReportScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val fullMonthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
+        val shortMonthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMM yyyy", locale) }
         val rangeLabel = if (reportStartMonth == reportEndMonth) {
-            reportStartMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale)).capitalizeFirstLetter(locale)
+            reportStartMonth.format(fullMonthFormatter).capitalizeFirstLetter(locale)
         } else {
-            val start = reportStartMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", locale)).capitalizeFirstLetter(locale)
-            val end = reportEndMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", locale)).capitalizeFirstLetter(locale)
+            val start = reportStartMonth.format(shortMonthFormatter).capitalizeFirstLetter(locale)
+            val end = reportEndMonth.format(shortMonthFormatter).capitalizeFirstLetter(locale)
             "$start - $end"
         }
 

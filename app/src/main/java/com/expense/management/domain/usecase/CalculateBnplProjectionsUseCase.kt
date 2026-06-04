@@ -20,10 +20,10 @@ class CalculateBnplProjectionsUseCase {
         targetMonth: YearMonth,
     ): List<BnplProjection> {
         val paypalMethods = allPaymentMethods.filter {
-            it.provider == PaymentProvider.PAYPAL.name
+            it.provider == PaymentProvider.PAYPAL
         }
         val klarnaMethods = allPaymentMethods.filter {
-            it.provider == PaymentProvider.KLARNA.name
+            it.provider == PaymentProvider.KLARNA
         }
 
         val paypalMethodIds = paypalMethods.map { it.id }.toSet()
@@ -93,7 +93,7 @@ class CalculateBnplProjectionsUseCase {
             }
             val installmentAmount = if (bnplCount > 0) tx.amount / bnplCount else 0.0
 
-            for (i in 1 until bnplCount) {
+            for (i in 0 until bnplCount) {
                 val installmentDate = txDate.plusDays((i * bnplCycleDays).toLong())
                 val month = YearMonth.from(installmentDate)
 

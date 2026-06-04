@@ -58,11 +58,11 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.usecase.RegularTransactionSaveResult
 import com.expense.management.domain.usecase.RegularTransactionSaveUseCase
-import com.expense.management.ui.model.DeleteType
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -103,12 +103,7 @@ fun AddRegularTransactionScreen(
 
     val nonCreditCardMethods = remember(allPaymentMethods) {
         allPaymentMethods.filter { method ->
-            val provider = try {
-                PaymentProvider.valueOf(method.provider)
-            } catch (_: Exception) {
-                null
-            }
-            provider != PaymentProvider.CREDIT_CARD_SALDO && provider != PaymentProvider.CREDIT_CARD_REVOLVING
+            method.provider != PaymentProvider.CREDIT_CARD_SALDO && method.provider != PaymentProvider.CREDIT_CARD_REVOLVING
         }
     }
 
