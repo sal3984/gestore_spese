@@ -34,6 +34,8 @@ data class AddTransactionUiState(
     val showPreviousMonthAlert: Boolean = false,
     val applyCcDelayToInstallments: Boolean = true,
     val ignoreDateWarning: Boolean = false,
+    val isTopUp: Boolean = false,
+    val topUpDestinationId: String? = null,
 )
 
 sealed interface AddTransactionEvent {
@@ -67,5 +69,7 @@ sealed interface AddTransactionEvent {
     data class OnIgnoreDateWarningChange(val ignore: Boolean) : AddTransactionEvent
     data object OnSave : AddTransactionEvent
     data class OnDelete(val transactionId: String, val deleteType: DeleteType) : AddTransactionEvent
+    data class OnIsTopUpChange(val isTopUp: Boolean) : AddTransactionEvent
+    data class OnTopUpDestinationChange(val destinationId: String?) : AddTransactionEvent
     data class OnConvertAmount(val originalCurrency: String, val targetCurrency: String, val amount: Double) : AddTransactionEvent
 }

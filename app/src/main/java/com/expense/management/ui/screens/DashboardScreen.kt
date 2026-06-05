@@ -461,7 +461,11 @@ fun DashboardScreen(
                                     totalPaid = totalPaidForDisplay,
                                     locale = locale,
                                     totalRepaid = summary?.totalRepaid ?: 0.0,
-                                    onPayInstallment = { payDialogCard = card },
+                                    onPayInstallment = if (card.cardType == CreditCardType.REVOLVING) {
+                                        { payDialogCard = card }
+                                    } else {
+                                        null
+                                    },
                                 )
                             }
 
@@ -686,7 +690,7 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (type == CreditCardType.REVOLVING || totalRepaid > 0) {
+            if (type == CreditCardType.REVOLVING) {
                 Text(
                     text = if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_utilized_label) else stringResource(R.string.spent_label),
                     style = MaterialTheme.typography.bodyMedium,

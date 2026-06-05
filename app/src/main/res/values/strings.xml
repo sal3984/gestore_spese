@@ -361,4 +361,8 @@
     <string name="apply">Apply</string>
     <string name="discard">Discard</string>
     <string name="pay_installment">Pay Installment</string>
+    <string name="top_up_method">Top-up another method</string>
+    <string name="top_up_method_hint">Use this card to send funds to Revolut or other rechargeable methods</string>
+    <string name="select_destination">Select destination…</string>
+    <string name="destination_method">Destination</string>
 </resources>

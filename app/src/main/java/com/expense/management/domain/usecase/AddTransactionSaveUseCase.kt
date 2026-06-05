@@ -156,7 +156,32 @@ class AddTransactionSaveUseCase {
             }
         }
 
-        return AddTransactionSaveResult.Ready(transactions)
+        val finalTransactions = if (uiState.isTopUp && uiState.topUpDestinationId != null && transactionToEdit == null) {
+            val destCategoryId = availableCategories.find { it.type == TransactionType.INCOME && it.id != "credit_card_adjustment" }?.id
+                ?: availableCategories.firstOrNull { it.type == TransactionType.INCOME }?.id
+                ?: "salary"
+            val topUpGroupId = transactions.firstOrNull()?.groupId ?: UUID.randomUUID().toString()
+            val destTx = TransactionEntity(
+                id = UUID.randomUUID().toString(),
+                date = dateToSave,
+                description = uiState.description.trim(),
+                amount = amount,
+                categoryId = destCategoryId,
+                type = TransactionType.INCOME,
+                isCreditCard = false,
+                effectiveDate = dateToSave,
+                originalAmount = originalAmount,
+                originalCurrency = uiState.originalCurrency,
+                creditCardId = null,
+                paymentMethodId = uiState.topUpDestinationId,
+                groupId = topUpGroupId,
+            )
+            transactions + destTx
+        } else {
+            transactions
+        }
+
+        return AddTransactionSaveResult.Ready(finalTransactions)
     }
 
     private fun buildInstallmentTransactions(

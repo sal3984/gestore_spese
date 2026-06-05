@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -294,6 +297,8 @@ fun AddCreditCardTransactionScreen(
                 uiState = uiState.copy(applyCcDelayToInstallments = event.apply, installmentStartDateStr = newDateStr)
             }
             is AddTransactionEvent.OnIgnoreDateWarningChange -> uiState = uiState.copy(ignoreDateWarning = event.ignore)
+            is AddTransactionEvent.OnIsTopUpChange -> uiState = uiState.copy(isTopUp = event.isTopUp, topUpDestinationId = if (event.isTopUp) uiState.topUpDestinationId else null)
+            is AddTransactionEvent.OnTopUpDestinationChange -> uiState = uiState.copy(topUpDestinationId = event.destinationId)
             AddTransactionEvent.OnSave -> trySave()
             is AddTransactionEvent.OnDelete -> {
                 onDelete(event.transactionId, event.deleteType)
@@ -343,6 +348,7 @@ fun AddCreditCardTransactionScreen(
             availableCategories = availableCategories,
             activeCreditCards = activeCreditCards,
             creditCardMethods = creditCardMethods,
+            allPaymentMethods = allPaymentMethods,
             frequentExpenseCategories = frequentExpenseCategories,
             frequentIncomeCategories = frequentIncomeCategories,
             sharedTransitionScope = sharedTransitionScope,
@@ -482,6 +488,7 @@ private fun AddCreditCardContent(
     availableCategories: List<CategoryEntity>,
     activeCreditCards: List<ActiveCreditCard>,
     creditCardMethods: List<PaymentMethodEntity>,
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
     frequentExpenseCategories: List<CategoryEntity>,
     frequentIncomeCategories: List<CategoryEntity>,
     sharedTransitionScope: SharedTransitionScope?,
@@ -547,6 +554,7 @@ private fun AddCreditCardContent(
                 transactionToEdit = transactionToEdit,
                 activeCreditCards = activeCreditCards,
                 creditCardMethods = creditCardMethods,
+                allPaymentMethods = allPaymentMethods,
             )
         }
 
@@ -618,7 +626,13 @@ fun CreditCardPaymentFields(
     transactionToEdit: TransactionEntity?,
     activeCreditCards: List<ActiveCreditCard>,
     creditCardMethods: List<PaymentMethodEntity>,
+    allPaymentMethods: List<PaymentMethodEntity> = emptyList(),
 ) {
+    val topUpDestinations = allPaymentMethods.filter {
+        it.provider != PaymentProvider.CREDIT_CARD_SALDO &&
+            it.provider != PaymentProvider.CREDIT_CARD_REVOLVING &&
+            it.provider != PaymentProvider.CASH
+    }
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = stringResource(R.string.credit_card),
@@ -683,6 +697,66 @@ fun CreditCardPaymentFields(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onEvent(AddTransactionEvent.OnIsTopUpChange(!uiState.isTopUp)) }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = uiState.isTopUp,
+                onCheckedChange = { onEvent(AddTransactionEvent.OnIsTopUpChange(it)) },
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(stringResource(R.string.top_up_method), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(
+                    text = stringResource(R.string.top_up_method_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        if (uiState.isTopUp && topUpDestinations.isNotEmpty()) {
+            var expanded by remember { mutableStateOf(false) }
+            val selectedName = topUpDestinations.find { it.id == uiState.topUpDestinationId }?.name
+            Box {
+                OutlinedTextField(
+                    value = selectedName ?: stringResource(R.string.select_destination),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.destination_method)) },
+                    trailingIcon = {
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                ) {
+                    topUpDestinations.forEach { method ->
+                        DropdownMenuItem(
+                            text = { Text(method.name) },
+                            onClick = {
+                                onEvent(AddTransactionEvent.OnTopUpDestinationChange(method.id))
+                                expanded = false
+                            },
+                        )
+                    }
+                }
             }
         }
     }

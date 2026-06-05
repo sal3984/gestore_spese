@@ -263,11 +263,8 @@ class ExpenseViewModel(
                     )
                 }
                 CreditCardType.SALDO -> {
-                    val cardTx = tx.filter {
-                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
-                    }
-                    val spent = cardTx
-                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
+                    val spent = tx
+                        .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
                         .filter { t ->
                             try {
                                 YearMonth.from(LocalDate.parse(t.date)) == month
@@ -276,20 +273,15 @@ class ExpenseViewModel(
                             }
                         }
                         .sumOf { it.amount }
-                    val totalRepaid = cardTx
-                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val displayed = spent - totalRepaid
                     CreditCardSummary(
                         cardId = card.id,
                         name = card.name,
                         limit = card.limit,
                         cardType = card.cardType,
-                        displayedSpent = displayed.coerceAtLeast(0.0),
+                        displayedSpent = spent,
                         totalUtilized = spent,
                         totalPaid = 0.0,
-                        totalRepaid = totalRepaid,
-                        progress = if (card.limit > 0) (displayed.coerceAtLeast(0.0) / card.limit).toFloat() else 0f,
+                        progress = if (card.limit > 0) (spent / card.limit).toFloat() else 0f,
                     )
                 }
             }
