@@ -745,7 +745,6 @@ fun CreditCardItem(
                 Button(
                     onClick = onPayInstallment,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 ) {
                     Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
