@@ -5,6 +5,10 @@ plugins {
     id("com.diffplug.spotless") version "8.5.1"
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.expense.management"
     compileSdk = 36

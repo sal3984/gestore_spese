@@ -8,7 +8,6 @@ import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
@@ -20,7 +19,6 @@ class WearableDataListenerService : WearableListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        scope.cancel()
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {

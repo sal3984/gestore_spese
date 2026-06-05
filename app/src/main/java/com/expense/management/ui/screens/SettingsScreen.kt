@@ -50,7 +50,7 @@ import com.expense.management.ui.screens.settings.GeneralSettingsScreen
 import com.expense.management.ui.screens.settings.PaymentSettingsScreen
 import com.expense.management.ui.screens.settings.ThemeSettingsScreen
 import com.expense.management.ui.theme.AppStyle
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppTheme
 
 val EXPORT_COLUMN_MAP = mapOf(
     "ID" to "ID",
@@ -383,7 +383,7 @@ private fun sectionTitle(section: SettingsSection): String = when (section) {
 @Preview(showBackground = true, name = "Settings List Light")
 @Composable
 private fun SettingsListPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         SettingsList(
             onSectionSelected = {},
             onNavigateToDataManagement = {},

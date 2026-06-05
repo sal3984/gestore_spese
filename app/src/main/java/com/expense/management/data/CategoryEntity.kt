@@ -1,9 +1,13 @@
 package com.expense.management.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "categories")
+@Entity(
+    tableName = "categories",
+    indices = [Index(value = ["type"])],
+)
 data class CategoryEntity(
     @PrimaryKey val id: String,
     val label: String,

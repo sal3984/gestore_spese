@@ -81,7 +81,8 @@ import coil.compose.AsyncImage
 import com.expense.management.R
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.TransactionType
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 import com.expense.management.utils.CategoryImage
 import com.expense.management.utils.deleteImageFile
 import com.expense.management.utils.saveImageToInternalStorage
@@ -676,7 +677,7 @@ private fun CategoryIconGrid(
 @Preview(showBackground = true, name = "Category Light")
 @Composable
 private fun CategoryPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
     }
 }
@@ -684,7 +685,7 @@ private fun CategoryPreview() {
 @Preview(showBackground = true, name = "Category Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun CategoryPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         CategoryScreen(categories = emptyList(), onAddCategory = {}, onUpdateCategory = {}, onDeleteCategory = {})
     }
 }
@@ -692,7 +693,7 @@ private fun CategoryPreviewDark() {
 @Preview(showBackground = true, name = "Category Card Light")
 @Composable
 private fun CategoryCardPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         CategoryCard(
             category = CategoryEntity(id = "test", label = "Cibo", icon = "🍔", type = TransactionType.EXPENSE, isCustom = true),
             onEdit = {},
@@ -704,7 +705,7 @@ private fun CategoryCardPreview() {
 @Preview(showBackground = true, name = "Category Card Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun CategoryCardPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         CategoryCard(
             category = CategoryEntity(id = "test", label = "Cibo", icon = "🍔", type = TransactionType.EXPENSE, isCustom = true),
             onEdit = {},
@@ -716,7 +717,7 @@ private fun CategoryCardPreviewDark() {
 @Preview(showBackground = true, name = "Dialog Icon Picker Light")
 @Composable
 private fun CategoryDialogIconPickerPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         CategoryDialogIconPicker(
             selectedIcon = "🍔",
             imageUri = null,
@@ -730,7 +731,7 @@ private fun CategoryDialogIconPickerPreview() {
 @Preview(showBackground = true, name = "Dialog Name Field Light")
 @Composable
 private fun CategoryDialogNameFieldPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         CategoryDialogNameField(value = "", isError = true, errorMessage = "Nome obbligatorio", onValueChange = {})
     }
 }
@@ -738,7 +739,7 @@ private fun CategoryDialogNameFieldPreview() {
 @Preview(showBackground = true, name = "Dialog Icon Grid Light")
 @Composable
 private fun CategoryIconGridPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         CategoryIconGrid(
             availableIcons = availableIcons.take(12),
             selectedIcon = "🍔",
@@ -751,7 +752,7 @@ private fun CategoryIconGridPreview() {
 @Preview(showBackground = true, name = "Category Dialog Light")
 @Composable
 private fun CategoryDialogPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         CategoryDialog(
             type = TransactionType.EXPENSE,
             existingCategories = emptyList(),
@@ -764,7 +765,7 @@ private fun CategoryDialogPreview() {
 @Preview(showBackground = true, name = "Category Dialog Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun CategoryDialogPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         CategoryDialog(
             type = TransactionType.EXPENSE,
             existingCategories = emptyList(),

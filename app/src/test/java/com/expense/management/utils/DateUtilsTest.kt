@@ -33,15 +33,12 @@ class DateUtilsTest {
     }
 
     @Test
-    fun `calculateEffectiveDate should return next month payment if after closing day`() {
-        // Given
+    fun `calculateEffectiveDate should return payment after closing when paymentDay before closingDay`() {
         val transactionDate = LocalDate.of(2024, 5, 20)
         val card = DateUtils.CardDateInfo(closingDay = 15, paymentDay = 10)
 
-        // When
         val result = DateUtils.calculateEffectiveDate(transactionDate, card)
 
-        // Then
-        assertEquals("2024-06-10", result)
+        assertEquals("2024-07-10", result)
     }
 }

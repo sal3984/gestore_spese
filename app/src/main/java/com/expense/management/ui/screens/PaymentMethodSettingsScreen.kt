@@ -700,16 +700,17 @@ private fun EditPaymentMethodDialog(
     }
 }
 
+@Composable
 private fun providerLabel(provider: PaymentProvider): String {
     return when (provider) {
-        PaymentProvider.CASH -> "Contante"
-        PaymentProvider.CREDIT_CARD_SALDO -> "Carta di Credito (Saldo)"
-        PaymentProvider.CREDIT_CARD_REVOLVING -> "Carta di Credito (Revolving)"
-        PaymentProvider.DEBIT_CARD -> "Bancomat / Carta Ricaricabile"
-        PaymentProvider.REVOLUT -> "Revolut"
-        PaymentProvider.SATISPAY -> "Satispay"
-        PaymentProvider.PAYPAL -> "PayPal"
-        PaymentProvider.KLARNA -> "Klarna"
+        PaymentProvider.CASH -> stringResource(R.string.provider_cash)
+        PaymentProvider.CREDIT_CARD_SALDO -> stringResource(R.string.provider_credit_card_saldo)
+        PaymentProvider.CREDIT_CARD_REVOLVING -> stringResource(R.string.provider_credit_card_revolving)
+        PaymentProvider.DEBIT_CARD -> stringResource(R.string.provider_debit_card)
+        PaymentProvider.REVOLUT -> stringResource(R.string.provider_revolut)
+        PaymentProvider.SATISPAY -> stringResource(R.string.provider_satispay)
+        PaymentProvider.PAYPAL -> stringResource(R.string.provider_paypal)
+        PaymentProvider.KLARNA -> stringResource(R.string.provider_klarna)
     }
 }
 
@@ -724,14 +725,4 @@ private fun providerIcon(provider: PaymentProvider): ImageVector {
         PaymentProvider.PAYPAL -> Icons.Default.Payment
         PaymentProvider.KLARNA -> Icons.Default.ShoppingCart
     }
-}
-
-private fun providerLabel(provider: String): String {
-    val safe = PaymentProvider.safeValueOf(provider)
-    return if (safe != null) providerLabel(safe) else provider
-}
-
-private fun providerIcon(provider: String): ImageVector {
-    val safe = PaymentProvider.safeValueOf(provider)
-    return if (safe != null) providerIcon(safe) else Icons.Default.Payment
 }

@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.expense.management.data.AppDatabase
+import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionType
 import com.expense.management.ui.navigation.AppBottomBar
 import com.expense.management.ui.navigation.AppNavHost
@@ -45,6 +46,7 @@ import com.expense.management.ui.navigation.AppTopBar
 import com.expense.management.ui.navigation.BiometricGate
 import com.expense.management.ui.theme.AppTheme
 import com.expense.management.utils.BackupUtils
+import com.expense.management.utils.CurrencyUtils
 import com.expense.management.viewmodel.CreditCardViewModel
 import com.expense.management.viewmodel.CreditCardViewModelFactory
 import com.expense.management.viewmodel.ExpenseViewModel
@@ -64,9 +66,23 @@ class MainActivity : FragmentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun mainApp() {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
+    val sharedRepository = remember {
+        val db = AppDatabase.getDatabase(context)
+        ExpenseRepository(
+            db.transactionDao(),
+            db.categoryDao(),
+            db.currencyDao(),
+            db.creditCardDao(),
+            db.paymentMethodDao(),
+        )
+    }
+    val sharedCurrencyUtils = remember {
+        val db = AppDatabase.getDatabase(context)
+        CurrencyUtils(db.currencyDao())
+    }
     val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
-    val creditCardViewModel: CreditCardViewModel = viewModel(factory = CreditCardViewModelFactory(context))
+    val creditCardViewModel: CreditCardViewModel = viewModel(factory = CreditCardViewModelFactory(sharedRepository, sharedCurrencyUtils))
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isDarkTheme = when (themeMode) {
         "dark" -> true
@@ -118,10 +134,6 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val dashboardFilteredTransactions by viewModel.dashboardFilteredTransactions.collectAsStateWithLifecycle()
     val creditCardSummaries by viewModel.creditCardSummaries.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
-
-    LaunchedEffect(currentDashboardMonth) {
-        viewModel.refreshBnplProjections(currentDashboardMonth)
-    }
 
     val restoreLauncher =
         rememberLauncherForActivityResult(

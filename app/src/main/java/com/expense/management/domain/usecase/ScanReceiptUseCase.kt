@@ -94,13 +94,13 @@ class ScanReceiptUseCase {
             if (yearFirstMatch != null) {
                 val (y, m, d) = yearFirstMatch.destructured
                 val year = if (y.length == 4) y else "20$y"
-                return "${d.padStart(2, '0')}/${m.padStart(2, '0')}/$year"
+                return "$year-${m.padStart(2, '0')}-${d.padStart(2, '0')}"
             }
             val match = dateRegex.find(line)
             if (match != null) {
                 val (d, m, y) = match.destructured
                 val year = if (y.length == 4) y else "20$y"
-                return "${d.padStart(2, '0')}/${m.padStart(2, '0')}/$year"
+                return "$year-${m.padStart(2, '0')}-${d.padStart(2, '0')}"
             }
         }
         return null

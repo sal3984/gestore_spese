@@ -47,7 +47,8 @@ import androidx.compose.ui.window.Dialog
 import com.expense.management.R
 import com.expense.management.data.CurrencyRate
 import com.expense.management.ui.screens.settingsSectionHeader
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
@@ -277,7 +278,7 @@ private fun CurrencyRatesInfoDialog(
 @Preview(showBackground = true, name = "General Settings Light")
 @Composable
 private fun GeneralSettingsPreviewLight() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         GeneralSettingsScreen(
             currentCurrency = "€",
             currentDateFormat = "dd/MM/yyyy",
@@ -295,7 +296,7 @@ private fun GeneralSettingsPreviewLight() {
 @Preview(showBackground = true, name = "General Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun GeneralSettingsPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         GeneralSettingsScreen(
             currentCurrency = "€",
             currentDateFormat = "dd/MM/yyyy",

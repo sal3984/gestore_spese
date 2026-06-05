@@ -11,7 +11,7 @@ class GetPaymentMethodsUseCase(private val repository: ExpenseRepository) {
 class ManagePaymentMethodUseCase(private val repository: ExpenseRepository) {
     suspend fun add(paymentMethod: PaymentMethodEntity) = repository.insertPaymentMethod(paymentMethod)
     suspend fun update(paymentMethod: PaymentMethodEntity) {
-        repository.insertPaymentMethod(paymentMethod)
+        repository.updatePaymentMethod(paymentMethod)
     }
     suspend fun delete(id: String) = repository.deletePaymentMethod(id)
     suspend fun deleteAll() = repository.deleteAllPaymentMethods()

@@ -1,6 +1,7 @@
 package com.expense.management.data
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -22,8 +23,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         KlarnaDetailEntity::class,
         DebitCardDetailEntity::class,
     ],
-    version = 15,
-    exportSchema = false,
+    version = 16,
+    exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -212,6 +213,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_payment_methods_provider ON payment_methods(provider)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_categories_type ON categories(type)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_transactions_isCreditCard ON transactions(isCreditCard)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_currency_rates_lastUpdatedTimestamp ON currency_rates(lastUpdatedTimestamp)")
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -251,14 +261,17 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase =
             instance ?: synchronized(this) {
-                Room
+                val builder = Room
                     .databaseBuilder(
                         context.applicationContext,
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                    builder.fallbackToDestructiveMigration(dropAllTables = true)
+                }
+                builder
                     .build()
                     .also { instance = it }
             }

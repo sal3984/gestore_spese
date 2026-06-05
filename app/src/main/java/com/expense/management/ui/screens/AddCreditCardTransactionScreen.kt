@@ -64,7 +64,8 @@ import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.usecase.AddTransactionSaveResult
 import com.expense.management.domain.usecase.AddTransactionSaveUseCase
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -765,7 +766,7 @@ fun CreditCardPaymentFields(
 @Preview(showBackground = true, name = "AddCreditCard Light")
 @Composable
 private fun AddCreditCardPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         AddCreditCardTransactionScreen(transactionToEdit = null, currencySymbol = "\u20AC", dateFormat = "dd/MM/yyyy", ccPaymentMode = "single", suggestions = emptyList(), availableCategories = emptyList(), onSave = {}, onDelete = { _, _ -> }, onBack = {}, onDescriptionChange = {})
     }
 }
@@ -773,7 +774,7 @@ private fun AddCreditCardPreview() {
 @Preview(showBackground = true, name = "AddCreditCard Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun AddCreditCardPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         AddCreditCardTransactionScreen(transactionToEdit = null, currencySymbol = "\u20AC", dateFormat = "dd/MM/yyyy", ccPaymentMode = "single", suggestions = emptyList(), availableCategories = emptyList(), onSave = {}, onDelete = { _, _ -> }, onBack = {}, onDescriptionChange = {})
     }
 }

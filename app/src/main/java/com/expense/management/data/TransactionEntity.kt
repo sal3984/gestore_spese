@@ -14,6 +14,7 @@ import java.util.UUID
         Index(value = ["creditCardId"]),
         Index(value = ["paymentMethodId"]),
         Index(value = ["description"]),
+        Index(value = ["isCreditCard"]),
     ],
 )
 data class TransactionEntity(

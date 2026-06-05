@@ -65,8 +65,8 @@ import com.expense.management.ui.screens.report.CategoryTransactionsBottomSheetC
 import com.expense.management.ui.screens.report.MonthSelector
 import com.expense.management.ui.screens.report.MonthlyBarChart
 import com.expense.management.ui.screens.report.ReportSummaryCard
-import com.expense.management.ui.theme.IncomeGreen
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -276,8 +276,8 @@ fun ReportScreen(
                 amount = totalIncome,
                 currencySymbol = currencySymbol,
                 isAmountHidden = isAmountHidden,
-                containerColor = IncomeGreen.copy(alpha = 0.1f),
-                contentColor = IncomeGreen,
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                contentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
             )
             ReportSummaryCard(
@@ -499,7 +499,7 @@ fun ReportScreen(
 
 @Composable
 private fun ReportPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         ReportScreen(reportData = ReportData.EMPTY, transactions = emptyList(), currencySymbol = "\u20AC", dateFormat = "dd/MM/yyyy", isAmountHidden = false)
     }
 }
@@ -507,7 +507,7 @@ private fun ReportPreview() {
 @Preview(showBackground = true, name = "Report Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun ReportPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         ReportScreen(reportData = ReportData.EMPTY, transactions = emptyList(), currencySymbol = "\u20AC", dateFormat = "dd/MM/yyyy", isAmountHidden = false)
     }
 }

@@ -38,9 +38,6 @@ interface TransactionDao {
     @Query("SELECT DISTINCT description FROM transactions WHERE description LIKE :query || '%' LIMIT 5")
     suspend fun getDescriptionSuggestions(query: String): List<String>
 
-    @Query("SELECT MIN(effectiveDate) FROM transactions")
-    suspend fun getMinEffectiveDate(): String?
-
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
 

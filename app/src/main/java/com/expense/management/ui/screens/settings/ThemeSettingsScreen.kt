@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.ui.screens.settingsSectionHeader
 import com.expense.management.ui.theme.AppStyle
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppTheme
 
 @Composable
 fun ThemeSettingsScreen(
@@ -147,7 +147,7 @@ fun ThemeSettingsScreen(
 @Preview(showBackground = true, name = "Theme Settings Light")
 @Composable
 private fun ThemeSettingsPreviewLight() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         ThemeSettingsScreen(
             currentThemeMode = "system",
             currentAppStyle = AppStyle.MATERIAL_YOU,
@@ -160,7 +160,7 @@ private fun ThemeSettingsPreviewLight() {
 @Preview(showBackground = true, name = "Theme Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun ThemeSettingsPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         ThemeSettingsScreen(
             currentThemeMode = "system",
             currentAppStyle = AppStyle.MATERIAL_YOU,

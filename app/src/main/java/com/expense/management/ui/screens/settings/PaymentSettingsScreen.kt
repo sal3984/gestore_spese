@@ -33,7 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.ui.screens.settingsSectionHeader
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 
 @Composable
 fun PaymentSettingsScreen(
@@ -129,7 +130,7 @@ fun PaymentSettingsScreen(
 @Preview(showBackground = true, name = "Payment Settings Light")
 @Composable
 private fun PaymentSettingsPreviewLight() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         PaymentSettingsScreen(
             allPaymentMethods = emptyList(),
             defaultPaymentMethodId = "__cash__",
@@ -142,7 +143,7 @@ private fun PaymentSettingsPreviewLight() {
 @Preview(showBackground = true, name = "Payment Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun PaymentSettingsPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         PaymentSettingsScreen(
             allPaymentMethods = emptyList(),
             defaultPaymentMethodId = "__cash__",

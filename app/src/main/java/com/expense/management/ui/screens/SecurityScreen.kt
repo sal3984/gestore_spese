@@ -29,7 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 
 @Composable
 fun securityScreen(
@@ -110,7 +111,7 @@ fun settingsSwitchItem(
 @Preview(showBackground = true, name = "Security Light")
 @Composable
 private fun SecurityPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         securityScreen(isBiometricEnabled = false, onBiometricEnabledChange = {})
     }
 }
@@ -118,7 +119,7 @@ private fun SecurityPreview() {
 @Preview(showBackground = true, name = "Security Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun SecurityPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         securityScreen(isBiometricEnabled = false, onBiometricEnabledChange = {})
     }
 }

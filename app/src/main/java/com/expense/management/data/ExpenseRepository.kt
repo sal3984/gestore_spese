@@ -46,8 +46,6 @@ class ExpenseRepository(
 
     suspend fun getAllTransactionsList(): List<TransactionEntity> = transactionDao.getAllList()
 
-    suspend fun getMinEffectiveDate(): String? = transactionDao.getMinEffectiveDate()
-
     suspend fun getDescriptionSuggestions(query: String): List<String> = transactionDao.getDescriptionSuggestions(query)
 
     fun getTopCategoryIds(type: TransactionType, limit: Int): Flow<List<String>> =
@@ -131,6 +129,10 @@ class ExpenseRepository(
 
     suspend fun insertPaymentMethod(paymentMethod: PaymentMethodEntity) {
         paymentMethodDao.insertPaymentMethod(paymentMethod)
+    }
+
+    suspend fun updatePaymentMethod(paymentMethod: PaymentMethodEntity) {
+        paymentMethodDao.updatePaymentMethod(paymentMethod)
     }
 
     @Transaction

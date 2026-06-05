@@ -82,6 +82,7 @@ class ExpenseViewModel(
     private val restoreDataUseCase: RestoreDataUseCase,
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
     private val calculateReportUseCase: CalculateReportUseCase,
+    private val scanReceiptUseCase: ScanReceiptUseCase,
 ) : ViewModel() {
 
     companion object {
@@ -267,7 +268,7 @@ class ExpenseViewModel(
                         .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
                         .filter { t ->
                             try {
-                                YearMonth.from(LocalDate.parse(t.date)) == month
+                                YearMonth.from(LocalDate.parse(t.effectiveDate)) == month
                             } catch (_: Exception) {
                                 false
                             }
@@ -409,24 +410,24 @@ class ExpenseViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // PROIEZIONI BNPL
-    private val _bnplProjections = MutableStateFlow<List<BnplProjection>>(emptyList())
-    val bnplProjections: StateFlow<List<BnplProjection>> = _bnplProjections.asStateFlow()
-
-    fun refreshBnplProjections(targetMonth: YearMonth) {
-        viewModelScope.launch(Dispatchers.Default) {
-            val useCase = CalculateBnplProjectionsUseCase()
-            _bnplProjections.value = useCase.execute(
-                allTransactions = allTransactions.value,
-                allPaymentMethods = allPaymentMethods.value,
-                paypalDetails = allPaypalDetails.value,
-                klarnaDetails = allKlarnaDetails.value,
-                targetMonth = targetMonth,
-            )
-        }
-    }
+    val bnplProjections: StateFlow<List<BnplProjection>> = combine(
+        allTransactions,
+        allPaymentMethods,
+        allPaypalDetails,
+        allKlarnaDetails,
+        _currentDashboardMonth,
+    ) { tx, methods, paypal, klarna, month ->
+        CalculateBnplProjectionsUseCase().execute(
+            allTransactions = tx,
+            allPaymentMethods = methods,
+            paypalDetails = paypal,
+            klarnaDetails = klarna,
+            targetMonth = month,
+        )
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // SCANSIONE RICEVUTE (ML Kit OCR)
-    private val scanReceiptUseCase = ScanReceiptUseCase()
     private val _receiptScanResult = MutableStateFlow<ReceiptScanResult?>(null)
     val receiptScanResult: StateFlow<ReceiptScanResult?> = _receiptScanResult.asStateFlow()
 

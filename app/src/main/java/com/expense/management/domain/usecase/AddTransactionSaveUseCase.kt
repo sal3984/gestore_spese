@@ -269,6 +269,7 @@ class AddTransactionSaveUseCase {
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = settlementDate,
                                 creditCardId = null,
+                                paymentMethodId = selectedCard?.id ?: uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                                 groupId = groupId,
                             ),
                         )
@@ -374,7 +375,7 @@ class AddTransactionSaveUseCase {
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = settlementDate,
                                 creditCardId = null,
-                                paymentMethodId = null,
+                                paymentMethodId = selectedCard?.id ?: uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                                 groupId = groupId,
                             ),
                         )
@@ -470,7 +471,7 @@ class AddTransactionSaveUseCase {
                             originalCurrency = uiState.originalCurrency,
                             effectiveDate = settlementDate,
                             creditCardId = null,
-                            paymentMethodId = null,
+                            paymentMethodId = selectedCard?.id ?: uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                             groupId = commonGroupId,
                         ),
                     )

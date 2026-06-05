@@ -33,7 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 
 @Composable
 fun DataManagementScreen(
@@ -159,7 +160,7 @@ fun DataManagementScreen(
 @Preview(showBackground = true, name = "DataManagement Light")
 @Composable
 private fun DataManagementPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         DataManagementScreen(onBackup = {}, onRestore = {}, onExportCsv = {})
     }
 }
@@ -167,7 +168,7 @@ private fun DataManagementPreview() {
 @Preview(showBackground = true, name = "DataManagement Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun DataManagementPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         DataManagementScreen(onBackup = {}, onRestore = {}, onExportCsv = {})
     }
 }

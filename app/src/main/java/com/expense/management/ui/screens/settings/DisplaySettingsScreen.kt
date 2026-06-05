@@ -35,7 +35,8 @@ import com.expense.management.R
 import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.ui.screens.EXPORT_COLUMN_MAP
 import com.expense.management.ui.screens.settingsSectionHeader
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 
 @Composable
 fun DisplaySettingsScreen(
@@ -172,7 +173,7 @@ fun DisplaySettingsScreen(
 @Preview(showBackground = true, name = "Display Settings Light")
 @Composable
 private fun DisplaySettingsPreviewLight() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         DisplaySettingsScreen(
             enabledWidgets = DashboardWidget.entries.toSet(),
             csvExportColumns = EXPORT_COLUMN_MAP.keys,
@@ -185,7 +186,7 @@ private fun DisplaySettingsPreviewLight() {
 @Preview(showBackground = true, name = "Display Settings Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun DisplaySettingsPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         DisplaySettingsScreen(
             enabledWidgets = DashboardWidget.entries.toSet(),
             csvExportColumns = EXPORT_COLUMN_MAP.keys,

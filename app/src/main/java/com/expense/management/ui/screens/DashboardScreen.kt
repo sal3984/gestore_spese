@@ -90,7 +90,8 @@ import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 import com.expense.management.utils.TransactionItem
 import java.time.Instant
 import java.time.LocalDate
@@ -907,7 +908,7 @@ private fun CreditCardPaymentDialog(
 @Preview(showBackground = true, name = "Dashboard Light")
 @Composable
 private fun DashboardPreview() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = { _, _ -> }, isAmountHidden = false)
     }
 }
@@ -915,7 +916,7 @@ private fun DashboardPreview() {
 @Preview(showBackground = true, name = "Dashboard Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun DashboardPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         DashboardScreen(transactions = emptyList(), categories = emptyList(), currencySymbol = "€", dateFormat = "dd/MM/yyyy", earliestMonth = java.time.YearMonth.now(), currentDashboardMonth = java.time.YearMonth.now(), onMonthChange = {}, onDelete = { _, _ -> }, onEdit = { _, _ -> }, isAmountHidden = false)
     }
 }

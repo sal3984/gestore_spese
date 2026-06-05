@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -20,6 +21,9 @@ interface PaymentMethodDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPaymentMethod(paymentMethod: PaymentMethodEntity)
+
+    @Update
+    suspend fun updatePaymentMethod(paymentMethod: PaymentMethodEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllPaymentMethods(paymentMethods: List<PaymentMethodEntity>)
@@ -49,6 +53,9 @@ interface PaymentMethodDao {
     suspend fun getRevolutDetail(paymentMethodId: String): RevolutDetailEntity?
 
     @Query("SELECT * FROM revolut_details")
+    fun getAllRevolutDetailsFlow(): Flow<List<RevolutDetailEntity>>
+
+    @Query("SELECT * FROM revolut_details")
     suspend fun getAllRevolutDetails(): List<RevolutDetailEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -56,6 +63,9 @@ interface PaymentMethodDao {
 
     @Query("SELECT * FROM satispay_details WHERE paymentMethodId = :paymentMethodId")
     suspend fun getSatispayDetail(paymentMethodId: String): SatispayDetailEntity?
+
+    @Query("SELECT * FROM satispay_details")
+    fun getAllSatispayDetailsFlow(): Flow<List<SatispayDetailEntity>>
 
     @Query("SELECT * FROM satispay_details")
     suspend fun getAllSatispayDetails(): List<SatispayDetailEntity>
@@ -89,6 +99,9 @@ interface PaymentMethodDao {
 
     @Query("SELECT * FROM debit_card_details WHERE paymentMethodId = :paymentMethodId")
     suspend fun getDebitCardDetail(paymentMethodId: String): DebitCardDetailEntity?
+
+    @Query("SELECT * FROM debit_card_details")
+    fun getAllDebitCardDetailsFlow(): Flow<List<DebitCardDetailEntity>>
 
     @Query("SELECT * FROM debit_card_details")
     suspend fun getAllDebitCardDetails(): List<DebitCardDetailEntity>

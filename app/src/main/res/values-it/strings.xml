@@ -365,4 +365,12 @@
     <string name="top_up_method_hint">Usa questa carta per trasferire fondi a Revolut o altri metodi ricaricabili</string>
     <string name="select_destination">Seleziona destinazione…</string>
     <string name="destination_method">Destinazione</string>
+    <string name="provider_cash">Contante</string>
+    <string name="provider_credit_card_saldo">Carta di Credito (Saldo)</string>
+    <string name="provider_credit_card_revolving">Carta di Credito (Revolving)</string>
+    <string name="provider_debit_card">Bancomat / Carta Ricaricabile</string>
+    <string name="provider_revolut">Revolut</string>
+    <string name="provider_satispay">Satispay</string>
+    <string name="provider_paypal">PayPal</string>
+    <string name="provider_klarna">Klarna</string>
 </resources>

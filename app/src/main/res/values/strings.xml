@@ -365,4 +365,12 @@
     <string name="top_up_method_hint">Use this card to send funds to Revolut or other rechargeable methods</string>
     <string name="select_destination">Select destination…</string>
     <string name="destination_method">Destination</string>
+    <string name="provider_cash">Cash</string>
+    <string name="provider_credit_card_saldo">Credit Card (Pay-in-full)</string>
+    <string name="provider_credit_card_revolving">Credit Card (Revolving)</string>
+    <string name="provider_debit_card">Debit Card / Prepaid</string>
+    <string name="provider_revolut">Revolut</string>
+    <string name="provider_satispay">Satispay</string>
+    <string name="provider_paypal">PayPal</string>
+    <string name="provider_klarna">Klarna</string>
 </resources>

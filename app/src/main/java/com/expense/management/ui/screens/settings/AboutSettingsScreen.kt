@@ -35,7 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.expense.management.R
 import com.expense.management.ui.screens.settingsSectionHeader
-import com.expense.management.ui.theme.gestoreSpeseTheme
+import com.expense.management.ui.theme.AppStyle
+import com.expense.management.ui.theme.AppTheme
 
 @Composable
 fun AboutSettingsScreen() {
@@ -156,7 +157,7 @@ fun AboutSettingsScreen() {
 @Preview(showBackground = true, name = "About Light")
 @Composable
 private fun AboutPreviewLight() {
-    gestoreSpeseTheme(darkTheme = false, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = false) {
         AboutSettingsScreen()
     }
 }
@@ -164,7 +165,7 @@ private fun AboutPreviewLight() {
 @Preview(showBackground = true, name = "About Dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun AboutPreviewDark() {
-    gestoreSpeseTheme(darkTheme = true, dynamicColor = false) {
+    AppTheme(appStyle = AppStyle.MATERIAL_YOU, darkTheme = true) {
         AboutSettingsScreen()
     }
 }
