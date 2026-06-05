@@ -139,6 +139,9 @@ fun AppNavHost(
                 enabledWidgets = enabledWidgets,
                 dashboardFilteredTransactions = dashboardFilteredTransactions,
                 creditCardSummaries = creditCardSummaries,
+                onPayRevolving = { card, amount, date ->
+                    viewModel.payCreditCardInstallment(card, amount, date)
+                },
             )
         }
 

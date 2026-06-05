@@ -8,5 +8,6 @@ data class CreditCardSummary(
     val displayedSpent: Double,
     val totalUtilized: Double,
     val totalPaid: Double,
+    val totalRepaid: Double = 0.0,
     val progress: Float,
 )

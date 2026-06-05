@@ -360,4 +360,5 @@
     <string name="scan_no_data">No data extracted from receipt</string>
     <string name="apply">Apply</string>
     <string name="discard">Discard</string>
+    <string name="pay_installment">Pay Installment</string>
 </resources>

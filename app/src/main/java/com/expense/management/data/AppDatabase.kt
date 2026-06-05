@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         KlarnaDetailEntity::class,
         DebitCardDetailEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -184,6 +184,34 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    UPDATE transactions SET
+                        creditCardId = (
+                            SELECT t2.creditCardId FROM transactions t2
+                            WHERE t2.groupId = transactions.groupId
+                            AND t2.id != transactions.id
+                            AND t2.creditCardId IS NOT NULL
+                            LIMIT 1
+                        ),
+                        paymentMethodId = (
+                            SELECT t2.paymentMethodId FROM transactions t2
+                            WHERE t2.groupId = transactions.groupId
+                            AND t2.id != transactions.id
+                            AND t2.paymentMethodId IS NOT NULL
+                            LIMIT 1
+                        )
+                    WHERE type = 'income'
+                        AND creditCardId IS NULL
+                        AND paymentMethodId IS NULL
+                        AND groupId IS NOT NULL
+                    """.trimIndent(),
+                )
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -229,7 +257,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { instance = it }

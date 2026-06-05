@@ -155,11 +155,7 @@ fun AddCreditCardTransactionScreen(
         } else {
             val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
             uiState = uiState.copy(
-                isInstallment = if (selectedCard != null) {
-                    selectedCard.cardType == CreditCardType.REVOLVING
-                } else {
-                    ccPaymentMode == "installment"
-                },
+                isInstallment = ccPaymentMode == "installment",
             )
         }
     }

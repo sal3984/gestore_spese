@@ -360,4 +360,5 @@
     <string name="scan_no_data">Nessun dato estratto dalla ricevuta</string>
     <string name="apply">Applica</string>
     <string name="discard">Scarta</string>
+    <string name="pay_installment">Paga Rata</string>
 </resources>

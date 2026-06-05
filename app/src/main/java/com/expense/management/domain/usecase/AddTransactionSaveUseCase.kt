@@ -264,8 +264,8 @@ class AddTransactionSaveUseCase {
                                 originalAmount = currentOriginalInstallmentAmount,
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = installmentDateToSave,
-                                creditCardId = null,
-                                paymentMethodId = null,
+                                creditCardId = selectedCard?.id ?: uiState.creditCardId,
+                                paymentMethodId = selectedCard?.id ?: uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                                 groupId = groupId,
                             ),
                         )
@@ -370,8 +370,8 @@ class AddTransactionSaveUseCase {
                                 originalAmount = originalAmount,
                                 originalCurrency = uiState.originalCurrency,
                                 effectiveDate = occurrenceDateStr,
-                                creditCardId = null,
-                                paymentMethodId = null,
+                                creditCardId = selectedCard?.id ?: uiState.creditCardId,
+                                paymentMethodId = selectedCard?.id ?: uiState.selectedPaymentMethodId ?: uiState.creditCardId,
                                 groupId = groupId,
                             ),
                         )
@@ -451,26 +451,28 @@ class AddTransactionSaveUseCase {
                     )
                 }
                 TransactionType.EXPENSE -> {
-                    val incomeCategoryId = availableCategories.find { it.id == "credit_card_adjustment" }?.id
-                        ?: availableCategories.firstOrNull { it.type == TransactionType.INCOME }?.id
-                        ?: "salary"
-                    result.add(
-                        TransactionEntity(
-                            id = "${transactionId}_mirror",
-                            date = dateToSave,
-                            description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()}",
-                            amount = amount,
-                            categoryId = incomeCategoryId,
-                            type = TransactionType.INCOME,
-                            isCreditCard = false,
-                            originalAmount = originalAmount,
-                            originalCurrency = uiState.originalCurrency,
-                            effectiveDate = dateToSave,
-                            creditCardId = null,
-                            paymentMethodId = null,
-                            groupId = commonGroupId,
-                        ),
-                    )
+                    if (selectedCard?.cardType == CreditCardType.REVOLVING) {
+                        val incomeCategoryId = availableCategories.find { it.id == "credit_card_adjustment" }?.id
+                            ?: availableCategories.firstOrNull { it.type == TransactionType.INCOME }?.id
+                            ?: "salary"
+                        result.add(
+                            TransactionEntity(
+                                id = "${transactionId}_mirror",
+                                date = dateToSave,
+                                description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()}",
+                                amount = amount,
+                                categoryId = incomeCategoryId,
+                                type = TransactionType.INCOME,
+                                isCreditCard = false,
+                                originalAmount = originalAmount,
+                                originalCurrency = uiState.originalCurrency,
+                                effectiveDate = dateToSave,
+                                creditCardId = selectedCard?.id ?: uiState.creditCardId,
+                                paymentMethodId = selectedCard?.id ?: uiState.selectedPaymentMethodId ?: uiState.creditCardId,
+                                groupId = commonGroupId,
+                            ),
+                        )
+                    }
                 }
             }
         }

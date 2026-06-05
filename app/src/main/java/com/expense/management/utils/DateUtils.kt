@@ -23,8 +23,11 @@ object DateUtils {
         val effectiveClosing = closingDay.coerceAtMost(transactionYearMonth.lengthOfMonth())
 
         var paymentMonth = transactionYearMonth
+        val isEndOfMonthClosing = closingDay > transactionYearMonth.lengthOfMonth()
 
-        if (transactionDate.dayOfMonth >= effectiveClosing) {
+        if (isEndOfMonthClosing) {
+            paymentMonth = paymentMonth.plusMonths(1)
+        } else if (transactionDate.dayOfMonth >= effectiveClosing) {
             paymentMonth = paymentMonth.plusMonths(1)
         }
 

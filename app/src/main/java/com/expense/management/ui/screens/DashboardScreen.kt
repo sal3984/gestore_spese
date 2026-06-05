@@ -27,8 +27,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -36,6 +39,7 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Warning
@@ -44,17 +48,20 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,6 +75,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -84,8 +92,10 @@ import com.expense.management.domain.model.DeleteType
 import com.expense.management.ui.model.TransactionToDelete
 import com.expense.management.ui.theme.gestoreSpeseTheme
 import com.expense.management.utils.TransactionItem
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.ui.text.intl.Locale as ComposeLocale
@@ -115,29 +125,8 @@ fun DashboardScreen(
     enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget> = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
     dashboardFilteredTransactions: List<TransactionEntity> = emptyList(),
     creditCardSummaries: Map<String, CreditCardSummary> = emptyMap(),
+    onPayRevolving: (ActiveCreditCard, Double, LocalDate) -> Unit = { _, _, _ -> },
 ) {
-    if (isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    if (error != null) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(error, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-        }
-        return
-    }
-
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
     val monthFormatter = remember(locale) { DateTimeFormatter.ofPattern("MMMM yyyy", locale) }
@@ -160,6 +149,7 @@ fun DashboardScreen(
     val visibleState = remember {
         MutableTransitionState(false).apply { targetState = true }
     }
+    var payDialogCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
 
     var showDeleteDialog by remember { mutableStateOf<TransactionToDelete?>(null) }
 
@@ -470,6 +460,8 @@ fun DashboardScreen(
                                     totalUtilized = totalUtilizedForDisplay,
                                     totalPaid = totalPaidForDisplay,
                                     locale = locale,
+                                    totalRepaid = summary?.totalRepaid ?: 0.0,
+                                    onPayInstallment = { payDialogCard = card },
                                 )
                             }
 
@@ -493,6 +485,22 @@ fun DashboardScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        // Revolving Payment Dialog
+                        payDialogCard?.let { card ->
+                            CreditCardPaymentDialog(
+                                card = card,
+                                summary = creditCardSummaries[card.id],
+                                currencySymbol = currencySymbol,
+                                isAmountHidden = isAmountHidden,
+                                locale = locale,
+                                onDismiss = { payDialogCard = null },
+                                onConfirm = { paymentAmount, paymentDate ->
+                                    onPayRevolving(card, paymentAmount, paymentDate)
+                                    payDialogCard = null
+                                },
+                            )
                         }
                     }
                 }
@@ -635,7 +643,9 @@ fun CreditCardItem(
     type: CreditCardType,
     totalUtilized: Double = 0.0,
     totalPaid: Double = 0.0,
+    totalRepaid: Double = 0.0,
     locale: Locale = Locale.getDefault(),
+    onPayInstallment: (() -> Unit)? = null,
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -676,9 +686,9 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (type == CreditCardType.REVOLVING) {
+            if (type == CreditCardType.REVOLVING || totalRepaid > 0) {
                 Text(
-                    text = stringResource(R.string.revolving_utilized_label),
+                    text = if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_utilized_label) else stringResource(R.string.spent_label),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -695,7 +705,7 @@ fun CreditCardItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalPaid)}",
+                    text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", totalRepaid)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -725,6 +735,18 @@ fun CreditCardItem(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (onPayInstallment != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onPayInstallment,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.pay_installment))
+                }
             }
         }
     }
@@ -783,6 +805,100 @@ fun DateHeader(
             )
         }
     }
+}
+
+@Composable
+private fun CreditCardPaymentDialog(
+    card: ActiveCreditCard,
+    summary: CreditCardSummary?,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    locale: Locale,
+    onDismiss: () -> Unit,
+    onConfirm: (amount: Double, date: LocalDate) -> Unit,
+) {
+    val isRevolving = card.cardType == CreditCardType.REVOLVING
+    val outstanding = summary?.displayedSpent ?: 0.0
+    var amountText by remember { mutableStateOf("") }
+    var dateText by remember { mutableStateOf(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isRevolving) "Paga Rata ${card.name}" else "Paga Estratto Conto ${card.name}") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Plafond: $currencySymbol ${String.format(locale, "%.2f", card.limit)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "Residuo: $currencySymbol ${if (isAmountHidden) "*****" else String.format(locale, "%.2f", outstanding)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Importo rata") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = dateText,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Data pagamento") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, "Seleziona data")
+                        }
+                    },
+                )
+                if (showDatePicker) {
+                    val datePickerState = rememberDatePickerState(
+                        initialSelectedDateMillis = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    )
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                datePickerState.selectedDateMillis?.let { millis ->
+                                    dateText = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                }
+                                showDatePicker = false
+                            }) { Text("OK") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) { Text("Annulla") }
+                        },
+                    ) {
+                        DatePicker(state = datePickerState)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val amount = amountText.toDoubleOrNull() ?: return@TextButton
+                    val date = try {
+                        LocalDate.parse(dateText, DateTimeFormatter.ISO_LOCAL_DATE)
+                    } catch (_: Exception) {
+                        return@TextButton
+                    }
+                    onConfirm(amount, date)
+                },
+                enabled = amountText.toDoubleOrNull() != null && amountText.toDoubleOrNull()!! > 0,
+            ) { Text("Paga") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla") }
+        },
+    )
 }
 
 @Preview(showBackground = true, name = "Dashboard Light")
