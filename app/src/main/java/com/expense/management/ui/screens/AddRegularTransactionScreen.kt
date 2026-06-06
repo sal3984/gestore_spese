@@ -103,7 +103,7 @@ fun AddRegularTransactionScreen(
 
     val nonCreditCardMethods = remember(allPaymentMethods) {
         allPaymentMethods.filter { method ->
-            method.provider != PaymentProvider.CREDIT_CARD_SALDO && method.provider != PaymentProvider.CREDIT_CARD_REVOLVING
+            method.provider != PaymentProvider.CREDIT_CARD_SALDO && method.provider != PaymentProvider.CREDIT_CARD_REVOLVING && method.provider != PaymentProvider.CREDIT_CARD_INSTALLMENT && method.provider != PaymentProvider.CREDIT_CARD_AMEX
         }
     }
 

@@ -4,6 +4,8 @@ enum class PaymentProvider {
     CASH,
     CREDIT_CARD_SALDO,
     CREDIT_CARD_REVOLVING,
+    CREDIT_CARD_INSTALLMENT,
+    CREDIT_CARD_AMEX,
     DEBIT_CARD,
     REVOLUT,
     SATISPAY,

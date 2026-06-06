@@ -27,6 +27,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,6 +45,7 @@ fun DisplaySettingsScreen(
     csvExportColumns: Set<String>,
     onEnabledWidgetsChange: (Set<DashboardWidget>) -> Unit,
     onCsvExportColumnsChange: (Set<String>) -> Unit,
+    hasAmex: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -60,13 +62,17 @@ fun DisplaySettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column {
-                DashboardWidget.entries.forEachIndexed { index, widget ->
+                val visibleWidgets = remember(hasAmex) {
+                    DashboardWidget.entries.filter { w -> w != DashboardWidget.AMEX_INFO || hasAmex }
+                }
+                visibleWidgets.forEachIndexed { index, widget ->
                     ListItem(
                         headlineContent = {
                             Text(
                                 when (widget) {
                                     DashboardWidget.SUMMARY_CARDS -> stringResource(R.string.widget_summary_cards)
                                     DashboardWidget.CREDIT_CARD_INFO -> stringResource(R.string.widget_credit_card_info)
+                                    DashboardWidget.AMEX_INFO -> stringResource(R.string.widget_amex_info)
                                     DashboardWidget.BNPL_PROJECTIONS -> stringResource(R.string.widget_bnpl_projections)
                                     DashboardWidget.TRANSACTION_LIST -> stringResource(R.string.widget_transaction_list)
                                 },
@@ -78,6 +84,7 @@ fun DisplaySettingsScreen(
                                 when (widget) {
                                     DashboardWidget.SUMMARY_CARDS -> Icons.Default.Summarize
                                     DashboardWidget.CREDIT_CARD_INFO -> Icons.Default.CreditCard
+                                    DashboardWidget.AMEX_INFO -> Icons.Default.CreditCard
                                     DashboardWidget.BNPL_PROJECTIONS -> Icons.AutoMirrored.Filled.TrendingUp
                                     DashboardWidget.TRANSACTION_LIST -> Icons.AutoMirrored.Filled.ListAlt
                                 },
@@ -108,7 +115,7 @@ fun DisplaySettingsScreen(
                             }
                             .heightIn(min = 48.dp),
                     )
-                    if (index < DashboardWidget.entries.size - 1) {
+                    if (index < visibleWidgets.size - 1) {
                         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                     }
                 }

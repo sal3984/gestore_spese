@@ -24,6 +24,14 @@ class CreditCardViewModel(
         }
     }
 
+    fun saveTransactionWithInstallmentPlan(
+        transaction: TransactionEntity,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            saveTransactionUseCase(transaction)
+        }
+    }
+
     fun deleteTransaction(
         transactionId: String,
         deleteType: DeleteType,

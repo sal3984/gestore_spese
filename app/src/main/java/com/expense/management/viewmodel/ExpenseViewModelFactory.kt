@@ -31,6 +31,7 @@ class ExpenseViewModelFactory(private val context: Context) : ViewModelProvider.
                 db.currencyDao(),
                 db.creditCardDao(),
                 db.paymentMethodDao(),
+                db.amexDao(),
             )
             val currencyUtils = CurrencyUtils(db.currencyDao())
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)

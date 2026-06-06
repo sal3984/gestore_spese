@@ -9,6 +9,7 @@ class ExpenseRepository(
     private val currencyDao: CurrencyDao,
     private val creditCardDao: CreditCardDao,
     private val paymentMethodDao: PaymentMethodDao,
+    private val amexDao: AmexDao,
 ) {
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()
@@ -198,4 +199,147 @@ class ExpenseRepository(
 
     suspend fun getDebitCardDetail(paymentMethodId: String): DebitCardDetailEntity? =
         paymentMethodDao.getDebitCardDetail(paymentMethodId)
+
+    suspend fun insertInstallmentPlan(plan: CreditCardInstallmentPlanEntity) {
+        paymentMethodDao.insertInstallmentPlan(plan)
+    }
+
+    suspend fun getInstallmentPlanByCard(paymentMethodId: String): CreditCardInstallmentPlanEntity? =
+        paymentMethodDao.getInstallmentPlanByCard(paymentMethodId)
+
+    val allInstallmentPlans: Flow<List<CreditCardInstallmentPlanEntity>> =
+        paymentMethodDao.getAllInstallmentPlansFlow()
+
+    suspend fun getAllInstallmentPlans(): List<CreditCardInstallmentPlanEntity> =
+        paymentMethodDao.getAllInstallmentPlans()
+
+    suspend fun updateInstallmentPlanPaidCount(planId: String, paidCount: Int) {
+        paymentMethodDao.updateInstallmentPlanPaidCount(planId, paidCount)
+    }
+
+    suspend fun deleteInstallmentPlan(planId: String) {
+        paymentMethodDao.deleteInstallmentPlan(planId)
+    }
+
+    suspend fun insertScheduledPayment(payment: InstallmentScheduledPaymentEntity) {
+        paymentMethodDao.insertScheduledPayment(payment)
+    }
+
+    suspend fun insertScheduledPayments(payments: List<InstallmentScheduledPaymentEntity>) {
+        paymentMethodDao.insertScheduledPayments(payments)
+    }
+
+    suspend fun getScheduledPaymentsByPlan(planId: String): List<InstallmentScheduledPaymentEntity> =
+        paymentMethodDao.getScheduledPaymentsByPlan(planId)
+
+    fun getScheduledPaymentsByPlanFlow(planId: String): Flow<List<InstallmentScheduledPaymentEntity>> =
+        paymentMethodDao.getScheduledPaymentsByPlanFlow(planId)
+
+    val allScheduledPayments: Flow<List<InstallmentScheduledPaymentEntity>> =
+        paymentMethodDao.getAllScheduledPaymentsFlow()
+
+    suspend fun getNextPendingScheduledPayment(planId: String): InstallmentScheduledPaymentEntity? =
+        paymentMethodDao.getNextPendingScheduledPayment(planId)
+
+    fun getPendingScheduledPaymentsByCardFlow(paymentMethodId: String): Flow<List<InstallmentScheduledPaymentEntity>> =
+        paymentMethodDao.getPendingScheduledPaymentsByCardFlow(paymentMethodId)
+
+    suspend fun updateScheduledPaymentStatus(paymentId: String, status: String, expenseTransactionId: String?) {
+        paymentMethodDao.updateScheduledPaymentStatus(paymentId, status, expenseTransactionId)
+    }
+
+    suspend fun deleteScheduledPaymentsByPlan(planId: String) {
+        paymentMethodDao.deleteScheduledPaymentsByPlan(planId)
+    }
+
+    // AMEX Statements
+    suspend fun insertAmexStatement(statement: AmexStatementEntity) {
+        amexDao.insertStatement(statement)
+    }
+
+    suspend fun getAmexStatementByMonth(paymentMethodId: String, month: String): AmexStatementEntity? =
+        amexDao.getStatementByMonth(paymentMethodId, month)
+
+    suspend fun getOpenAmexStatementForCard(paymentMethodId: String): AmexStatementEntity? =
+        amexDao.getOpenStatementForCard(paymentMethodId)
+
+    fun getAmexStatementsForCardFlow(paymentMethodId: String): Flow<List<AmexStatementEntity>> =
+        amexDao.getStatementsForCardFlow(paymentMethodId)
+
+    val allAmexStatements: Flow<List<AmexStatementEntity>> = amexDao.getAllStatementsFlow()
+
+    suspend fun getNonClosedAmexStatements(): List<AmexStatementEntity> =
+        amexDao.getNonClosedStatements()
+
+    suspend fun getAllAmexPagoFlexPlans(): List<AmexPagoFlexPlanEntity> =
+        amexDao.getAllPagoFlexPlans()
+
+    suspend fun getAllAmexRevolvingStates(): List<AmexRevolvingStateEntity> =
+        amexDao.getAllRevolvingStates()
+
+    suspend fun getAmexPagoFlexPlansForPaymentMethod(paymentMethodId: String): List<AmexPagoFlexPlanEntity> =
+        amexDao.getPagoFlexPlansForPaymentMethod(paymentMethodId)
+
+    suspend fun closeAmexStatement(statementId: String) {
+        amexDao.closeStatement(statementId)
+    }
+
+    suspend fun addExpenseToAmexStatement(statementId: String, amount: Double) {
+        amexDao.addExpenseToStatement(statementId, amount)
+    }
+
+    suspend fun addPagoflexToAmexStatement(statementId: String, amount: Double) {
+        amexDao.addPagoflexToStatement(statementId, amount)
+    }
+
+    suspend fun updateAmexStatementPayment(statementId: String, mode: String, amount: Double) {
+        amexDao.updateStatementPayment(statementId, mode, amount)
+    }
+
+    suspend fun deleteAmexStatement(statementId: String) {
+        amexDao.deleteStatement(statementId)
+    }
+
+    // AMEX PagoFlex
+    suspend fun insertAmexPagoFlexPlan(plan: AmexPagoFlexPlanEntity) {
+        amexDao.insertPagoFlexPlan(plan)
+    }
+
+    suspend fun getAmexPagoFlexPlansForStatement(statementId: String): List<AmexPagoFlexPlanEntity> =
+        amexDao.getPagoFlexPlansForStatement(statementId)
+
+    suspend fun getAmexPagoFlexPlanByTransaction(transactionId: String): AmexPagoFlexPlanEntity? =
+        amexDao.getPagoFlexPlanByTransaction(transactionId)
+
+    suspend fun updateAmexPagoFlexPaidCount(planId: String, paidCount: Int) {
+        amexDao.updatePagoFlexPaidCount(planId, paidCount)
+    }
+
+    suspend fun deleteAmexPagoFlexPlansForStatement(statementId: String) {
+        amexDao.deletePagoFlexPlansForStatement(statementId)
+    }
+
+    // AMEX Revolving
+    suspend fun insertAmexRevolvingState(state: AmexRevolvingStateEntity) {
+        amexDao.insertRevolvingState(state)
+    }
+
+    suspend fun getAmexRevolvingStateForStatement(statementId: String): AmexRevolvingStateEntity? =
+        amexDao.getRevolvingStateForStatement(statementId)
+
+    suspend fun updateAmexRevolvingBalance(statementId: String, debt: Double, interest: Double) {
+        amexDao.updateRevolvingBalance(statementId, debt, interest)
+    }
+
+    suspend fun deleteAmexRevolvingStateForStatement(statementId: String) {
+        amexDao.deleteRevolvingStateForStatement(statementId)
+    }
+
+    // AMEX Flow queries
+    val allAmexPagoFlexPlans: Flow<List<AmexPagoFlexPlanEntity>> = amexDao.getAllPagoFlexPlansFlow()
+
+    fun getAmexPagoFlexPlansForStatementFlow(statementId: String): Flow<List<AmexPagoFlexPlanEntity>> =
+        amexDao.getPagoFlexPlansForStatementFlow(statementId)
+
+    val allAmexRevolvingStates: Flow<List<AmexRevolvingStateEntity>> = amexDao.getAllRevolvingStatesFlow()
 }

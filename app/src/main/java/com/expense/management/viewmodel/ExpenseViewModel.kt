@@ -4,14 +4,19 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.expense.management.data.AmexPagoFlexPlanEntity
+import com.expense.management.data.AmexRevolvingStateEntity
+import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.BackupData
 import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardDetailEntity
 import com.expense.management.data.CreditCardEntity
+import com.expense.management.data.CreditCardInstallmentPlanEntity
 import com.expense.management.data.CurrencyRate
 import com.expense.management.data.DebitCardDetailEntity
 import com.expense.management.data.ExpenseRepository
+import com.expense.management.data.InstallmentScheduledPaymentEntity
 import com.expense.management.data.KlarnaDetailEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.PaypalDetailEntity
@@ -20,6 +25,10 @@ import com.expense.management.data.SatispayDetailEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.AmexDashboardProjection
+import com.expense.management.domain.model.AmexForecastMonth
+import com.expense.management.domain.model.AmexPaymentMode
+import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CATEGORIES
 import com.expense.management.domain.model.CreditCardSummary
@@ -31,10 +40,14 @@ import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.model.ReportData
 import com.expense.management.domain.model.SatispayStatus
+import com.expense.management.domain.usecase.AutoPayAmexStatementsUseCase
+import com.expense.management.domain.usecase.CalculateAmexDashboardProjectionsUseCase
+import com.expense.management.domain.usecase.CalculateAmexStatementUseCase
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.CalculateReportUseCase
 import com.expense.management.domain.usecase.CalculateSatispayStatusUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
+import com.expense.management.domain.usecase.GenerateAmexForecastUseCase
 import com.expense.management.domain.usecase.GenerateCreditCardPaymentUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
@@ -52,6 +65,7 @@ import com.expense.management.ui.theme.AppStyle
 import com.expense.management.utils.CurrencyUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -96,6 +110,7 @@ class ExpenseViewModel(
         private const val KEY_APP_STYLE = "app_style"
         private const val KEY_ENABLED_WIDGETS = "enabled_widgets"
         private const val KEY_DEFAULT_PAYMENT_METHOD = "default_payment_method_id"
+        private const val KEY_AMEX_AUTO_PAY = "amex_auto_pay_enabled"
     }
 
     // Frequent Categories Caching
@@ -182,7 +197,8 @@ class ExpenseViewModel(
             val newCards = methods
                 .filter {
                     it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
-                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING
+                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
+                        it.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT
                 }
                 .mapNotNull { method ->
                     val detail = details.find { it.paymentMethodId == method.id }
@@ -240,7 +256,10 @@ class ExpenseViewModel(
     ) { tx, cards, month ->
         cards.associate { card ->
             card.id to when (card.cardType) {
-                CreditCardType.REVOLVING -> {
+                CreditCardType.REVOLVING,
+                CreditCardType.INSTALLMENT,
+                CreditCardType.AMEX_HYBRID,
+                -> {
                     val cardTx = tx.filter {
                         (it.creditCardId == card.id || it.paymentMethodId == card.id)
                     }
@@ -378,6 +397,11 @@ class ExpenseViewModel(
             _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
             refreshCurrencyRatesData()
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (prefs?.getBoolean(KEY_AMEX_AUTO_PAY, true) != false) {
+                triggerAmexAutoPay()
+            }
+        }
     }
 
     // GESTIONE CARTE DI CREDITO
@@ -408,6 +432,232 @@ class ExpenseViewModel(
     val allKlarnaDetails: StateFlow<List<KlarnaDetailEntity>> =
         repository.allKlarnaDetails
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // PIANI RATEALI CARTE INSTALLMENT
+    val allInstallmentPlans: StateFlow<List<CreditCardInstallmentPlanEntity>> =
+        repository.allInstallmentPlans
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allScheduledPayments: StateFlow<List<InstallmentScheduledPaymentEntity>> =
+        repository.allScheduledPayments
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // AMEX STATEMENTS
+    val allAmexStatements: StateFlow<List<AmexStatementEntity>> =
+        repository.allAmexStatements
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allAmexPagoFlexPlans: StateFlow<List<AmexPagoFlexPlanEntity>> =
+        repository.allAmexPagoFlexPlans
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allAmexRevolvingStates: StateFlow<List<AmexRevolvingStateEntity>> =
+        repository.allAmexRevolvingStates
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val amexDashboardProjections: StateFlow<List<AmexDashboardProjection>> = combine(
+        _currentDashboardMonth,
+        allPaymentMethods,
+        allAmexStatements,
+        allAmexPagoFlexPlans,
+        allAmexRevolvingStates,
+    ) { month, methods, statements, plans, revolving ->
+        CalculateAmexDashboardProjectionsUseCase().execute(
+            targetMonth = month,
+            allPaymentMethods = methods,
+            allStatements = statements,
+            allPagoFlexPlans = plans,
+            allRevolvingStates = revolving,
+        )
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _isAmexAutoPayEnabled = MutableStateFlow(
+        prefs?.getBoolean(KEY_AMEX_AUTO_PAY, true) ?: true,
+    )
+    val isAmexAutoPayEnabled: StateFlow<Boolean> = _isAmexAutoPayEnabled.asStateFlow()
+
+    fun toggleAmexAutoPay(enabled: Boolean) {
+        _isAmexAutoPayEnabled.value = enabled
+        prefs?.edit { putBoolean(KEY_AMEX_AUTO_PAY, enabled) }
+    }
+
+    fun getAmexStatementsForCard(paymentMethodId: String): Flow<List<AmexStatementEntity>> =
+        repository.getAmexStatementsForCardFlow(paymentMethodId)
+
+    fun getAmexPagoFlexPlansForStatement(statementId: String): Flow<List<AmexPagoFlexPlanEntity>> =
+        repository.getAmexPagoFlexPlansForStatementFlow(statementId)
+
+    fun getAmexStatementSummary(
+        statement: AmexStatementEntity,
+        pagoFlexPlans: List<AmexPagoFlexPlanEntity>,
+        revolvingState: AmexRevolvingStateEntity?,
+        interestRate: Double = 0.0,
+    ): AmexStatementSummary {
+        val useCase = CalculateAmexStatementUseCase()
+        return useCase.execute(statement, pagoFlexPlans, revolvingState, interestRate)
+    }
+
+    fun generateAmexForecast(
+        statementMonth: String,
+        pagoFlexPlans: List<AmexPagoFlexPlanEntity>,
+        revolvingState: AmexRevolvingStateEntity?,
+        paymentMode: AmexPaymentMode,
+        paymentAmount: Double,
+        interestRate: Double,
+        monthsToForecast: Int = 3,
+    ): List<AmexForecastMonth> {
+        val useCase = GenerateAmexForecastUseCase()
+        return useCase.execute(
+            statementMonth,
+            pagoFlexPlans,
+            revolvingState,
+            paymentMode,
+            paymentAmount,
+            interestRate,
+            monthsToForecast,
+        )
+    }
+
+    fun createAmexStatement(
+        paymentMethodId: String,
+        statementMonth: String,
+        closingDate: String,
+        paymentDueDate: String,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = java.time.YearMonth.now()
+            val month = statementMonth.ifEmpty { now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")) }
+            val existing = repository.getAmexStatementByMonth(paymentMethodId, month)
+            if (existing == null) {
+                val today = java.time.LocalDate.now()
+                val statement = AmexStatementEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    paymentMethodId = paymentMethodId,
+                    statementMonth = month,
+                    closingDate = closingDate.ifEmpty { today.withDayOfMonth(28).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) },
+                    paymentDueDate = paymentDueDate.ifEmpty { today.plusDays(15).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE) },
+                    paymentMode = AmexPaymentMode.SALDO.name,
+                )
+                repository.insertAmexStatement(statement)
+            }
+        }
+    }
+
+    fun addExpenseToAmexStatement(statementId: String, amount: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addExpenseToAmexStatement(statementId, amount)
+        }
+    }
+
+    fun addPagoFlexToAmexStatement(statementId: String, transactionId: String, amount: Double, installmentCount: Int, startDate: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addPagoflexToAmexStatement(statementId, amount)
+            val installmentAmount = amount / installmentCount
+            val plan = AmexPagoFlexPlanEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                statementId = statementId,
+                transactionId = transactionId,
+                totalAmount = amount,
+                installmentCount = installmentCount,
+                installmentAmount = installmentAmount,
+                startDate = startDate,
+            )
+            repository.insertAmexPagoFlexPlan(plan)
+        }
+    }
+
+    fun setAmexPaymentMode(statementId: String, mode: AmexPaymentMode, amount: Double = 0.0) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateAmexStatementPayment(statementId, mode.name, amount)
+        }
+    }
+
+    fun closeAmexStatement(statementId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.closeAmexStatement(statementId)
+        }
+    }
+
+    fun payAmexStatement(statement: AmexStatementEntity, amount: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val statementMonth = statement.statementMonth.substringBefore(" ")
+            val currentMonth = java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            val paymentDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            val paymentTx = TransactionEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                date = paymentDate,
+                description = "Pagamento Amex ${statement.statementMonth}",
+                amount = amount,
+                categoryId = "credit_card_payment",
+                type = TransactionType.EXPENSE,
+                isCreditCard = false,
+                originalAmount = amount,
+                originalCurrency = "€",
+                effectiveDate = paymentDate,
+            )
+            repository.insertTransaction(paymentTx)
+            val incomeTx = TransactionEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                date = paymentDate,
+                description = "Rimborso Amex ${statement.statementMonth}",
+                amount = amount,
+                categoryId = "credit_card_adjustment",
+                type = TransactionType.INCOME,
+                isCreditCard = false,
+                originalAmount = amount,
+                originalCurrency = "€",
+                effectiveDate = paymentDate,
+            )
+            repository.insertTransaction(incomeTx)
+            repository.closeAmexStatement(statement.id)
+        }
+    }
+
+    fun triggerAmexAutoPay() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val statements = repository.getNonClosedAmexStatements()
+            if (statements.isEmpty()) return@launch
+            val plans = repository.getAllAmexPagoFlexPlans()
+            val revolving = repository.getAllAmexRevolvingStates()
+            val useCase = AutoPayAmexStatementsUseCase()
+            val dueStatements = useCase.execute(statements, plans, revolving)
+            val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            for (due in dueStatements) {
+                val dueDate = try {
+                    java.time.LocalDate.parse(due.statement.paymentDueDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                } catch (_: Exception) { continue }
+                if (dueDate.isAfter(java.time.LocalDate.now())) continue
+                val paymentTx = TransactionEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    date = today,
+                    description = "Pagamento automatico Amex ${due.statement.statementMonth}",
+                    amount = due.paymentAmount,
+                    categoryId = "credit_card_payment",
+                    type = TransactionType.EXPENSE,
+                    isCreditCard = false,
+                    originalAmount = due.paymentAmount,
+                    originalCurrency = "€",
+                    effectiveDate = today,
+                )
+                repository.insertTransaction(paymentTx)
+                val incomeTx = TransactionEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    date = today,
+                    description = "Rimborso Amex ${due.statement.statementMonth}",
+                    amount = due.paymentAmount,
+                    categoryId = "credit_card_adjustment",
+                    type = TransactionType.INCOME,
+                    isCreditCard = false,
+                    originalAmount = due.paymentAmount,
+                    originalCurrency = "€",
+                    effectiveDate = today,
+                )
+                repository.insertTransaction(incomeTx)
+                repository.closeAmexStatement(due.statement.id)
+            }
+        }
+    }
 
     // PROIEZIONI BNPL
     val bnplProjections: StateFlow<List<BnplProjection>> = combine(
@@ -454,15 +704,18 @@ class ExpenseViewModel(
             managePaymentMethodUseCase.add(paymentMethod)
             if (
                 paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO ||
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT
             ) {
                 repository.insertCreditCardDetail(
                     CreditCardDetailEntity(
                         paymentMethodId = paymentMethod.id,
-                        cardType = if (paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO) {
-                            CreditCardType.SALDO.name
-                        } else {
-                            CreditCardType.REVOLVING.name
+                        cardType = when (paymentMethod.provider) {
+                            PaymentProvider.CREDIT_CARD_SALDO -> CreditCardType.SALDO.name
+                            PaymentProvider.CREDIT_CARD_REVOLVING -> CreditCardType.REVOLVING.name
+                            PaymentProvider.CREDIT_CARD_INSTALLMENT -> CreditCardType.INSTALLMENT.name
+                            PaymentProvider.CREDIT_CARD_AMEX -> CreditCardType.AMEX_HYBRID.name
+                            else -> CreditCardType.SALDO.name
                         },
                         limit = creditLimit,
                         closingDay = closingDay,
@@ -541,6 +794,8 @@ class ExpenseViewModel(
         return when (provider) {
             PaymentProvider.CREDIT_CARD_SALDO,
             PaymentProvider.CREDIT_CARD_REVOLVING,
+            PaymentProvider.CREDIT_CARD_INSTALLMENT,
+            PaymentProvider.CREDIT_CARD_AMEX,
             -> {
                 repository.getCreditCardDetail(method.id)?.let {
                     PaymentMethodDetails.CreditCard(
@@ -620,6 +875,83 @@ class ExpenseViewModel(
             val useCase = GenerateCreditCardPaymentUseCase()
             val transactions = useCase.execute(card, paymentAmount, paymentDate, categories)
             transactions.forEach { repository.insertTransaction(it) }
+        }
+    }
+
+    fun payInstallmentPlan(
+        plan: CreditCardInstallmentPlanEntity,
+        card: ActiveCreditCard,
+        paymentDate: LocalDate,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val nextPayment = repository.getNextPendingScheduledPayment(plan.id) ?: return@launch
+            val categories = repository.getAllCategories()
+            val useCase = GenerateCreditCardPaymentUseCase()
+            val transactions = useCase.execute(card, nextPayment.amount, paymentDate, categories)
+            transactions.forEach { repository.insertTransaction(it) }
+            val expenseTx = transactions.firstOrNull()
+            repository.updateScheduledPaymentStatus(nextPayment.id, "PAID", expenseTx?.id)
+            repository.updateInstallmentPlanPaidCount(plan.id, plan.paidCount + 1)
+        }
+    }
+
+    fun saveInstallmentPlan(
+        paymentMethodId: String,
+        totalAmount: Double,
+        installmentCount: Int,
+        installmentAmount: Double,
+        startDate: String,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val existingPlan = repository.getInstallmentPlanByCard(paymentMethodId)
+            if (existingPlan != null) {
+                repository.deleteScheduledPaymentsByPlan(existingPlan.id)
+                repository.deleteInstallmentPlan(existingPlan.id)
+            }
+            val planId = java.util.UUID.randomUUID().toString()
+            val plan = CreditCardInstallmentPlanEntity(
+                id = planId,
+                paymentMethodId = paymentMethodId,
+                totalAmount = totalAmount,
+                installmentCount = installmentCount,
+                installmentAmount = installmentAmount,
+                paidCount = 0,
+                startDate = startDate,
+            )
+            repository.insertInstallmentPlan(plan)
+            val payments = generateScheduledPayments(planId, totalAmount, installmentCount, installmentAmount, startDate)
+            repository.insertScheduledPayments(payments)
+        }
+    }
+
+    private fun generateScheduledPayments(
+        planId: String,
+        totalAmount: Double,
+        installmentCount: Int,
+        installmentAmount: Double,
+        startDate: String,
+    ): List<InstallmentScheduledPaymentEntity> {
+        val parts = startDate.split("-")
+        val baseYear = parts[0].toIntOrNull() ?: 2024
+        val baseMonth = parts[1].toIntOrNull() ?: 1
+        val baseDay = (parts[2].toIntOrNull() ?: 1).coerceIn(1, 28)
+        return List(installmentCount) { i ->
+            val monthOffset = i
+            val year = baseYear + (baseMonth - 1 + monthOffset) / 12
+            val month = ((baseMonth - 1 + monthOffset) % 12) + 1
+            val dueDate = "%04d-%02d-%02d".format(year, month, baseDay)
+            val amount = if (i == installmentCount - 1) {
+                totalAmount - (installmentAmount * (installmentCount - 1))
+            } else {
+                installmentAmount
+            }
+            InstallmentScheduledPaymentEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                planId = planId,
+                dueDate = dueDate,
+                amount = amount,
+                status = "PENDING",
+            )
         }
     }
 

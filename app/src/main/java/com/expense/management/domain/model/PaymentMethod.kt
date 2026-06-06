@@ -24,6 +24,8 @@ sealed class PaymentMethod {
             get() = when (cardType) {
                 CreditCardType.SALDO -> PaymentProvider.CREDIT_CARD_SALDO
                 CreditCardType.REVOLVING -> PaymentProvider.CREDIT_CARD_REVOLVING
+                CreditCardType.INSTALLMENT -> PaymentProvider.CREDIT_CARD_INSTALLMENT
+                CreditCardType.AMEX_HYBRID -> PaymentProvider.CREDIT_CARD_AMEX
             }
     }
 

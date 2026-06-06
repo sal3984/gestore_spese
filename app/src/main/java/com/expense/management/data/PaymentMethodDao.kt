@@ -105,4 +105,49 @@ interface PaymentMethodDao {
 
     @Query("SELECT * FROM debit_card_details")
     suspend fun getAllDebitCardDetails(): List<DebitCardDetailEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInstallmentPlan(plan: CreditCardInstallmentPlanEntity)
+
+    @Query("SELECT * FROM credit_card_installment_plans WHERE paymentMethodId = :paymentMethodId LIMIT 1")
+    suspend fun getInstallmentPlanByCard(paymentMethodId: String): CreditCardInstallmentPlanEntity?
+
+    @Query("SELECT * FROM credit_card_installment_plans")
+    fun getAllInstallmentPlansFlow(): Flow<List<CreditCardInstallmentPlanEntity>>
+
+    @Query("SELECT * FROM credit_card_installment_plans")
+    suspend fun getAllInstallmentPlans(): List<CreditCardInstallmentPlanEntity>
+
+    @Query("UPDATE credit_card_installment_plans SET paidCount = :paidCount WHERE id = :planId")
+    suspend fun updateInstallmentPlanPaidCount(planId: String, paidCount: Int)
+
+    @Query("DELETE FROM credit_card_installment_plans WHERE id = :planId")
+    suspend fun deleteInstallmentPlan(planId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScheduledPayment(payment: InstallmentScheduledPaymentEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScheduledPayments(payments: List<InstallmentScheduledPaymentEntity>)
+
+    @Query("SELECT * FROM installment_scheduled_payments WHERE planId = :planId ORDER BY dueDate ASC")
+    suspend fun getScheduledPaymentsByPlan(planId: String): List<InstallmentScheduledPaymentEntity>
+
+    @Query("SELECT * FROM installment_scheduled_payments WHERE planId = :planId ORDER BY dueDate ASC")
+    fun getScheduledPaymentsByPlanFlow(planId: String): Flow<List<InstallmentScheduledPaymentEntity>>
+
+    @Query("SELECT * FROM installment_scheduled_payments ORDER BY dueDate ASC")
+    fun getAllScheduledPaymentsFlow(): Flow<List<InstallmentScheduledPaymentEntity>>
+
+    @Query("SELECT * FROM installment_scheduled_payments WHERE planId = :planId AND status = 'PENDING' ORDER BY dueDate ASC LIMIT 1")
+    suspend fun getNextPendingScheduledPayment(planId: String): InstallmentScheduledPaymentEntity?
+
+    @Query("SELECT isp.* FROM installment_scheduled_payments isp INNER JOIN credit_card_installment_plans ccip ON isp.planId = ccip.id WHERE ccip.paymentMethodId = :paymentMethodId AND isp.status = 'PENDING' ORDER BY isp.dueDate ASC")
+    fun getPendingScheduledPaymentsByCardFlow(paymentMethodId: String): Flow<List<InstallmentScheduledPaymentEntity>>
+
+    @Query("UPDATE installment_scheduled_payments SET status = :status, expenseTransactionId = :expenseTransactionId WHERE id = :paymentId")
+    suspend fun updateScheduledPaymentStatus(paymentId: String, status: String, expenseTransactionId: String?)
+
+    @Query("DELETE FROM installment_scheduled_payments WHERE planId = :planId")
+    suspend fun deleteScheduledPaymentsByPlan(planId: String)
 }

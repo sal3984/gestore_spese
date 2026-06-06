@@ -156,6 +156,7 @@ fun settingsScreen(
                         csvExportColumns = csvExportColumns,
                         onEnabledWidgetsChange = onEnabledWidgetsChange,
                         onCsvExportColumnsChange = onCsvExportColumnsChange,
+                        hasAmex = allPaymentMethods.any { it.provider == com.expense.management.domain.model.PaymentProvider.CREDIT_CARD_AMEX },
                     )
                     SettingsSection.ABOUT -> AboutSettingsScreen()
                 }

@@ -91,7 +91,9 @@ fun CreditCardDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                onCardSelected(card.id, card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING)
+                                val isInstallmentType = card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING ||
+                                    card.cardType == com.expense.management.domain.model.CreditCardType.INSTALLMENT
+                                onCardSelected(card.id, isInstallmentType)
                             }
                             .heightIn(min = 48.dp)
                             .padding(vertical = 12.dp, horizontal = 8.dp),
@@ -118,7 +120,9 @@ fun PaymentMethodPickerDialog(
             Column {
                 allPaymentMethods.forEach { method ->
                     val isCreditCard = method.provider == PaymentProvider.CREDIT_CARD_SALDO ||
-                        method.provider == PaymentProvider.CREDIT_CARD_REVOLVING
+                        method.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
+                        method.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
+                        method.provider == PaymentProvider.CREDIT_CARD_AMEX
                     Text(
                         text = method.name,
                         style = MaterialTheme.typography.titleMedium,

@@ -1,14 +1,14 @@
 package com.expense.management.domain.model
 
-enum class CreditCardType {
+enum class AmexPaymentMode {
     SALDO,
-    REVOLVING,
-    INSTALLMENT,
-    AMEX_HYBRID,
+    MINIMUM,
+    FIXED,
+    PAGOFLEX_ONLY,
     ;
 
     companion object {
-        fun safeValueOf(name: String): CreditCardType? =
+        fun safeValueOf(name: String): AmexPaymentMode? =
             entries.find { it.name == name }
     }
 }

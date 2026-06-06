@@ -318,7 +318,8 @@ private fun AddPaymentMethodDialog(
     var debitCardNumber by remember { mutableStateOf("") }
     var debitNotes by remember { mutableStateOf("") }
     val isCreditCard = selectedProvider == PaymentProvider.CREDIT_CARD_SALDO ||
-        selectedProvider == PaymentProvider.CREDIT_CARD_REVOLVING
+        selectedProvider == PaymentProvider.CREDIT_CARD_REVOLVING ||
+        selectedProvider == PaymentProvider.CREDIT_CARD_INSTALLMENT
     val isDebitCard = selectedProvider == PaymentProvider.DEBIT_CARD
 
     AlertDialog(
@@ -475,8 +476,15 @@ private fun EditPaymentMethodDialog(
     when (provider) {
         PaymentProvider.CREDIT_CARD_SALDO,
         PaymentProvider.CREDIT_CARD_REVOLVING,
+        PaymentProvider.CREDIT_CARD_INSTALLMENT,
+        PaymentProvider.CREDIT_CARD_AMEX,
         -> {
-            val cardType = if (provider == PaymentProvider.CREDIT_CARD_SALDO) CreditCardType.SALDO else CreditCardType.REVOLVING
+            val cardType = when (provider) {
+                PaymentProvider.CREDIT_CARD_SALDO -> CreditCardType.SALDO
+                PaymentProvider.CREDIT_CARD_REVOLVING -> CreditCardType.REVOLVING
+                PaymentProvider.CREDIT_CARD_INSTALLMENT -> CreditCardType.INSTALLMENT
+                else -> CreditCardType.SALDO
+            }
             val details = currentDetails as? PaymentMethodDetails.CreditCard
             var limitText by remember(details) { mutableStateOf(if (details != null) details.limit.toString() else "0") }
             var closingDayText by remember(details) { mutableStateOf(if (details != null) details.closingDay.toString() else "0") }
@@ -706,6 +714,8 @@ private fun providerLabel(provider: PaymentProvider): String {
         PaymentProvider.CASH -> stringResource(R.string.provider_cash)
         PaymentProvider.CREDIT_CARD_SALDO -> stringResource(R.string.provider_credit_card_saldo)
         PaymentProvider.CREDIT_CARD_REVOLVING -> stringResource(R.string.provider_credit_card_revolving)
+        PaymentProvider.CREDIT_CARD_INSTALLMENT -> stringResource(R.string.provider_credit_card_installment)
+        PaymentProvider.CREDIT_CARD_AMEX -> stringResource(R.string.provider_credit_card_amex)
         PaymentProvider.DEBIT_CARD -> stringResource(R.string.provider_debit_card)
         PaymentProvider.REVOLUT -> stringResource(R.string.provider_revolut)
         PaymentProvider.SATISPAY -> stringResource(R.string.provider_satispay)
@@ -719,6 +729,8 @@ private fun providerIcon(provider: PaymentProvider): ImageVector {
         PaymentProvider.CASH -> Icons.Default.Money
         PaymentProvider.CREDIT_CARD_SALDO -> Icons.Default.CreditCard
         PaymentProvider.CREDIT_CARD_REVOLVING -> Icons.Default.CreditCard
+        PaymentProvider.CREDIT_CARD_INSTALLMENT -> Icons.Default.CreditCard
+        PaymentProvider.CREDIT_CARD_AMEX -> Icons.Default.CreditCard
         PaymentProvider.DEBIT_CARD -> Icons.Default.CreditCard
         PaymentProvider.REVOLUT -> Icons.Default.Savings
         PaymentProvider.SATISPAY -> Icons.Default.Star

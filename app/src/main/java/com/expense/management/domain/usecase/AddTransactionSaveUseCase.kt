@@ -65,7 +65,7 @@ class AddTransactionSaveUseCase {
 
         if (uiState.isInstallment && uiState.isCreditCard) {
             val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
-            if (selectedCard != null && selectedCard.cardType != CreditCardType.REVOLVING) {
+            if (selectedCard != null && selectedCard.cardType == CreditCardType.SALDO) {
                 return AddTransactionSaveResult.Error("error_card_does_not_support_installments")
             }
         }

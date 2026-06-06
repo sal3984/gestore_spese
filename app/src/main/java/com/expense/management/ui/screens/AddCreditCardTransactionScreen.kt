@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -49,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
@@ -99,6 +101,9 @@ fun AddCreditCardTransactionScreen(
     onLaunchGallery: () -> Unit = {},
     receiptScanResult: ReceiptScanResult? = null,
     onClearReceiptScanResult: () -> Unit = {},
+    onCreateInstallmentPlan: (paymentMethodId: String, totalAmount: Double, installmentCount: Int, installmentAmount: Double, startDate: String) -> Unit = { _, _, _, _, _ -> },
+    onSaveInstallment: (transaction: TransactionEntity) -> Unit = {},
+    onCreatePagoFlexPlan: (paymentMethodId: String, transactionId: String, totalAmount: Double, installmentCount: Int, startDate: String) -> Unit = { _, _, _, _, _ -> },
 ) {
     val displayFormatter = remember(dateFormat) { DateTimeFormatter.ofPattern(dateFormat) }
     val locale = ComposeLocale.current.platformLocale
@@ -109,7 +114,9 @@ fun AddCreditCardTransactionScreen(
     val creditCardMethods = remember(allPaymentMethods) {
         allPaymentMethods.filter {
             it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
-                it.provider == PaymentProvider.CREDIT_CARD_REVOLVING
+                it.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
+                it.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
+                it.provider == PaymentProvider.CREDIT_CARD_AMEX
         }
     }
 
@@ -175,9 +182,14 @@ fun AddCreditCardTransactionScreen(
     val saveUseCase = remember { AddTransactionSaveUseCase() }
 
     fun trySave() {
+        val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }
+        val isInstallmentCard = selectedCard?.cardType == CreditCardType.INSTALLMENT
+        val isAmexCard = selectedCard?.cardType == CreditCardType.AMEX_HYBRID
+        val saveState = if (isInstallmentCard) uiState.copy(isInstallment = false) else uiState
+
         when (
             val result = saveUseCase(
-                uiState = uiState,
+                uiState = saveState,
                 transactionToEdit = transactionToEdit,
                 availableCategories = availableCategories,
                 activeCreditCards = activeCreditCards,
@@ -187,7 +199,36 @@ fun AddCreditCardTransactionScreen(
             )
         ) {
             is AddTransactionSaveResult.Ready -> {
-                result.transactions.forEach { onSave(it) }
+                if (isInstallmentCard && uiState.isInstallment) {
+                    val firstTx = result.transactions.first()
+                    val totalAmount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                    val installmentAmount = if (uiState.calculationMode == "amount") {
+                        uiState.installmentAmountText.replace(',', '.').toDoubleOrNull() ?: (totalAmount / uiState.installmentsCount)
+                    } else {
+                        totalAmount / uiState.installmentsCount
+                    }
+                    val isoStartDate = try {
+                        LocalDate.parse(uiState.installmentStartDateStr, displayFormatter)
+                            .format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    } catch (_: Exception) {
+                        LocalDate.now().plusMonths(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    }
+                    onSaveInstallment(firstTx)
+                    onCreateInstallmentPlan(selectedCard.id, totalAmount, uiState.installmentsCount, installmentAmount, isoStartDate)
+                } else if (isAmexCard && uiState.isPagoFlex) {
+                    val firstTx = result.transactions.first()
+                    val totalAmount = uiState.amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+                    val isoStartDate = try {
+                        LocalDate.parse(uiState.installmentStartDateStr, displayFormatter)
+                            .format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    } catch (_: Exception) {
+                        LocalDate.now().plusMonths(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    }
+                    result.transactions.forEach { onSave(it) }
+                    onCreatePagoFlexPlan(selectedCard.id, firstTx.id, totalAmount, uiState.pagoFlexInstallments, isoStartDate)
+                } else {
+                    result.transactions.forEach { onSave(it) }
+                }
                 onBack()
             }
             is AddTransactionSaveResult.PreviousMonthWarning -> {
@@ -237,7 +278,8 @@ fun AddCreditCardTransactionScreen(
                 )
                 uiState = uiState.copy(
                     isInstallment = if (isCardCreditCard) {
-                        activeCreditCards.find { it.id == event.paymentMethodId }?.cardType == CreditCardType.REVOLVING
+                        val cardType = activeCreditCards.find { it.id == event.paymentMethodId }?.cardType
+                        cardType == CreditCardType.REVOLVING || cardType == CreditCardType.INSTALLMENT
                     } else {
                         false
                     },
@@ -298,6 +340,8 @@ fun AddCreditCardTransactionScreen(
                 uiState = uiState.copy(applyCcDelayToInstallments = event.apply, installmentStartDateStr = newDateStr)
             }
             is AddTransactionEvent.OnIgnoreDateWarningChange -> uiState = uiState.copy(ignoreDateWarning = event.ignore)
+            is AddTransactionEvent.OnIsPagoFlexChange -> uiState = uiState.copy(isPagoFlex = event.isPagoFlex)
+            is AddTransactionEvent.OnPagoFlexInstallmentsChange -> uiState = uiState.copy(pagoFlexInstallments = event.count)
             is AddTransactionEvent.OnIsTopUpChange -> uiState = uiState.copy(isTopUp = event.isTopUp, topUpDestinationId = if (event.isTopUp) uiState.topUpDestinationId else null)
             is AddTransactionEvent.OnTopUpDestinationChange -> uiState = uiState.copy(topUpDestinationId = event.destinationId)
             AddTransactionEvent.OnSave -> trySave()
@@ -406,7 +450,8 @@ fun AddCreditCardTransactionScreen(
                     handleEvent(
                         AddTransactionEvent.OnIsInstallmentChange(
                             if (isCreditCard) {
-                                activeCreditCards.find { it.id == methodId }?.cardType == CreditCardType.REVOLVING
+                                val cardType = activeCreditCards.find { it.id == methodId }?.cardType
+                                cardType == CreditCardType.REVOLVING || cardType == CreditCardType.INSTALLMENT
                             } else {
                                 false
                             },
@@ -698,6 +743,57 @@ fun CreditCardPaymentFields(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+
+        // PagoFlex toggle for Amex Hybrid
+        val isAmexSelected = activeCreditCards.any { it.id == uiState.creditCardId && it.cardType == CreditCardType.AMEX_HYBRID }
+        if (isAmexSelected && !isEditing) {
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onEvent(AddTransactionEvent.OnIsPagoFlexChange(!uiState.isPagoFlex)) }
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = uiState.isPagoFlex,
+                    onCheckedChange = { onEvent(AddTransactionEvent.OnIsPagoFlexChange(it)) },
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("PagoFlex", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                    Text(
+                        "Rateizza questa transazione in più mesi",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (uiState.isPagoFlex) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Numero rate", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    var countText by remember(uiState.pagoFlexInstallments) { mutableStateOf(uiState.pagoFlexInstallments.toString()) }
+                    OutlinedTextField(
+                        value = countText,
+                        onValueChange = { newVal ->
+                            countText = newVal.filter { it.isDigit() }
+                            val c = countText.toIntOrNull()
+                            if (c != null && c > 0) onEvent(AddTransactionEvent.OnPagoFlexInstallmentsChange(c))
+                        },
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                }
             }
         }
 

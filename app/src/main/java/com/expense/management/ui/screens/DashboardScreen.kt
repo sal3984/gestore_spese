@@ -51,10 +51,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
@@ -80,15 +82,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.data.AmexPagoFlexPlanEntity
+import com.expense.management.data.AmexRevolvingStateEntity
+import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.CategoryEntity
+import com.expense.management.data.CreditCardInstallmentPlanEntity
+import com.expense.management.data.InstallmentScheduledPaymentEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.AmexDashboardProjection
+import com.expense.management.domain.model.AmexPaymentMode
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DeleteType
+import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.TransactionToDelete
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.AppTheme
@@ -99,6 +109,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.ceil
 import androidx.compose.ui.text.intl.Locale as ComposeLocale
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
@@ -126,7 +137,20 @@ fun DashboardScreen(
     enabledWidgets: Set<com.expense.management.domain.model.DashboardWidget> = com.expense.management.domain.model.DashboardWidget.entries.toSet(),
     dashboardFilteredTransactions: List<TransactionEntity> = emptyList(),
     creditCardSummaries: Map<String, CreditCardSummary> = emptyMap(),
+    installmentPlans: List<CreditCardInstallmentPlanEntity> = emptyList(),
+    scheduledPayments: List<InstallmentScheduledPaymentEntity> = emptyList(),
     onPayRevolving: (ActiveCreditCard, Double, LocalDate) -> Unit = { _, _, _ -> },
+    onPayInstallmentPlan: (CreditCardInstallmentPlanEntity, ActiveCreditCard, LocalDate) -> Unit = { _, _, _ -> },
+    onSetupInstallmentPlan: (paymentMethodId: String, totalAmount: Double, installmentCount: Int, installmentAmount: Double, startDate: String) -> Unit = { _, _, _, _, _ -> },
+    amexStatements: List<AmexStatementEntity> = emptyList(),
+    amexPagoFlexPlans: List<AmexPagoFlexPlanEntity> = emptyList(),
+    amexRevolvingStates: List<AmexRevolvingStateEntity> = emptyList(),
+    onCreateAmexStatement: (paymentMethodId: String, statementMonth: String, closingDate: String, paymentDueDate: String) -> Unit = { _, _, _, _ -> },
+    onSetAmexPaymentMode: (statementId: String, mode: AmexPaymentMode, amount: Double) -> Unit = { _, _, _ -> },
+    onPayAmexStatement: (statement: AmexStatementEntity, amount: Double) -> Unit = { _, _ -> },
+    amexProjections: List<AmexDashboardProjection> = emptyList(),
+    isAmexAutoPayEnabled: Boolean = true,
+    onToggleAmexAutoPay: (Boolean) -> Unit = {},
 ) {
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
@@ -151,6 +175,11 @@ fun DashboardScreen(
         MutableTransitionState(false).apply { targetState = true }
     }
     var payDialogCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
+    var installmentPayDialogCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
+    var installmentPayPlan by remember { mutableStateOf<CreditCardInstallmentPlanEntity?>(null) }
+    var setupPlanCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
+    var editPlanCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
+    var editPlan by remember { mutableStateOf<CreditCardInstallmentPlanEntity?>(null) }
 
     var showDeleteDialog by remember { mutableStateOf<TransactionToDelete?>(null) }
 
@@ -296,6 +325,7 @@ fun DashboardScreen(
                 val showSummary = com.expense.management.domain.model.DashboardWidget.SUMMARY_CARDS in enabledWidgets
                 val showBnpl = com.expense.management.domain.model.DashboardWidget.BNPL_PROJECTIONS in enabledWidgets
                 val showCreditCards = com.expense.management.domain.model.DashboardWidget.CREDIT_CARD_INFO in enabledWidgets
+                val showAmex = com.expense.management.domain.model.DashboardWidget.AMEX_INFO in enabledWidgets
                 if (showSummary || showBnpl || showCreditCards) {
                     Column(
                         modifier = Modifier
@@ -436,6 +466,12 @@ fun DashboardScreen(
                         // Card Carte di Credito
                         if (showCreditCards && creditCards.isNotEmpty()) {
                             val pagerState = rememberPagerState(pageCount = { creditCards.size })
+                            val cardPlans = remember(installmentPlans) {
+                                installmentPlans.groupBy { it.paymentMethodId }
+                            }
+                            val scheduledByPlan: Map<String, List<InstallmentScheduledPaymentEntity>> = remember(scheduledPayments) {
+                                scheduledPayments.groupBy { it.planId }
+                            }
                             HorizontalPager(
                                 state = pagerState,
                                 pageSpacing = 16.dp,
@@ -444,12 +480,49 @@ fun DashboardScreen(
                             ) { page ->
                                 val card = creditCards[page]
                                 val summary = creditCardSummaries[card.id]
+                                val plansForCard = cardPlans[card.id].orEmpty()
+                                val totalPlans = plansForCard.size
+                                val totalInstallments = plansForCard.sumOf { it.installmentCount }
+                                val totalPaidInstallments = plansForCard.sumOf { it.paidCount }
+                                val unpaidPlans = plansForCard.filter { it.paidCount < it.installmentCount }
+                                val nextPlan = unpaidPlans.minByOrNull { it.startDate }
 
                                 val displayedSpent = summary?.displayedSpent ?: 0.0
                                 val totalUtilizedForDisplay = summary?.totalUtilized ?: 0.0
                                 val totalPaidForDisplay = summary?.totalPaid ?: 0.0
                                 val progress = summary?.progress ?: 0f
 
+                                val payAction: (() -> Unit)? = when (card.cardType) {
+                                    CreditCardType.REVOLVING -> {
+                                        { payDialogCard = card }
+                                    }
+                                    CreditCardType.INSTALLMENT -> {
+                                        if (nextPlan != null) {
+                                            {
+                                                installmentPayPlan = nextPlan
+                                                installmentPayDialogCard = card
+                                            }
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                    else -> null
+                                }
+                                val setupAction: (() -> Unit)? = when (card.cardType) {
+                                    CreditCardType.INSTALLMENT -> {
+                                        if (nextPlan != null) {
+                                            {
+                                                editPlanCard = card
+                                                editPlan = nextPlan
+                                            }
+                                        } else {
+                                            {
+                                                setupPlanCard = card
+                                            }
+                                        }
+                                    }
+                                    else -> null
+                                }
                                 CreditCardItem(
                                     name = card.name,
                                     limit = card.limit,
@@ -462,12 +535,91 @@ fun DashboardScreen(
                                     totalPaid = totalPaidForDisplay,
                                     locale = locale,
                                     totalRepaid = summary?.totalRepaid ?: 0.0,
-                                    onPayInstallment = if (card.cardType == CreditCardType.REVOLVING) {
-                                        { payDialogCard = card }
+                                    installmentInfo = if (card.cardType == CreditCardType.INSTALLMENT && totalPlans > 0) {
+                                        "$totalPaidInstallments/$totalInstallments rate pagate"
                                     } else {
                                         null
                                     },
+                                    onPayInstallment = payAction,
+                                    onSetupPlan = setupAction,
                                 )
+                                if (card.cardType == CreditCardType.INSTALLMENT && nextPlan != null) {
+                                    val planScheduled = scheduledByPlan[nextPlan.id].orEmpty()
+                                    val pendingPayments = planScheduled.filter { it.status == "PENDING" }
+                                    val needsUpdate = totalUtilizedForDisplay > nextPlan.totalAmount
+                                    if (needsUpdate) {
+                                        Card(
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                            ),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(
+                                                        "Nuovi acquisti rilevati",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                                    )
+                                                    Text(
+                                                        "Aggiorna il piano per includere l'importo totale.",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                                                    )
+                                                }
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        editPlanCard = card
+                                                        editPlan = nextPlan
+                                                    },
+                                                ) { Text("Aggiorna") }
+                                            }
+                                        }
+                                    }
+                                    if (pendingPayments.isNotEmpty()) {
+                                        Card(
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        ) {
+                                            Column(Modifier.padding(12.dp)) {
+                                                Text(
+                                                    "Rate future",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                )
+                                                Spacer(Modifier.height(8.dp))
+                                                val displayLocale = locale
+                                                pendingPayments.forEach { payment ->
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                    ) {
+                                                        val dueLocalDate = try {
+                                                            LocalDate.parse(payment.dueDate, DateTimeFormatter.ISO_LOCAL_DATE)
+                                                        } catch (_: Exception) {
+                                                            null
+                                                        }
+                                                        Text(
+                                                            dueLocalDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", displayLocale)) ?: payment.dueDate,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                        )
+                                                        Text(
+                                                            "$currencySymbol ${String.format(displayLocale, "%.2f", payment.amount)}",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             if (creditCards.size > 1) {
@@ -492,6 +644,106 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                         }
 
+                        // Card AMEX Ibride
+                        val amexPaymentMethods = allPaymentMethods.filter { it.provider == PaymentProvider.CREDIT_CARD_AMEX }
+                        if (showAmex && amexPaymentMethods.isNotEmpty()) {
+                            val amexByCard = remember(amexStatements) {
+                                amexStatements.groupBy { it.paymentMethodId }
+                            }
+                            val pagoFlexByStatement = remember(amexPagoFlexPlans) {
+                                amexPagoFlexPlans.groupBy { it.statementId }
+                            }
+                            val revolvingByStatement = remember(amexRevolvingStates) {
+                                amexRevolvingStates.associateBy { it.statementId }
+                            }
+                            amexPaymentMethods.forEach { method ->
+                                val cardStatements = amexByCard[method.id].orEmpty().sortedByDescending { it.statementMonth }
+                                if (cardStatements.isNotEmpty()) {
+                                    cardStatements.forEach { statement ->
+                                        val pagoFlexPlans = pagoFlexByStatement[statement.id].orEmpty()
+                                        val revolvingState = revolvingByStatement[statement.id]
+                                        AmexStatementCard(
+                                            cardName = method.name,
+                                            statement = statement,
+                                            pagoFlexPlans = pagoFlexPlans,
+                                            revolvingState = revolvingState,
+                                            currencySymbol = currencySymbol,
+                                            isAmountHidden = isAmountHidden,
+                                            locale = locale,
+                                            onSetPaymentMode = { mode, amount -> onSetAmexPaymentMode(statement.id, mode, amount) },
+                                            onPay = { amount -> onPayAmexStatement(statement, amount) },
+                                            onClose = { onCreateAmexStatement(method.id, statement.statementMonth, statement.closingDate, statement.paymentDueDate) },
+                                        )
+                                    }
+                                } else {
+                                    AmexStatementCardEmpty(
+                                        cardName = method.name,
+                                        currencySymbol = currencySymbol,
+                                        onCreate = { onCreateAmexStatement(method.id, "", "", "") },
+                                    )
+                                }
+                            }
+                        }
+
+                        // AMEX Projections per month
+                        if (showAmex && amexProjections.isNotEmpty()) {
+                            amexProjections.forEach { proj ->
+                                if (proj.pagoflexQuotaTotal > 0.0 || proj.hasDuePayment) {
+                                    Card(
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                                        ),
+                                        shape = RoundedCornerShape(16.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    ) {
+                                        Column(Modifier.padding(12.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.DateRange, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(
+                                                    "Amex ${proj.cardName} — Proiezioni",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                )
+                                            }
+                                            if (proj.pagoflexQuotaTotal > 0.0) {
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(
+                                                    "Rate PagoFlex: $currencySymbol ${String.format(locale, "%.2f", proj.pagoflexQuotaTotal)} (${proj.pagoflexPlanCount} piani)",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                )
+                                            }
+                                            if (proj.hasDuePayment) {
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(
+                                                    "Pagamento in scadenza: $currencySymbol ${String.format(locale, "%.2f", proj.duePaymentAmount)}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.error,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                            ) {
+                                Text(
+                                    "Pagamento automatico Amex",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.weight(1f))
+                                androidx.compose.material3.Switch(
+                                    checked = isAmexAutoPayEnabled,
+                                    onCheckedChange = onToggleAmexAutoPay,
+                                )
+                            }
+                        }
+
                         // Revolving Payment Dialog
                         payDialogCard?.let { card ->
                             CreditCardPaymentDialog(
@@ -506,6 +758,63 @@ fun DashboardScreen(
                                     payDialogCard = null
                                 },
                             )
+                        }
+                        // Installment Payment Dialog
+                        installmentPayDialogCard?.let { card ->
+                            installmentPayPlan?.let { plan ->
+                                CreditCardInstallmentPaymentDialog(
+                                    card = card,
+                                    plan = plan,
+                                    currencySymbol = currencySymbol,
+                                    isAmountHidden = isAmountHidden,
+                                    locale = locale,
+                                    onDismiss = {
+                                        installmentPayDialogCard = null
+                                        installmentPayPlan = null
+                                    },
+                                    onConfirm = { paymentDate ->
+                                        onPayInstallmentPlan(plan, card, paymentDate)
+                                        installmentPayDialogCard = null
+                                        installmentPayPlan = null
+                                    },
+                                )
+                            }
+                        }
+                        // Installment Plan Setup Dialog
+                        setupPlanCard?.let { card ->
+                            val summary = creditCardSummaries[card.id]
+                            InstallmentPlanSetupDialog(
+                                card = card,
+                                existingPlan = null,
+                                currencySymbol = currencySymbol,
+                                locale = locale,
+                                totalUtilized = summary?.totalUtilized ?: 0.0,
+                                onDismiss = { setupPlanCard = null },
+                                onConfirm = { totalAmount, installmentCount, installmentAmount, startDate ->
+                                    onSetupInstallmentPlan(card.id, totalAmount, installmentCount, installmentAmount, startDate)
+                                    setupPlanCard = null
+                                },
+                            )
+                        }
+                        editPlanCard?.let { card ->
+                            editPlan?.let { plan ->
+                                InstallmentPlanSetupDialog(
+                                    card = card,
+                                    existingPlan = plan,
+                                    currencySymbol = currencySymbol,
+                                    locale = locale,
+                                    totalUtilized = (creditCardSummaries[card.id]?.totalUtilized ?: 0.0),
+                                    onDismiss = {
+                                        editPlanCard = null
+                                        editPlan = null
+                                    },
+                                    onConfirm = { totalAmount, installmentCount, installmentAmount, startDate ->
+                                        onSetupInstallmentPlan(card.id, totalAmount, installmentCount, installmentAmount, startDate)
+                                        editPlanCard = null
+                                        editPlan = null
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -649,8 +958,10 @@ fun CreditCardItem(
     totalUtilized: Double = 0.0,
     totalPaid: Double = 0.0,
     totalRepaid: Double = 0.0,
+    installmentInfo: String? = null,
     locale: Locale = Locale.getDefault(),
     onPayInstallment: (() -> Unit)? = null,
+    onSetupPlan: (() -> Unit)? = null,
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -670,9 +981,9 @@ fun CreditCardItem(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (type == CreditCardType.REVOLVING) {
+                    if (type == CreditCardType.REVOLVING || type == CreditCardType.INSTALLMENT) {
                         Text(
-                            stringResource(R.string.installment_plan),
+                            if (type == CreditCardType.INSTALLMENT && installmentInfo != null) installmentInfo else stringResource(R.string.installment_plan),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -691,9 +1002,9 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (type == CreditCardType.REVOLVING) {
+            if (type == CreditCardType.REVOLVING || type == CreditCardType.INSTALLMENT) {
                 Text(
-                    text = if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_utilized_label) else stringResource(R.string.spent_label),
+                    text = stringResource(R.string.revolving_utilized_label),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -741,15 +1052,25 @@ fun CreditCardItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (onPayInstallment != null) {
+            if (onPayInstallment != null || onSetupPlan != null) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onPayInstallment,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.pay_installment))
+                if (onPayInstallment != null) {
+                    Button(
+                        onClick = onPayInstallment,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.pay_installment))
+                    }
+                }
+                if (onSetupPlan != null) {
+                    OutlinedButton(
+                        onClick = onSetupPlan,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.setup_installment_plan))
+                    }
                 }
             }
         }
@@ -903,6 +1224,532 @@ private fun CreditCardPaymentDialog(
             TextButton(onClick = onDismiss) { Text("Annulla") }
         },
     )
+}
+
+@Composable
+private fun CreditCardInstallmentPaymentDialog(
+    card: ActiveCreditCard,
+    plan: CreditCardInstallmentPlanEntity,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    locale: Locale,
+    onDismiss: () -> Unit,
+    onConfirm: (date: LocalDate) -> Unit,
+) {
+    val installmentAmount = plan.installmentAmount
+    val totalPayments = plan.installmentCount
+    val paidCount = plan.paidCount
+    val remainingPayments = totalPayments - paidCount
+    var dateText by remember { mutableStateOf(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Paga Rata ${card.name}") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Piano rateale — $paidCount/$totalPayments rate pagate",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Importo rata: $currencySymbol ${String.format(locale, "%.2f", installmentAmount)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Rate rimanenti: $remainingPayments",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Il plafond verrà ripristinato di $currencySymbol ${String.format(locale, "%.2f", installmentAmount)}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = dateText,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Data pagamento") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, "Seleziona data")
+                        }
+                    },
+                )
+                if (showDatePicker) {
+                    val datePickerState = rememberDatePickerState(
+                        initialSelectedDateMillis = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                    )
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                datePickerState.selectedDateMillis?.let { millis ->
+                                    dateText = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                }
+                                showDatePicker = false
+                            }) { Text("OK") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) { Text("Annulla") }
+                        },
+                    ) {
+                        DatePicker(state = datePickerState)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val date = try {
+                        LocalDate.parse(dateText, DateTimeFormatter.ISO_LOCAL_DATE)
+                    } catch (_: Exception) {
+                        return@TextButton
+                    }
+                    onConfirm(date)
+                },
+            ) { Text("Paga") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla") }
+        },
+    )
+}
+
+@Composable
+private fun InstallmentPlanSetupDialog(
+    card: ActiveCreditCard,
+    existingPlan: CreditCardInstallmentPlanEntity?,
+    currencySymbol: String,
+    locale: Locale,
+    totalUtilized: Double = 0.0,
+    onDismiss: () -> Unit,
+    onConfirm: (totalAmount: Double, installmentCount: Int, installmentAmount: Double, startDate: String) -> Unit,
+) {
+    var calcMode by remember { mutableStateOf("count") }
+    var countText by remember(existingPlan) { mutableStateOf((existingPlan?.installmentCount ?: 3).toString()) }
+    var amountText by remember(existingPlan) {
+        mutableStateOf(
+            if (existingPlan != null && existingPlan.totalAmount > 0) {
+                "%.0f".format(existingPlan.totalAmount)
+            } else {
+                "%.0f".format(totalUtilized)
+            },
+        )
+    }
+    var perInstallmentText by remember(existingPlan) {
+        mutableStateOf(
+            if (existingPlan?.installmentAmount != null && existingPlan.installmentAmount > 0) {
+                "%.0f".format(existingPlan.installmentAmount)
+            } else {
+                ""
+            },
+        )
+    }
+    var startDateText by remember {
+        mutableStateOf(
+            if (existingPlan != null) {
+                try {
+                    LocalDate.parse(existingPlan.startDate, DateTimeFormatter.ISO_LOCAL_DATE)
+                        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                } catch (_: Exception) {
+                    LocalDate.now().plusMonths(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                }
+            } else {
+                val paymentDay = card.paymentDay.coerceIn(1, 28)
+                LocalDate.now().plusMonths(1).withDayOfMonth(paymentDay).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+            },
+        )
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val totalAmount = amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
+    val count = countText.toIntOrNull() ?: 1
+    val perInstallment = if (calcMode == "count") {
+        if (count > 0) totalAmount / count else 0.0
+    } else {
+        perInstallmentText.replace(',', '.').toDoubleOrNull() ?: 0.0
+    }
+    val calculatedCount = if (calcMode == "amount" && perInstallment > 0) {
+        ceil(totalAmount / perInstallment).toInt()
+    } else {
+        count
+    }
+    val lastInstallment = if (calcMode == "amount" && perInstallment > 0) {
+        totalAmount - (perInstallment * (calculatedCount - 1))
+    } else if (calcMode == "count" && count > 0) {
+        totalAmount - (perInstallment * (count - 1))
+    } else {
+        perInstallment
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (existingPlan != null) "Modifica piano — ${card.name}" else "Nuovo piano — ${card.name}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Totale da rateizzare:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
+                    label = { Text("Importo totale") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(
+                        selected = calcMode == "count",
+                        onClick = { calcMode = "count" },
+                        label = { Text("N° rate") },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    FilterChip(
+                        selected = calcMode == "amount",
+                        onClick = { calcMode = "amount" },
+                        label = { Text("Importo rata") },
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                if (calcMode == "count") {
+                    OutlinedTextField(
+                        value = countText,
+                        onValueChange = { countText = it.filter { c -> c.isDigit() } },
+                        label = { Text("Numero rate") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (count > 0) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Importo rata: $currencySymbol ${String.format(locale, "%.2f", perInstallment)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (lastInstallment != perInstallment) {
+                            Text(
+                                "Ultima rata: $currencySymbol ${String.format(locale, "%.2f", lastInstallment)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = perInstallmentText,
+                        onValueChange = { perInstallmentText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
+                        label = { Text("Importo per rata") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (perInstallment > 0) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Rate: $calculatedCount",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (lastInstallment != perInstallment) {
+                            Text(
+                                "Ultima rata: $currencySymbol ${String.format(locale, "%.2f", lastInstallment)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = startDateText,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Data prima rata") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, "Seleziona data")
+                        }
+                    },
+                )
+                if (showDatePicker) {
+                    val dpState = rememberDatePickerState(
+                        initialSelectedDateMillis = try {
+                            LocalDate.parse(startDateText, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        } catch (_: Exception) {
+                            LocalDate.now().plusMonths(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        },
+                    )
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                dpState.selectedDateMillis?.let { millis ->
+                                    startDateText = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                                }
+                                showDatePicker = false
+                            }) { Text("OK") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) { Text("Annulla") }
+                        },
+                    ) {
+                        DatePicker(state = dpState)
+                    }
+                }
+                if (existingPlan != null && existingPlan.paidCount > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "${existingPlan.paidCount} rate già pagate — verranno preservate.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = totalAmount > 0 && calculatedCount > 0 && perInstallment > 0,
+                onClick = {
+                    val isoStartDate = try {
+                        LocalDate.parse(startDateText, DateTimeFormatter.ofPattern("dd/MM/yyyy")).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    } catch (_: Exception) {
+                        LocalDate.now().plusMonths(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    }
+                    onConfirm(
+                        totalAmount,
+                        calculatedCount,
+                        perInstallment,
+                        isoStartDate,
+                    )
+                    onDismiss()
+                },
+            ) { Text("Salva piano") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla") }
+        },
+    )
+}
+
+@Composable
+private fun AmexStatementCard(
+    cardName: String,
+    statement: AmexStatementEntity,
+    pagoFlexPlans: List<AmexPagoFlexPlanEntity>,
+    revolvingState: AmexRevolvingStateEntity?,
+    currencySymbol: String,
+    isAmountHidden: Boolean,
+    locale: Locale,
+    onSetPaymentMode: (AmexPaymentMode, Double) -> Unit,
+    onPay: (Double) -> Unit,
+    onClose: () -> Unit,
+) {
+    val summary = remember(statement, pagoFlexPlans, revolvingState) {
+        val useCase = com.expense.management.domain.usecase.CalculateAmexStatementUseCase()
+        useCase.execute(statement, pagoFlexPlans, revolvingState)
+    }
+    var showModeMenu by remember { mutableStateOf(false) }
+    var showPayDialog by remember { mutableStateOf(false) }
+    var customAmount by remember { mutableStateOf("") }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Amex $cardName — ${statement.statementMonth}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Totale spese: ${if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", summary.totalExpenses)}"}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (summary.totalPagoflex > 0.0) {
+                val pagoFlexCount = pagoFlexPlans.sumOf { it.installmentCount }
+                Text(
+                    "PagoFlex: $pagoFlexCount rate x $currencySymbol ${String.format(locale, "%.2f", summary.pagoflexQuota)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+            if (revolvingState != null && revolvingState.carriedForwardDebt > 0.0) {
+                Text(
+                    "Saldo portato: $currencySymbol ${String.format(locale, "%.2f", revolvingState.carriedForwardDebt)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (summary.paymentAmount > 0.0) {
+                Text(
+                    "Da pagare: $currencySymbol ${String.format(locale, "%.2f", summary.paymentAmount)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { showModeMenu = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        statement.paymentMode.let {
+                            @Suppress("UNUSED_EXPRESSION")
+                            when (it) {
+                                AmexPaymentMode.SALDO.name -> "Saldo"
+                                AmexPaymentMode.MINIMUM.name -> "Minimo"
+                                AmexPaymentMode.FIXED.name -> "Importo fisso"
+                                AmexPaymentMode.PAGOFLEX_ONLY.name -> "Solo PagoFlex"
+                                else -> "Saldo"
+                            }
+                        },
+                    )
+                }
+                OutlinedButton(
+                    onClick = { showPayDialog = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Paga")
+                }
+            }
+        }
+    }
+    if (showModeMenu) {
+        var selectedMode by remember { mutableStateOf(AmexPaymentMode.SALDO) }
+        AlertDialog(
+            onDismissRequest = { showModeMenu = false },
+            title = { Text("Modalità pagamento") },
+            text = {
+                Column {
+                    AmexPaymentMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = selectedMode == mode,
+                            onClick = { selectedMode = mode },
+                            label = {
+                                Text(
+                                    when (mode) {
+                                        AmexPaymentMode.SALDO -> "Saldo completo"
+                                        AmexPaymentMode.MINIMUM -> "Pagamento minimo"
+                                        AmexPaymentMode.FIXED -> "Importo fisso"
+                                        AmexPaymentMode.PAGOFLEX_ONLY -> "Solo PagoFlex"
+                                    },
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        )
+                    }
+                    if (selectedMode == AmexPaymentMode.FIXED) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = customAmount,
+                            onValueChange = { customAmount = it.filter { c -> c.isDigit() || c == '.' } },
+                            label = { Text("Importo") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val amount = if (selectedMode == AmexPaymentMode.FIXED) customAmount.toDoubleOrNull() ?: 0.0 else 0.0
+                    onSetPaymentMode(selectedMode, amount)
+                    showModeMenu = false
+                }) { Text("Conferma") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showModeMenu = false }) { Text("Annulla") }
+            },
+        )
+    }
+    if (showPayDialog) {
+        AlertDialog(
+            onDismissRequest = { showPayDialog = false },
+            title = { Text("Paga estratto conto") },
+            text = {
+                Column {
+                    Text("Importo da pagare: $currencySymbol ${String.format(locale, "%.2f", summary.paymentAmount)}")
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = customAmount,
+                        onValueChange = { customAmount = it.filter { c -> c.isDigit() || c == '.' } },
+                        label = { Text("Importo (lascia vuoto per il totale)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val amount = customAmount.toDoubleOrNull() ?: summary.paymentAmount
+                    onPay(amount)
+                    showPayDialog = false
+                }) { Text("Paga") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPayDialog = false }) { Text("Annulla") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun AmexStatementCardEmpty(
+    cardName: String,
+    currencySymbol: String,
+    onCreate: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                "Amex $cardName",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Nessun estratto conto aperto.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onCreate,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Crea estratto conto")
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true, name = "Dashboard Light")

@@ -80,6 +80,7 @@
     <string name="selected_widgets_count">%1$d di %2$d abilitati</string>
     <string name="widget_summary_cards">Carte Riepilogo</string>
     <string name="widget_credit_card_info">Info Carte di Credito</string>
+    <string name="widget_amex_info">Info Carte Amex</string>
     <string name="widget_bnpl_projections">Proiezioni BNPL</string>
     <string name="widget_transaction_list">Lista Transazioni</string>
     <string name="data_management">Gestione Dati</string>
@@ -361,6 +362,8 @@
     <string name="apply">Applica</string>
     <string name="discard">Scarta</string>
     <string name="pay_installment">Paga Rata</string>
+    <string name="setup_installment_plan">Imposta piano rateale</string>
+    <string name="edit_installment_plan">Modifica piano</string>
     <string name="top_up_method">Ricarica altro metodo</string>
     <string name="top_up_method_hint">Usa questa carta per trasferire fondi a Revolut o altri metodi ricaricabili</string>
     <string name="select_destination">Seleziona destinazione…</string>
@@ -368,6 +371,8 @@
     <string name="provider_cash">Contante</string>
     <string name="provider_credit_card_saldo">Carta di Credito (Saldo)</string>
     <string name="provider_credit_card_revolving">Carta di Credito (Revolving)</string>
+    <string name="provider_credit_card_installment">Carta di Credito (Rateale)</string>
+    <string name="provider_credit_card_amex">Carta di Credito (Amex)</string>
     <string name="provider_debit_card">Bancomat / Carta Ricaricabile</string>
     <string name="provider_revolut">Revolut</string>
     <string name="provider_satispay">Satispay</string>

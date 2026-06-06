@@ -91,6 +91,7 @@
     <string name="selected_widgets_count">%1$d of %2$d enabled</string>
     <string name="widget_summary_cards">Summary Cards</string>
     <string name="widget_credit_card_info">Credit Card Info</string>
+    <string name="widget_amex_info">Amex Card Info</string>
     <string name="widget_bnpl_projections">BNPL Projections</string>
     <string name="widget_transaction_list">Transaction List</string>
     <string name="data_management">Data Management</string>
@@ -361,6 +362,8 @@
     <string name="apply">Apply</string>
     <string name="discard">Discard</string>
     <string name="pay_installment">Pay Installment</string>
+    <string name="setup_installment_plan">Set up installment plan</string>
+    <string name="edit_installment_plan">Edit plan</string>
     <string name="top_up_method">Top-up another method</string>
     <string name="top_up_method_hint">Use this card to send funds to Revolut or other rechargeable methods</string>
     <string name="select_destination">Select destination…</string>
@@ -368,6 +371,8 @@
     <string name="provider_cash">Cash</string>
     <string name="provider_credit_card_saldo">Credit Card (Pay-in-full)</string>
     <string name="provider_credit_card_revolving">Credit Card (Revolving)</string>
+    <string name="provider_credit_card_installment">Credit Card (Installment)</string>
+    <string name="provider_credit_card_amex">Credit Card (Amex)</string>
     <string name="provider_debit_card">Debit Card / Prepaid</string>
     <string name="provider_revolut">Revolut</string>
     <string name="provider_satispay">Satispay</string>

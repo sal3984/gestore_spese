@@ -22,8 +22,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PaypalDetailEntity::class,
         KlarnaDetailEntity::class,
         DebitCardDetailEntity::class,
+        CreditCardInstallmentPlanEntity::class,
+        InstallmentScheduledPaymentEntity::class,
+        AmexStatementEntity::class,
+        AmexPagoFlexPlanEntity::class,
+        AmexRevolvingStateEntity::class,
     ],
-    version = 16,
+    version = 19,
     exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -37,6 +42,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun creditCardDao(): CreditCardDao
 
     abstract fun paymentMethodDao(): PaymentMethodDao
+
+    abstract fun amexDao(): AmexDao
 
     companion object {
         @Volatile
@@ -222,6 +229,164 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `credit_card_installment_plans` (
+                        `id` TEXT NOT NULL,
+                        `transactionId` TEXT NOT NULL,
+                        `paymentMethodId` TEXT NOT NULL,
+                        `totalAmount` REAL NOT NULL,
+                        `installmentCount` INTEGER NOT NULL,
+                        `installmentAmount` REAL NOT NULL,
+                        `paidCount` INTEGER NOT NULL,
+                        `startDate` TEXT NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`transactionId`) REFERENCES `transactions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """,
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_credit_card_installment_plans_transactionId` ON `credit_card_installment_plans` (`transactionId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_credit_card_installment_plans_paymentMethodId` ON `credit_card_installment_plans` (`paymentMethodId`)")
+            }
+        }
+
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `credit_card_installment_plans_new` (
+                        `id` TEXT NOT NULL,
+                        `paymentMethodId` TEXT NOT NULL,
+                        `totalAmount` REAL NOT NULL,
+                        `installmentCount` INTEGER NOT NULL,
+                        `installmentAmount` REAL NOT NULL,
+                        `paidCount` INTEGER NOT NULL,
+                        `startDate` TEXT NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `credit_card_installment_plans_new` (id, paymentMethodId, totalAmount, installmentCount, installmentAmount, paidCount, startDate)
+                    SELECT id, paymentMethodId, totalAmount, installmentCount, installmentAmount, paidCount, startDate FROM `credit_card_installment_plans`
+                """,
+                )
+                db.execSQL("DROP TABLE IF EXISTS `credit_card_installment_plans`")
+                db.execSQL("ALTER TABLE `credit_card_installment_plans_new` RENAME TO `credit_card_installment_plans`")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_credit_card_installment_plans_paymentMethodId` ON `credit_card_installment_plans` (`paymentMethodId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `installment_scheduled_payments` (
+                        `id` TEXT NOT NULL,
+                        `planId` TEXT NOT NULL,
+                        `dueDate` TEXT NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `status` TEXT NOT NULL DEFAULT 'PENDING',
+                        `expenseTransactionId` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`planId`) REFERENCES `credit_card_installment_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_installment_scheduled_payments_planId` ON `installment_scheduled_payments` (`planId`)")
+                val cursor = db.query("SELECT id, totalAmount, installmentCount, installmentAmount, paidCount, startDate FROM `credit_card_installment_plans`")
+                while (cursor.moveToNext()) {
+                    val planId = cursor.getString(0)
+                    val totalAmount = cursor.getDouble(1)
+                    val installmentCount = cursor.getInt(2)
+                    val installmentAmount = cursor.getDouble(3)
+                    val paidCount = cursor.getInt(4)
+                    val startDate = cursor.getString(5)
+                    val parts = startDate.split("-")
+                    val baseYear = parts[0].toIntOrNull() ?: 2024
+                    val baseMonth = parts[1].toIntOrNull() ?: 1
+                    val baseDay = (parts[2].toIntOrNull() ?: 1).coerceIn(1, 28)
+                    for (i in paidCount until installmentCount) {
+                        val paymentId = "migrated_${planId}_$i"
+                        val monthOffset = i - paidCount
+                        var year = baseYear + (baseMonth - 1 + monthOffset) / 12
+                        var month = ((baseMonth - 1 + monthOffset) % 12) + 1
+                        val day = baseDay.coerceAtMost(28)
+                        val ym = "%04d-%02d".format(year, month)
+                        val dueDate = "$ym-${"%02d".format(day)}"
+                        val remaining = totalAmount - (installmentAmount * (installmentCount - paidCount))
+                        val amount = if (i == installmentCount - 1 && remaining != installmentAmount) {
+                            remaining
+                        } else {
+                            installmentAmount
+                        }
+                        db.execSQL("INSERT INTO `installment_scheduled_payments` (`id`, `planId`, `dueDate`, `amount`, `status`) VALUES ('$paymentId', '$planId', '$dueDate', $amount, 'PENDING')")
+                    }
+                }
+                cursor.close()
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `amex_statements` (
+                        `id` TEXT NOT NULL,
+                        `paymentMethodId` TEXT NOT NULL,
+                        `statementMonth` TEXT NOT NULL,
+                        `totalExpenses` REAL NOT NULL DEFAULT 0,
+                        `totalPagoflex` REAL NOT NULL DEFAULT 0,
+                        `revolvingBalance` REAL NOT NULL DEFAULT 0,
+                        `paymentMode` TEXT NOT NULL,
+                        `paymentAmount` REAL NOT NULL DEFAULT 0,
+                        `closingDate` TEXT NOT NULL,
+                        `paymentDueDate` TEXT NOT NULL,
+                        `isClosed` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_amex_statements_paymentMethodId_statementMonth` ON `amex_statements` (`paymentMethodId`, `statementMonth`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `amex_pagoflex_plans` (
+                        `id` TEXT NOT NULL,
+                        `statementId` TEXT NOT NULL,
+                        `transactionId` TEXT NOT NULL,
+                        `totalAmount` REAL NOT NULL,
+                        `installmentCount` INTEGER NOT NULL,
+                        `installmentAmount` REAL NOT NULL,
+                        `paidCount` INTEGER NOT NULL,
+                        `startDate` TEXT NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`statementId`) REFERENCES `amex_statements`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`transactionId`) REFERENCES `transactions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_amex_pagoflex_plans_statementId` ON `amex_pagoflex_plans` (`statementId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_amex_pagoflex_plans_transactionId` ON `amex_pagoflex_plans` (`transactionId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `amex_revolving_balances` (
+                        `id` TEXT NOT NULL,
+                        `statementId` TEXT NOT NULL,
+                        `carriedForwardDebt` REAL NOT NULL,
+                        `interestCharged` REAL NOT NULL DEFAULT 0,
+                        `interestRate` REAL NOT NULL DEFAULT 0,
+                        `userPaymentChoice` TEXT NOT NULL,
+                        `paymentAmount` REAL NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`statementId`) REFERENCES `amex_statements`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_amex_revolving_balances_statementId` ON `amex_revolving_balances` (`statementId`)")
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -267,7 +432,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                 if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     builder.fallbackToDestructiveMigration(dropAllTables = true)
                 }

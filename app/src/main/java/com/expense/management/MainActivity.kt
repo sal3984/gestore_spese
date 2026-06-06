@@ -75,6 +75,7 @@ fun mainApp() {
             db.currencyDao(),
             db.creditCardDao(),
             db.paymentMethodDao(),
+            db.amexDao(),
         )
     }
     val sharedCurrencyUtils = remember {
@@ -133,6 +134,13 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val defaultPaymentMethodId by viewModel.defaultPaymentMethodId.collectAsStateWithLifecycle()
     val dashboardFilteredTransactions by viewModel.dashboardFilteredTransactions.collectAsStateWithLifecycle()
     val creditCardSummaries by viewModel.creditCardSummaries.collectAsStateWithLifecycle()
+    val installmentPlans by viewModel.allInstallmentPlans.collectAsStateWithLifecycle()
+    val scheduledPayments by viewModel.allScheduledPayments.collectAsStateWithLifecycle()
+    val amexStatements by viewModel.allAmexStatements.collectAsStateWithLifecycle()
+    val amexPagoFlexPlans by viewModel.allAmexPagoFlexPlans.collectAsStateWithLifecycle()
+    val amexRevolvingStates by viewModel.allAmexRevolvingStates.collectAsStateWithLifecycle()
+    val amexProjections by viewModel.amexDashboardProjections.collectAsStateWithLifecycle()
+    val isAmexAutoPayEnabled by viewModel.isAmexAutoPayEnabled.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
 
     val restoreLauncher =
@@ -286,6 +294,14 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         defaultPaymentMethodId = defaultPaymentMethodId,
                         dashboardFilteredTransactions = dashboardFilteredTransactions,
                         creditCardSummaries = creditCardSummaries,
+                        installmentPlans = installmentPlans,
+                        scheduledPayments = scheduledPayments,
+                        amexStatements = amexStatements,
+                        amexPagoFlexPlans = amexPagoFlexPlans,
+                        amexRevolvingStates = amexRevolvingStates,
+                        amexProjections = amexProjections,
+                        isAmexAutoPayEnabled = isAmexAutoPayEnabled,
+                        onToggleAmexAutoPay = viewModel::toggleAmexAutoPay,
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
                         onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },

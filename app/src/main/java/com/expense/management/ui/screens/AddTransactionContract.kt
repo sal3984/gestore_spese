@@ -33,6 +33,8 @@ data class AddTransactionUiState(
     val showInstallmentDatePicker: Boolean = false,
     val showPreviousMonthAlert: Boolean = false,
     val applyCcDelayToInstallments: Boolean = true,
+    val isPagoFlex: Boolean = false,
+    val pagoFlexInstallments: Int = 3,
     val ignoreDateWarning: Boolean = false,
     val isTopUp: Boolean = false,
     val topUpDestinationId: String? = null,
@@ -66,6 +68,8 @@ sealed interface AddTransactionEvent {
     data class OnShowInstallmentDatePicker(val show: Boolean) : AddTransactionEvent
     data class OnShowPreviousMonthAlert(val show: Boolean) : AddTransactionEvent
     data class OnApplyCcDelayChange(val apply: Boolean) : AddTransactionEvent
+    data class OnIsPagoFlexChange(val isPagoFlex: Boolean) : AddTransactionEvent
+    data class OnPagoFlexInstallmentsChange(val count: Int) : AddTransactionEvent
     data class OnIgnoreDateWarningChange(val ignore: Boolean) : AddTransactionEvent
     data object OnSave : AddTransactionEvent
     data class OnDelete(val transactionId: String, val deleteType: DeleteType) : AddTransactionEvent

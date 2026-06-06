@@ -23,9 +23,10 @@ class GenerateCreditCardPaymentUseCase {
         val incomeCategoryId = categories.find { it.id == "credit_card_adjustment" }?.id
             ?: categories.firstOrNull { it.type == TransactionType.INCOME }?.id
             ?: "other"
-        val isRevolving = card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING
-        val paymentLabel = if (isRevolving) "Rata" else "Addebito"
-        val restorationLabel = if (isRevolving) "Ripristino plafond" else "Ripristino plafond"
+        val isInstallment = card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING ||
+            card.cardType == com.expense.management.domain.model.CreditCardType.INSTALLMENT
+        val paymentLabel = if (isInstallment) "Rata" else "Addebito"
+        val restorationLabel = "Ripristino plafond"
 
         val baseId = UUID.randomUUID().toString()
         val bankDebit = TransactionEntity(
