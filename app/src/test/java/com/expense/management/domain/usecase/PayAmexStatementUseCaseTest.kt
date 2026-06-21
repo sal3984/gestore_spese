@@ -40,14 +40,15 @@ class PayAmexStatementUseCaseTest {
         assertEquals("Pagamento Amex 2024-06", result.paymentTransaction?.description)
         assertEquals(TransactionType.EXPENSE, result.paymentTransaction?.type)
         assertEquals(1200.0, result.paymentTransaction?.amount)
-        assertEquals("Rimborso Amex 2024-06", result.incomeTransaction.description)
-        assertEquals(TransactionType.INCOME, result.incomeTransaction.type)
-        assertEquals(1200.0, result.incomeTransaction.amount)
+        assertNotNull(result.incomeTransaction)
+        assertEquals("Rimborso Amex 2024-06", result.incomeTransaction?.description)
+        assertEquals(TransactionType.INCOME, result.incomeTransaction?.type)
+        assertEquals(1200.0, result.incomeTransaction?.amount)
         assertEquals(0, result.paymentsToMarkPaid.size)
     }
 
     @Test
-    fun `payment with installment plan creates only income transaction and marks pending payments paid`() {
+    fun `payment with installment plan creates no cash flow transaction and marks pending payments paid`() {
         val useCase = PayAmexStatementUseCase()
         val plan = AmexPagoFlexPlanEntity(
             id = "plan1",
@@ -95,9 +96,7 @@ class PayAmexStatementUseCaseTest {
         )
 
         assertNull(result.paymentTransaction)
-        assertEquals("Rimborso Amex 2024-06", result.incomeTransaction.description)
-        assertEquals(TransactionType.INCOME, result.incomeTransaction.type)
-        assertEquals(1200.0, result.incomeTransaction.amount)
+        assertNull(result.incomeTransaction)
         assertEquals(2, result.paymentsToMarkPaid.size)
         assertEquals(listOf("p1", "p2"), result.paymentsToMarkPaid.map { it.id })
     }

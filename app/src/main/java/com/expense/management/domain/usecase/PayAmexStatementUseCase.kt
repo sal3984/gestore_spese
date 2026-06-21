@@ -33,18 +33,22 @@ class PayAmexStatementUseCase {
         } else {
             null
         }
-        val incomeTransaction = TransactionEntity(
-            id = UUID.randomUUID().toString(),
-            date = paymentDate,
-            description = "Rimborso Amex ${statement.statementMonth}",
-            amount = amount,
-            categoryId = "credit_card_adjustment",
-            type = TransactionType.INCOME,
-            isCreditCard = false,
-            originalAmount = amount,
-            originalCurrency = "€",
-            effectiveDate = paymentDate,
-        )
+        val incomeTransaction = if (!hasInstallmentPlan) {
+            TransactionEntity(
+                id = UUID.randomUUID().toString(),
+                date = paymentDate,
+                description = "Rimborso Amex ${statement.statementMonth}",
+                amount = amount,
+                categoryId = "credit_card_adjustment",
+                type = TransactionType.INCOME,
+                isCreditCard = false,
+                originalAmount = amount,
+                originalCurrency = "€",
+                effectiveDate = paymentDate,
+            )
+        } else {
+            null
+        }
         val paymentsToMarkPaid = if (hasInstallmentPlan) {
             val planIds = plans.map { it.id }.toSet()
             scheduledPayments.filter { it.planId in planIds && it.status == "PENDING" }
@@ -60,7 +64,7 @@ class PayAmexStatementUseCase {
 
     data class AmexPaymentResult(
         val paymentTransaction: TransactionEntity?,
-        val incomeTransaction: TransactionEntity,
+        val incomeTransaction: TransactionEntity?,
         val paymentsToMarkPaid: List<AmexPagoFlexScheduledPaymentEntity>,
     )
 }

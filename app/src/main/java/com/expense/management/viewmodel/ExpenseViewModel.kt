@@ -204,21 +204,34 @@ class ExpenseViewModel(
                 .filter {
                     it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
                         it.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
-                        it.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT
+                        it.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
+                        it.provider == PaymentProvider.CREDIT_CARD_AMEX
                 }
                 .mapNotNull { method ->
                     val detail = details.find { it.paymentMethodId == method.id }
                     val provider = method.provider
-                    detail?.let {
+                    if (provider == PaymentProvider.CREDIT_CARD_AMEX) {
                         ActiveCreditCard(
                             id = method.id,
                             name = method.name,
                             provider = provider,
-                            cardType = CreditCardType.safeValueOf(it.cardType) ?: return@mapNotNull null,
-                            limit = it.limit,
-                            closingDay = it.closingDay,
-                            paymentDay = it.paymentDay,
+                            cardType = detail?.let { CreditCardType.safeValueOf(it.cardType) } ?: CreditCardType.AMEX_HYBRID,
+                            limit = detail?.limit ?: 0.0,
+                            closingDay = detail?.closingDay ?: 0,
+                            paymentDay = detail?.paymentDay ?: 0,
                         )
+                    } else {
+                        detail?.let {
+                            ActiveCreditCard(
+                                id = method.id,
+                                name = method.name,
+                                provider = provider,
+                                cardType = CreditCardType.safeValueOf(it.cardType) ?: return@mapNotNull null,
+                                limit = it.limit,
+                                closingDay = it.closingDay,
+                                paymentDay = it.paymentDay,
+                            )
+                        }
                     }
                 }
             val existingIds = newCards.map { it.id }.toSet()
@@ -254,66 +267,6 @@ class ExpenseViewModel(
         }.sortedByDescending { it.effectiveDate }
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val creditCardSummaries: StateFlow<Map<String, CreditCardSummary>> = combine(
-        allTransactions,
-        activeCreditCards,
-        _currentDashboardMonth,
-    ) { tx, cards, month ->
-        cards.associate { card ->
-            card.id to when (card.cardType) {
-                CreditCardType.REVOLVING,
-                CreditCardType.INSTALLMENT,
-                CreditCardType.AMEX_HYBRID,
-                -> {
-                    val cardTx = tx.filter {
-                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
-                    }
-                    val totalUtilized = cardTx
-                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val totalRepaid = cardTx
-                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val displayed = totalUtilized - totalRepaid
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = displayed,
-                        totalUtilized = totalUtilized,
-                        totalPaid = 0.0,
-                        totalRepaid = totalRepaid,
-                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
-                    )
-                }
-                CreditCardType.SALDO -> {
-                    val spent = tx
-                        .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
-                        .filter { t ->
-                            try {
-                                YearMonth.from(LocalDate.parse(t.effectiveDate)) == month
-                            } catch (_: Exception) {
-                                false
-                            }
-                        }
-                        .sumOf { it.amount }
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = spent,
-                        totalUtilized = spent,
-                        totalPaid = 0.0,
-                        progress = if (card.limit > 0) (spent / card.limit).toFloat() else 0f,
-                    )
-                }
-            }
-        }
-    }.flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     // --- STATO IMPOSTAZIONI ---
     private val _currency = MutableStateFlow(prefs?.getString(KEY_CURRENCY, "€") ?: "€")
@@ -491,6 +444,104 @@ class ExpenseViewModel(
         )
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val amexPendingByCard: StateFlow<Map<String, Double>> = combine(
+        allAmexStatements,
+        allAmexPagoFlexPlans,
+        allAmexScheduledPayments,
+    ) { statements, plans, payments ->
+        val statementIdsByCard = statements
+            .groupBy { it.paymentMethodId }
+            .mapValues { it.value.map { s -> s.id }.toSet() }
+        statementIdsByCard.mapValues { (_, statementIds) ->
+            plans
+                .filter { it.statementId in statementIds }
+                .flatMap { plan -> payments.filter { it.planId == plan.id && it.status == "PENDING" } }
+                .sumOf { it.amount }
+        }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val creditCardSummaries: StateFlow<Map<String, CreditCardSummary>> = combine(
+        allTransactions,
+        activeCreditCards,
+        _currentDashboardMonth,
+        amexPendingByCard,
+    ) { tx, cards, month, pendingByCard ->
+        cards.associate { card ->
+            card.id to when (card.cardType) {
+                CreditCardType.REVOLVING,
+                CreditCardType.INSTALLMENT,
+                -> {
+                    val cardTx = tx.filter {
+                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
+                    }
+                    val totalUtilized = cardTx
+                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
+                        .sumOf { it.amount }
+                    val totalRepaid = cardTx
+                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
+                        .sumOf { it.amount }
+                    val displayed = totalUtilized - totalRepaid
+                    CreditCardSummary(
+                        cardId = card.id,
+                        name = card.name,
+                        limit = card.limit,
+                        cardType = card.cardType,
+                        displayedSpent = displayed,
+                        totalUtilized = totalUtilized,
+                        totalPaid = 0.0,
+                        totalRepaid = totalRepaid,
+                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
+                    )
+                }
+                CreditCardType.AMEX_HYBRID -> {
+                    val cardTx = tx.filter {
+                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
+                    }
+                    val totalUtilized = cardTx
+                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
+                        .sumOf { it.amount }
+                    val pendingAmount = pendingByCard[card.id] ?: 0.0
+                    val totalRepaid = (totalUtilized - pendingAmount).coerceAtLeast(0.0)
+                    CreditCardSummary(
+                        cardId = card.id,
+                        name = card.name,
+                        limit = card.limit,
+                        cardType = card.cardType,
+                        displayedSpent = pendingAmount,
+                        totalUtilized = totalUtilized,
+                        totalPaid = totalRepaid,
+                        totalRepaid = totalRepaid,
+                        progress = if (card.limit > 0) (pendingAmount / card.limit).toFloat() else 0f,
+                    )
+                }
+                CreditCardType.SALDO -> {
+                    val spent = tx
+                        .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
+                        .filter { t ->
+                            try {
+                                YearMonth.from(LocalDate.parse(t.effectiveDate)) == month
+                            } catch (_: Exception) {
+                                false
+                            }
+                        }
+                        .sumOf { it.amount }
+                    CreditCardSummary(
+                        cardId = card.id,
+                        name = card.name,
+                        limit = card.limit,
+                        cardType = card.cardType,
+                        displayedSpent = spent,
+                        totalUtilized = spent,
+                        totalPaid = 0.0,
+                        progress = if (card.limit > 0) (spent / card.limit).toFloat() else 0f,
+                    )
+                }
+            }
+        }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _isAmexAutoPayEnabled = MutableStateFlow(
         prefs?.getBoolean(KEY_AMEX_AUTO_PAY, true) ?: true,
@@ -709,9 +760,11 @@ class ExpenseViewModel(
             val scheduledPayments = statementPlans.flatMap { repository.getAmexScheduledPaymentsForPlan(it.id) }
             val result = PayAmexStatementUseCase().execute(statement, amount, paymentDate, statementPlans, scheduledPayments)
             result.paymentTransaction?.let { repository.insertTransaction(it) }
-            repository.insertTransaction(result.incomeTransaction)
-            result.paymentsToMarkPaid.forEach { payment ->
-                repository.markAmexScheduledPaymentAsPaid(payment.id, result.incomeTransaction.id)
+            result.incomeTransaction?.let { incomeTx ->
+                repository.insertTransaction(incomeTx)
+                result.paymentsToMarkPaid.forEach { payment ->
+                    repository.markAmexScheduledPaymentAsPaid(payment.id, incomeTx.id)
+                }
             }
             repository.closeAmexStatement(statement.id)
         }
@@ -738,9 +791,11 @@ class ExpenseViewModel(
                 }
                 val result = PayAmexStatementUseCase().execute(due.statement, due.paymentAmount, today, statementPlans, scheduledPayments)
                 result.paymentTransaction?.let { repository.insertTransaction(it) }
-                repository.insertTransaction(result.incomeTransaction)
-                result.paymentsToMarkPaid.forEach { payment ->
-                    repository.markAmexScheduledPaymentAsPaid(payment.id, result.incomeTransaction.id)
+                result.incomeTransaction?.let { incomeTx ->
+                    repository.insertTransaction(incomeTx)
+                    result.paymentsToMarkPaid.forEach { payment ->
+                        repository.markAmexScheduledPaymentAsPaid(payment.id, incomeTx.id)
+                    }
                 }
                 repository.closeAmexStatement(due.statement.id)
             }
@@ -794,7 +849,8 @@ class ExpenseViewModel(
             if (
                 paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO ||
                 paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
+                paymentMethod.provider == PaymentProvider.CREDIT_CARD_AMEX
             ) {
                 repository.insertCreditCardDetail(
                     CreditCardDetailEntity(
