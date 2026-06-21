@@ -224,7 +224,7 @@ class AmexInstallmentUseCaseTest {
     }
 
     @Test
-    fun `calculate outflow sums only pending target month payments`() {
+    fun `calculate outflow sums all target month scheduled payments regardless of status`() {
         val payments = listOf(
             com.expense.management.data.AmexPagoFlexScheduledPaymentEntity(
                 id = "p1",
@@ -253,8 +253,8 @@ class AmexInstallmentUseCaseTest {
         )
         val useCase = CalculateAmexCurrentAccountOutflowUseCase()
 
-        val outflow = useCase.execute("2024-06", payments, emptyList())
+        val outflow = useCase.execute("2024-06", payments)
 
-        assertEquals(100.0, outflow, 0.01)
+        assertEquals(200.0, outflow, 0.01)
     }
 }

@@ -19,8 +19,6 @@ class CalculateAmexDashboardProjectionsUseCase {
         allRevolvingStates: List<AmexRevolvingStateEntity>,
     ): List<AmexDashboardProjection> {
         val amexMethods = allPaymentMethods.filter { it.provider.name == "CREDIT_CARD_AMEX" }
-        val plansByStatement = allPagoFlexPlans.groupBy { it.statementId }
-        val revolvingByStatement = allRevolvingStates.associateBy { it.statementId }
         val targetStr = targetMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"))
         val today = LocalDate.now()
 
@@ -30,45 +28,45 @@ class CalculateAmexDashboardProjectionsUseCase {
                 .sortedByDescending { it.statementMonth }
             val openStatement = cardStatements.firstOrNull { !it.isClosed }
             val hasOpenStatement = openStatement != null
+            val cardStatementIds = cardStatements.map { it.id }.toSet()
+            val cardPlans = allPagoFlexPlans.filter { it.statementId in cardStatementIds }
 
-            val pagoflexQuotaTotal = plansByStatement.flatMap { (_, plans) ->
-                plans.filter { plan ->
+            val pagoflexQuotaTotal = cardPlans
+                .filter { plan ->
                     val startMonth = try {
                         YearMonth.parse(plan.startDate.substring(0, 7))
                     } catch (_: Exception) {
                         null
                     }
                     startMonth != null && startMonth <= targetMonth
-                }
-            }.sumOf { plan ->
-                val startMonth = try {
-                    YearMonth.parse(plan.startDate.substring(0, 7))
-                } catch (_: Exception) {
-                    null
-                }
-                if (startMonth != null) {
-                    val monthsElapsed = YearMonth.from(targetMonth.atDay(1)).let { tm ->
-                        (tm.year - startMonth.year) * 12 + (tm.monthValue - startMonth.monthValue)
-                    }
-                    val effectivePaid = monthsElapsed + 1
-                    if (effectivePaid <= plan.installmentCount && effectivePaid > 0) {
-                        plan.installmentAmount
-                    } else {
-                        0.0
-                    }
-                } else {
-                    0.0
-                }
-            }
-            val pagoflexPlanCount = plansByStatement.flatMap { (_, plans) -> plans }
-                .count { plan ->
+                }.sumOf { plan ->
                     val startMonth = try {
                         YearMonth.parse(plan.startDate.substring(0, 7))
                     } catch (_: Exception) {
                         null
                     }
-                    startMonth != null && !startMonth.isAfter(targetMonth)
+                    if (startMonth != null) {
+                        val monthsElapsed = YearMonth.from(targetMonth.atDay(1)).let { tm ->
+                            (tm.year - startMonth.year) * 12 + (tm.monthValue - startMonth.monthValue)
+                        }
+                        val effectivePaid = monthsElapsed + 1
+                        if (effectivePaid <= plan.installmentCount && effectivePaid > 0) {
+                            plan.installmentAmount
+                        } else {
+                            0.0
+                        }
+                    } else {
+                        0.0
+                    }
                 }
+            val pagoflexPlanCount = cardPlans.count { plan ->
+                val startMonth = try {
+                    YearMonth.parse(plan.startDate.substring(0, 7))
+                } catch (_: Exception) {
+                    null
+                }
+                startMonth != null && !startMonth.isAfter(targetMonth)
+            }
 
             val dueAmount = if (openStatement != null) {
                 val dueDate = try {

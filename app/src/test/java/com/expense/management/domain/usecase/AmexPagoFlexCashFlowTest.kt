@@ -115,8 +115,11 @@ class AmexPagoFlexCashFlowTest {
             scheduledPayments = installments,
         )
 
-        assertNull(payResult.paymentTransaction)
         assertNull(payResult.incomeTransaction)
-        assertEquals(6, payResult.paymentsToMarkPaid.size)
+        assertEquals(1, payResult.paidInstallments.size)
+        assertEquals(1, payResult.paymentTransactions.size)
+        val paidTx = payResult.paymentTransactions.first()
+        assertEquals(TransactionType.EXPENSE, paidTx.type)
+        assertTrue(!paidTx.isCreditCard)
     }
 }

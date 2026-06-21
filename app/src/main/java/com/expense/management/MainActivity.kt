@@ -67,22 +67,19 @@ class MainActivity : FragmentActivity() {
 @Composable
 fun mainApp() {
     val context = LocalContext.current.applicationContext
+    val sharedDb = remember { AppDatabase.getDatabase(context) }
     val sharedRepository = remember {
-        val db = AppDatabase.getDatabase(context)
         ExpenseRepository(
-            db.transactionDao(),
-            db.categoryDao(),
-            db.currencyDao(),
-            db.creditCardDao(),
-            db.paymentMethodDao(),
-            db.amexDao(),
+            sharedDb.transactionDao(),
+            sharedDb.categoryDao(),
+            sharedDb.currencyDao(),
+            sharedDb.creditCardDao(),
+            sharedDb.paymentMethodDao(),
+            sharedDb.amexDao(),
         )
     }
-    val sharedCurrencyUtils = remember {
-        val db = AppDatabase.getDatabase(context)
-        CurrencyUtils(db.currencyDao())
-    }
-    val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context))
+    val sharedCurrencyUtils = remember { CurrencyUtils(sharedDb.currencyDao()) }
+    val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context, sharedRepository, sharedCurrencyUtils))
     val creditCardViewModel: CreditCardViewModel = viewModel(factory = CreditCardViewModelFactory(sharedRepository, sharedCurrencyUtils))
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isDarkTheme = when (themeMode) {
@@ -145,6 +142,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val isAmexAutoPayEnabled by viewModel.isAmexAutoPayEnabled.collectAsStateWithLifecycle()
     val amexScheduledPayments by viewModel.allAmexScheduledPayments.collectAsStateWithLifecycle()
     val amexCurrentAccountOutflow by viewModel.amexCurrentAccountOutflow.collectAsStateWithLifecycle()
+    val amexStatementSummaries by viewModel.amexStatementSummaries.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
 
     val restoreLauncher =
@@ -308,6 +306,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         onToggleAmexAutoPay = viewModel::toggleAmexAutoPay,
                         amexScheduledPayments = amexScheduledPayments,
                         amexCurrentAccountOutflow = amexCurrentAccountOutflow,
+                        amexStatementSummaries = amexStatementSummaries,
                         currentAccountIncomeForMonth = currentAccountIncomeForMonth,
                         currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
                         onEditAmexInstallment = { planId, strategy ->

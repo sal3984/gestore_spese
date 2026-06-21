@@ -317,7 +317,7 @@ abstract class AppDatabase : RoomDatabase() {
                         val day = baseDay.coerceAtMost(28)
                         val ym = "%04d-%02d".format(year, month)
                         val dueDate = "$ym-${"%02d".format(day)}"
-                        val remaining = totalAmount - (installmentAmount * (installmentCount - paidCount))
+                        val remaining = totalAmount - (installmentAmount * (installmentCount - 1))
                         val amount = if (i == installmentCount - 1 && remaining != installmentAmount) {
                             remaining
                         } else {

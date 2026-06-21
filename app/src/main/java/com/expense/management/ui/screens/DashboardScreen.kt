@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +29,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -58,6 +61,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -76,6 +80,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -96,6 +104,7 @@ import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexDashboardProjection
 import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexPaymentMode
+import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
@@ -157,6 +166,7 @@ fun DashboardScreen(
     onToggleAmexAutoPay: (Boolean) -> Unit = {},
     amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
     amexCurrentAccountOutflow: Double = 0.0,
+    amexStatementSummaries: Map<String, AmexStatementSummary> = emptyMap(),
     currentAccountIncomeForMonth: Double = 0.0,
     currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
@@ -327,6 +337,10 @@ fun DashboardScreen(
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.semantics {
+                                liveRegion = LiveRegionMode.Polite
+                                contentDescription = "Saldo mensile $currencySymbol ${if (isAmountHidden) "nascosto" else String.format(locale, "%.2f", netBalance)}"
+                            },
                         )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -348,7 +362,7 @@ fun DashboardScreen(
                             // Card Entrate/Uscite
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                                 shape = RoundedCornerShape(24.dp),
@@ -647,7 +661,10 @@ fun DashboardScreen(
                                                 .padding(2.dp)
                                                 .clip(CircleShape)
                                                 .background(color)
-                                                .size(8.dp),
+                                                .size(8.dp)
+                                                .semantics {
+                                                    contentDescription = "Pagina ${iteration + 1} di ${pagerState.pageCount}"
+                                                },
                                         )
                                     }
                                 }
@@ -664,27 +681,26 @@ fun DashboardScreen(
                             val pagoFlexByStatement = remember(amexPagoFlexPlans) {
                                 amexPagoFlexPlans.groupBy { it.statementId }
                             }
-                            val revolvingByStatement = remember(amexRevolvingStates) {
-                                amexRevolvingStates.associateBy { it.statementId }
-                            }
                             amexPaymentMethods.forEach { method ->
                                 val cardStatements = amexByCard[method.id].orEmpty().sortedByDescending { it.statementMonth }
                                 if (cardStatements.isNotEmpty()) {
                                     cardStatements.forEach { statement ->
                                         val pagoFlexPlans = pagoFlexByStatement[statement.id].orEmpty()
-                                        val revolvingState = revolvingByStatement[statement.id]
-                                        AmexStatementCard(
-                                            cardName = method.name,
-                                            statement = statement,
-                                            pagoFlexPlans = pagoFlexPlans,
-                                            revolvingState = revolvingState,
-                                            currencySymbol = currencySymbol,
-                                            isAmountHidden = isAmountHidden,
-                                            locale = locale,
-                                            onSetPaymentMode = { mode, amount -> onSetAmexPaymentMode(statement.id, mode, amount) },
-                                            onPay = { amount -> onPayAmexStatement(statement, amount) },
-                                            onClose = { onCreateAmexStatement(method.id, statement.statementMonth, statement.closingDate, statement.paymentDueDate) },
-                                        )
+                                        val summary = amexStatementSummaries[statement.id]
+                                        if (summary != null) {
+                                            AmexStatementCard(
+                                                cardName = method.name,
+                                                statement = statement,
+                                                summary = summary,
+                                                pagoFlexPlans = pagoFlexPlans,
+                                                currencySymbol = currencySymbol,
+                                                isAmountHidden = isAmountHidden,
+                                                locale = locale,
+                                                onSetPaymentMode = { mode, amount -> onSetAmexPaymentMode(statement.id, mode, amount) },
+                                                onPay = { amount -> onPayAmexStatement(statement, amount) },
+                                                onClose = { onCreateAmexStatement(method.id, statement.statementMonth, statement.closingDate, statement.paymentDueDate) },
+                                            )
+                                        }
                                     }
                                 } else {
                                     AmexStatementCardEmpty(
@@ -740,7 +756,13 @@ fun DashboardScreen(
                             Spacer(Modifier.height(8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                                    .heightIn(min = 48.dp)
+                                    .toggleable(
+                                        value = isAmexAutoPayEnabled,
+                                        role = androidx.compose.ui.semantics.Role.Switch,
+                                        onValueChange = onToggleAmexAutoPay,
+                                    ),
                             ) {
                                 Text(
                                     "Pagamento automatico Amex",
@@ -750,14 +772,16 @@ fun DashboardScreen(
                                 Spacer(Modifier.weight(1f))
                                 androidx.compose.material3.Switch(
                                     checked = isAmexAutoPayEnabled,
-                                    onCheckedChange = onToggleAmexAutoPay,
+                                    onCheckedChange = null,
                                 )
                             }
-                            if (amexCurrentAccountOutflow > 0.0) {
+                            val amexMonthPrefix = currentDashboardMonth.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+                            if (amexScheduledPayments.any { it.dueDate.startsWith(amexMonthPrefix) }) {
                                 AmexInstallmentCard(
                                     outflowAmount = amexCurrentAccountOutflow,
                                     scheduledPayments = amexScheduledPayments,
                                     plans = amexPagoFlexPlans,
+                                    selectedMonth = currentDashboardMonth,
                                     currencySymbol = currencySymbol,
                                     locale = locale,
                                     isAmountHidden = isAmountHidden,
@@ -778,6 +802,7 @@ fun DashboardScreen(
                             }
                             AmexInstallmentSetupDialog(
                                 totalAmount = plan.totalAmount,
+                                currencySymbol = currencySymbol,
                                 initialStrategy = initialStrategy,
                                 onConfirm = { strategy ->
                                     statement?.let { onEditAmexInstallment(plan.id, strategy) }
@@ -1081,7 +1106,8 @@ fun CreditCardItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
+                    .clip(RoundedCornerShape(4.dp))
+                    .semantics { contentDescription = "Utilizzato ${(progress * 100).toInt()}% del plafond" },
                 color = if (progress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
@@ -1600,8 +1626,8 @@ private fun InstallmentPlanSetupDialog(
 private fun AmexStatementCard(
     cardName: String,
     statement: AmexStatementEntity,
+    summary: AmexStatementSummary,
     pagoFlexPlans: List<AmexPagoFlexPlanEntity>,
-    revolvingState: AmexRevolvingStateEntity?,
     currencySymbol: String,
     isAmountHidden: Boolean,
     locale: Locale,
@@ -1609,13 +1635,10 @@ private fun AmexStatementCard(
     onPay: (Double) -> Unit,
     onClose: () -> Unit,
 ) {
-    val summary = remember(statement, pagoFlexPlans, revolvingState) {
-        val useCase = com.expense.management.domain.usecase.CalculateAmexStatementUseCase()
-        useCase.execute(statement, pagoFlexPlans, revolvingState)
-    }
     var showModeMenu by remember { mutableStateOf(false) }
     var showPayDialog by remember { mutableStateOf(false) }
     var customAmount by remember { mutableStateOf("") }
+    var selectedMode by remember { mutableStateOf(AmexPaymentMode.SALDO) }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -1647,9 +1670,9 @@ private fun AmexStatementCard(
                     color = MaterialTheme.colorScheme.secondary,
                 )
             }
-            if (revolvingState != null && revolvingState.carriedForwardDebt > 0.0) {
+            if (summary.carriedForward > 0.0) {
                 Text(
-                    "Saldo portato: $currencySymbol ${String.format(locale, "%.2f", revolvingState.carriedForwardDebt)}",
+                    "Saldo portato: $currencySymbol ${String.format(locale, "%.2f", summary.carriedForward)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -1668,15 +1691,11 @@ private fun AmexStatementCard(
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        statement.paymentMode.let {
-                            @Suppress("UNUSED_EXPRESSION")
-                            when (it) {
-                                AmexPaymentMode.SALDO.name -> "Saldo"
-                                AmexPaymentMode.MINIMUM.name -> "Minimo"
-                                AmexPaymentMode.FIXED.name -> "Importo fisso"
-                                AmexPaymentMode.PAGOFLEX_ONLY.name -> "Solo PagoFlex"
-                                else -> "Saldo"
-                            }
+                        when (summary.paymentMode) {
+                            AmexPaymentMode.SALDO -> "Saldo"
+                            AmexPaymentMode.MINIMUM -> "Minimo"
+                            AmexPaymentMode.FIXED -> "Importo fisso"
+                            AmexPaymentMode.PAGOFLEX_ONLY -> "Solo PagoFlex"
                         },
                     )
                 }
@@ -1690,28 +1709,34 @@ private fun AmexStatementCard(
         }
     }
     if (showModeMenu) {
-        var selectedMode by remember { mutableStateOf(AmexPaymentMode.SALDO) }
         AlertDialog(
             onDismissRequest = { showModeMenu = false },
             title = { Text("Modalità pagamento") },
             text = {
                 Column {
                     AmexPaymentMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = selectedMode == mode,
-                            onClick = { selectedMode = mode },
-                            label = {
-                                Text(
-                                    when (mode) {
-                                        AmexPaymentMode.SALDO -> "Saldo completo"
-                                        AmexPaymentMode.MINIMUM -> "Pagamento minimo"
-                                        AmexPaymentMode.FIXED -> "Importo fisso"
-                                        AmexPaymentMode.PAGOFLEX_ONLY -> "Solo PagoFlex"
-                                    },
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        )
+                        val label = when (mode) {
+                            AmexPaymentMode.SALDO -> "Saldo completo"
+                            AmexPaymentMode.MINIMUM -> "Pagamento minimo"
+                            AmexPaymentMode.FIXED -> "Importo fisso"
+                            AmexPaymentMode.PAGOFLEX_ONLY -> "Solo PagoFlex"
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 2.dp)
+                                .selectable(
+                                    selected = selectedMode == mode,
+                                    role = androidx.compose.ui.semantics.Role.RadioButton,
+                                    onClick = { selectedMode = mode },
+                                ),
+                        ) {
+                            RadioButton(
+                                selected = selectedMode == mode,
+                                onClick = null,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                     if (selectedMode == AmexPaymentMode.FIXED) {
                         Spacer(Modifier.height(8.dp))

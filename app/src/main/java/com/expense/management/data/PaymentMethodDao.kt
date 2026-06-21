@@ -150,4 +150,7 @@ interface PaymentMethodDao {
 
     @Query("DELETE FROM installment_scheduled_payments WHERE planId = :planId")
     suspend fun deleteScheduledPaymentsByPlan(planId: String)
+
+    @Query("DELETE FROM installment_scheduled_payments WHERE planId = :planId AND status = 'PENDING'")
+    suspend fun deletePendingScheduledPaymentsByPlan(planId: String)
 }

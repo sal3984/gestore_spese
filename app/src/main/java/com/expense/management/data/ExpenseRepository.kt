@@ -94,7 +94,10 @@ class ExpenseRepository(
     @Transaction
     suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
         transactionDao.nullifyCreditCardId(creditCard.id)
-        transactionDao.nullifyPaymentMethodId(creditCard.id)
+        val migratedToPaymentMethod = paymentMethodDao.getPaymentMethodById(creditCard.id) != null
+        if (!migratedToPaymentMethod) {
+            transactionDao.nullifyPaymentMethodId(creditCard.id)
+        }
         creditCardDao.deleteCreditCard(creditCard)
     }
 
@@ -250,6 +253,10 @@ class ExpenseRepository(
 
     suspend fun deleteScheduledPaymentsByPlan(planId: String) {
         paymentMethodDao.deleteScheduledPaymentsByPlan(planId)
+    }
+
+    suspend fun deletePendingScheduledPaymentsByPlan(planId: String) {
+        paymentMethodDao.deletePendingScheduledPaymentsByPlan(planId)
     }
 
     // AMEX Statements

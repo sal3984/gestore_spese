@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexDashboardProjection
 import com.expense.management.domain.model.AmexInstallmentStrategy
+import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.ReceiptScanResult
@@ -115,6 +117,7 @@ fun AppNavHost(
     onToggleAmexAutoPay: (Boolean) -> Unit = {},
     amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
     amexCurrentAccountOutflow: Double = 0.0,
+    amexStatementSummaries: Map<String, AmexStatementSummary> = emptyMap(),
     currentAccountIncomeForMonth: Double = 0.0,
     currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
@@ -179,6 +182,7 @@ fun AppNavHost(
                 onToggleAmexAutoPay = onToggleAmexAutoPay,
                 amexScheduledPayments = amexScheduledPayments,
                 amexCurrentAccountOutflow = amexCurrentAccountOutflow,
+                amexStatementSummaries = amexStatementSummaries,
                 currentAccountIncomeForMonth = currentAccountIncomeForMonth,
                 currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
                 onEditAmexInstallment = onEditAmexInstallment,
@@ -426,7 +430,7 @@ fun AppNavHost(
             }
             if (isScanning) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
@@ -553,7 +557,7 @@ fun AppNavHost(
             }
             if (isScanningC) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()

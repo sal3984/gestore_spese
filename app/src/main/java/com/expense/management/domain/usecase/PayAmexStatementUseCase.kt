@@ -18,8 +18,8 @@ class PayAmexStatementUseCase {
         linkedPaymentMethodId: String? = null,
     ): AmexPaymentResult {
         val hasInstallmentPlan = plans.isNotEmpty()
-        val paymentTransaction = if (!hasInstallmentPlan) {
-            TransactionEntity(
+        if (!hasInstallmentPlan) {
+            val paymentTransaction = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
                 description = "Pagamento Amex ${statement.statementMonth}",
@@ -32,11 +32,7 @@ class PayAmexStatementUseCase {
                 effectiveDate = paymentDate,
                 paymentMethodId = linkedPaymentMethodId,
             )
-        } else {
-            null
-        }
-        val incomeTransaction = if (!hasInstallmentPlan) {
-            TransactionEntity(
+            val incomeTransaction = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
                 description = "Rimborso Amex ${statement.statementMonth}",
@@ -50,25 +46,45 @@ class PayAmexStatementUseCase {
                 creditCardId = statement.paymentMethodId,
                 paymentMethodId = statement.paymentMethodId,
             )
-        } else {
-            null
+            return AmexPaymentResult(
+                paymentTransactions = listOf(paymentTransaction),
+                incomeTransaction = incomeTransaction,
+                paidInstallments = emptyList(),
+            )
         }
-        val paymentsToMarkPaid = if (hasInstallmentPlan) {
-            val planIds = plans.map { it.id }.toSet()
-            scheduledPayments.filter { it.planId in planIds && it.status == "PENDING" }
-        } else {
-            emptyList()
+        val planIds = plans.map { it.id }.toSet()
+        val dueNow = scheduledPayments
+            .filter { it.planId in planIds && it.status == "PENDING" && it.expenseTransactionId == null }
+            .filter { it.dueDate <= paymentDate }
+        val paymentTransactions = dueNow.map { payment ->
+            val plan = plans.find { it.id == payment.planId }
+            TransactionEntity(
+                id = UUID.randomUUID().toString(),
+                date = payment.dueDate,
+                description = "Rata Amex ${payment.sequenceNumber}/${plan?.installmentCount ?: "-"}",
+                amount = payment.amount,
+                categoryId = "credit_card_payment",
+                type = TransactionType.EXPENSE,
+                isCreditCard = false,
+                originalAmount = payment.amount,
+                originalCurrency = "€",
+                effectiveDate = payment.dueDate,
+                installmentNumber = payment.sequenceNumber,
+                totalInstallments = plan?.installmentCount,
+                groupId = payment.planId,
+                paymentMethodId = linkedPaymentMethodId,
+            )
         }
         return AmexPaymentResult(
-            paymentTransaction = paymentTransaction,
-            incomeTransaction = incomeTransaction,
-            paymentsToMarkPaid = paymentsToMarkPaid,
+            paymentTransactions = paymentTransactions,
+            incomeTransaction = null,
+            paidInstallments = dueNow,
         )
     }
 
     data class AmexPaymentResult(
-        val paymentTransaction: TransactionEntity?,
+        val paymentTransactions: List<TransactionEntity>,
         val incomeTransaction: TransactionEntity?,
-        val paymentsToMarkPaid: List<AmexPagoFlexScheduledPaymentEntity>,
+        val paidInstallments: List<AmexPagoFlexScheduledPaymentEntity>,
     )
 }

@@ -7,6 +7,7 @@ import com.expense.management.data.TransactionType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PayAmexStatementUseCaseTest {
@@ -36,19 +37,20 @@ class PayAmexStatementUseCaseTest {
             scheduledPayments = emptyList(),
         )
 
-        assertNotNull(result.paymentTransaction)
-        assertEquals("Pagamento Amex 2024-06", result.paymentTransaction?.description)
-        assertEquals(TransactionType.EXPENSE, result.paymentTransaction?.type)
-        assertEquals(1200.0, result.paymentTransaction?.amount)
+        assertEquals(1, result.paymentTransactions.size)
+        val paymentTx = result.paymentTransactions.first()
+        assertEquals("Pagamento Amex 2024-06", paymentTx.description)
+        assertEquals(TransactionType.EXPENSE, paymentTx.type)
+        assertEquals(1200.0, paymentTx.amount)
         assertNotNull(result.incomeTransaction)
         assertEquals("Rimborso Amex 2024-06", result.incomeTransaction?.description)
         assertEquals(TransactionType.INCOME, result.incomeTransaction?.type)
         assertEquals(1200.0, result.incomeTransaction?.amount)
-        assertEquals(0, result.paymentsToMarkPaid.size)
+        assertEquals(0, result.paidInstallments.size)
     }
 
     @Test
-    fun `payment with installment plan creates no cash flow transaction and marks pending payments paid`() {
+    fun `payment with installment plan pays only overdue installments and leaves future pending`() {
         val useCase = PayAmexStatementUseCase()
         val plan = AmexPagoFlexPlanEntity(
             id = "plan1",
@@ -77,14 +79,14 @@ class PayAmexStatementUseCaseTest {
                 amount = 200.0,
                 status = "PENDING",
             ),
-        )
-        val paidPayment = AmexPagoFlexScheduledPaymentEntity(
-            id = "p3",
-            planId = "plan1",
-            sequenceNumber = 0,
-            dueDate = "2024-05-15",
-            amount = 200.0,
-            status = "PAID",
+            AmexPagoFlexScheduledPaymentEntity(
+                id = "p3",
+                planId = "plan1",
+                sequenceNumber = 3,
+                dueDate = "2024-08-15",
+                amount = 200.0,
+                status = "PENDING",
+            ),
         )
 
         val result = useCase.execute(
@@ -92,13 +94,21 @@ class PayAmexStatementUseCaseTest {
             amount = 1200.0,
             paymentDate = "2024-07-15",
             plans = listOf(plan),
-            scheduledPayments = pendingPayments + paidPayment,
+            scheduledPayments = pendingPayments,
         )
 
-        assertNull(result.paymentTransaction)
         assertNull(result.incomeTransaction)
-        assertEquals(2, result.paymentsToMarkPaid.size)
-        assertEquals(listOf("p1", "p2"), result.paymentsToMarkPaid.map { it.id })
+        assertEquals(2, result.paidInstallments.size)
+        assertEquals(listOf("p1", "p2"), result.paidInstallments.map { it.id })
+        assertEquals(2, result.paymentTransactions.size)
+        result.paymentTransactions.forEach { tx ->
+            assertEquals(TransactionType.EXPENSE, tx.type)
+            assertTrue(!tx.isCreditCard)
+            assertEquals("credit_card_payment", tx.categoryId)
+        }
+        assertEquals(listOf("p1", "p2"), result.paidInstallments.map { it.id })
+        assertEquals("2024-06-15", result.paymentTransactions[0].effectiveDate)
+        assertEquals("2024-07-15", result.paymentTransactions[1].effectiveDate)
     }
 
     @Test
@@ -131,6 +141,7 @@ class PayAmexStatementUseCaseTest {
             scheduledPayments = listOf(otherPlanPayment),
         )
 
-        assertEquals(0, result.paymentsToMarkPaid.size)
+        assertEquals(0, result.paidInstallments.size)
+        assertEquals(0, result.paymentTransactions.size)
     }
 }

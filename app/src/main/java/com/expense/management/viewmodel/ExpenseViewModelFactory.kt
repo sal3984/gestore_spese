@@ -21,19 +21,27 @@ import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.domain.usecase.ScanReceiptUseCase
 import com.expense.management.utils.CurrencyUtils
 
-class ExpenseViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+class ExpenseViewModelFactory(
+    private val context: Context,
+    private val sharedRepository: ExpenseRepository? = null,
+    private val sharedCurrencyUtils: CurrencyUtils? = null,
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
-            val db = AppDatabase.getDatabase(context)
-            val repository = ExpenseRepository(
-                db.transactionDao(),
-                db.categoryDao(),
-                db.currencyDao(),
-                db.creditCardDao(),
-                db.paymentMethodDao(),
-                db.amexDao(),
+            val repository = sharedRepository ?: run {
+                val db = AppDatabase.getDatabase(context)
+                ExpenseRepository(
+                    db.transactionDao(),
+                    db.categoryDao(),
+                    db.currencyDao(),
+                    db.creditCardDao(),
+                    db.paymentMethodDao(),
+                    db.amexDao(),
+                )
+            }
+            val currencyUtils = sharedCurrencyUtils ?: CurrencyUtils(
+                AppDatabase.getDatabase(context).currencyDao(),
             )
-            val currencyUtils = CurrencyUtils(db.currencyDao())
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
             @Suppress("UNCHECKED_CAST")

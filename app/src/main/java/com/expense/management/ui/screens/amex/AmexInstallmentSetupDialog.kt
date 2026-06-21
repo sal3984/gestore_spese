@@ -31,6 +31,7 @@ import kotlin.math.round
 @Composable
 fun AmexInstallmentSetupDialog(
     totalAmount: Double,
+    currencySymbol: String = "€",
     initialStrategy: AmexInstallmentStrategy? = null,
     onConfirm: (AmexInstallmentStrategy) -> Unit,
     onDismiss: () -> Unit,
@@ -60,7 +61,7 @@ fun AmexInstallmentSetupDialog(
         }
         Mode.FIXED_DURATION -> {
             parsedDuration?.takeIf { it > 0 }?.let {
-                "≈ ${(totalAmount / it).roundTo2()} €/mese"
+                "≈ ${(totalAmount / it).roundTo2()} $currencySymbol/mese"
             } ?: ""
         }
     }
@@ -76,7 +77,7 @@ fun AmexInstallmentSetupDialog(
         text = {
             Column {
                 Text(
-                    "Importo totale: ${totalAmount.roundTo2()} €",
+                    "Importo totale: ${totalAmount.roundTo2()} $currencySymbol",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(16.dp))
