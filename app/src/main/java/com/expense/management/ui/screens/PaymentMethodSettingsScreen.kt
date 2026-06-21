@@ -450,6 +450,14 @@ private fun AddPaymentMethodDialog(
     )
 }
 
+internal fun cardTypeForProvider(provider: PaymentProvider): CreditCardType = when (provider) {
+    PaymentProvider.CREDIT_CARD_SALDO -> CreditCardType.SALDO
+    PaymentProvider.CREDIT_CARD_REVOLVING -> CreditCardType.REVOLVING
+    PaymentProvider.CREDIT_CARD_INSTALLMENT -> CreditCardType.INSTALLMENT
+    PaymentProvider.CREDIT_CARD_AMEX -> CreditCardType.AMEX_HYBRID
+    else -> CreditCardType.SALDO
+}
+
 @Composable
 private fun EditPaymentMethodDialog(
     provider: PaymentProvider,
@@ -479,12 +487,7 @@ private fun EditPaymentMethodDialog(
         PaymentProvider.CREDIT_CARD_INSTALLMENT,
         PaymentProvider.CREDIT_CARD_AMEX,
         -> {
-            val cardType = when (provider) {
-                PaymentProvider.CREDIT_CARD_SALDO -> CreditCardType.SALDO
-                PaymentProvider.CREDIT_CARD_REVOLVING -> CreditCardType.REVOLVING
-                PaymentProvider.CREDIT_CARD_INSTALLMENT -> CreditCardType.INSTALLMENT
-                else -> CreditCardType.SALDO
-            }
+            val cardType = cardTypeForProvider(provider)
             val details = currentDetails as? PaymentMethodDetails.CreditCard
             var limitText by remember(details) { mutableStateOf(if (details != null) details.limit.toString() else "0") }
             var closingDayText by remember(details) { mutableStateOf(if (details != null) details.closingDay.toString() else "0") }

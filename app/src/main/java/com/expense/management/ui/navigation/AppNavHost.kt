@@ -30,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.expense.management.data.AmexPagoFlexPlanEntity
+import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
 import com.expense.management.data.AmexRevolvingStateEntity
 import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.CategoryEntity
@@ -41,6 +42,7 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexDashboardProjection
+import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.ReceiptScanResult
@@ -111,6 +113,9 @@ fun AppNavHost(
     amexProjections: List<AmexDashboardProjection> = emptyList(),
     isAmexAutoPayEnabled: Boolean = true,
     onToggleAmexAutoPay: (Boolean) -> Unit = {},
+    amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
+    amexCurrentAccountOutflow: Double = 0.0,
+    onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
     onBackup: () -> Unit,
     onRestore: () -> Unit,
     onExportCsv: () -> Unit,
@@ -170,6 +175,9 @@ fun AppNavHost(
                 amexProjections = amexProjections,
                 isAmexAutoPayEnabled = isAmexAutoPayEnabled,
                 onToggleAmexAutoPay = onToggleAmexAutoPay,
+                amexScheduledPayments = amexScheduledPayments,
+                amexCurrentAccountOutflow = amexCurrentAccountOutflow,
+                onEditAmexInstallment = onEditAmexInstallment,
                 onPayRevolving = { card, amount, date ->
                     viewModel.payCreditCardInstallment(card, amount, date)
                 },

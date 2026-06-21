@@ -83,6 +83,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.AmexPagoFlexPlanEntity
+import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
 import com.expense.management.data.AmexRevolvingStateEntity
 import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.CategoryEntity
@@ -93,6 +94,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexDashboardProjection
+import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexPaymentMode
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
@@ -100,6 +102,8 @@ import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.TransactionToDelete
+import com.expense.management.ui.screens.amex.AmexInstallmentCard
+import com.expense.management.ui.screens.amex.AmexInstallmentSetupDialog
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.AppTheme
 import com.expense.management.utils.TransactionItem
@@ -151,6 +155,9 @@ fun DashboardScreen(
     amexProjections: List<AmexDashboardProjection> = emptyList(),
     isAmexAutoPayEnabled: Boolean = true,
     onToggleAmexAutoPay: (Boolean) -> Unit = {},
+    amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
+    amexCurrentAccountOutflow: Double = 0.0,
+    onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
 ) {
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
@@ -180,6 +187,8 @@ fun DashboardScreen(
     var setupPlanCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
     var editPlanCard by remember { mutableStateOf<ActiveCreditCard?>(null) }
     var editPlan by remember { mutableStateOf<CreditCardInstallmentPlanEntity?>(null) }
+
+    var amexEditPlan by remember { mutableStateOf<AmexPagoFlexPlanEntity?>(null) }
 
     var showDeleteDialog by remember { mutableStateOf<TransactionToDelete?>(null) }
 
@@ -742,6 +751,38 @@ fun DashboardScreen(
                                     onCheckedChange = onToggleAmexAutoPay,
                                 )
                             }
+                            if (amexCurrentAccountOutflow > 0.0) {
+                                AmexInstallmentCard(
+                                    outflowAmount = amexCurrentAccountOutflow,
+                                    scheduledPayments = amexScheduledPayments,
+                                    plans = amexPagoFlexPlans,
+                                    currencySymbol = currencySymbol,
+                                    locale = locale,
+                                    isAmountHidden = isAmountHidden,
+                                    onEditPayment = { planId ->
+                                        amexEditPlan = amexPagoFlexPlans.find { it.id == planId }
+                                    },
+                                )
+                            }
+                        }
+
+                        amexEditPlan?.let { plan ->
+                            val statement = remember(plan, amexStatements) {
+                                amexStatements.find { it.id == plan.statementId }
+                            }
+                            val initialStrategy = when (plan.planType) {
+                                "FIXED_AMOUNT" -> AmexInstallmentStrategy.FixedAmount(plan.initialInstallmentAmount ?: plan.installmentAmount)
+                                else -> AmexInstallmentStrategy.FixedDuration(plan.installmentCount)
+                            }
+                            AmexInstallmentSetupDialog(
+                                totalAmount = plan.totalAmount,
+                                initialStrategy = initialStrategy,
+                                onConfirm = { strategy ->
+                                    statement?.let { onEditAmexInstallment(plan.id, strategy) }
+                                    amexEditPlan = null
+                                },
+                                onDismiss = { amexEditPlan = null },
+                            )
                         }
 
                         // Revolving Payment Dialog
@@ -981,9 +1022,13 @@ fun CreditCardItem(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (type == CreditCardType.REVOLVING || type == CreditCardType.INSTALLMENT) {
+                    if (type == CreditCardType.REVOLVING || type == CreditCardType.INSTALLMENT || type == CreditCardType.AMEX_HYBRID) {
                         Text(
-                            if (type == CreditCardType.INSTALLMENT && installmentInfo != null) installmentInfo else stringResource(R.string.installment_plan),
+                            when (type) {
+                                CreditCardType.INSTALLMENT -> if (installmentInfo != null) installmentInfo else stringResource(R.string.installment_plan)
+                                CreditCardType.AMEX_HYBRID -> "Amex Hybrid"
+                                else -> stringResource(R.string.installment_plan)
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1002,7 +1047,7 @@ fun CreditCardItem(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (type == CreditCardType.REVOLVING || type == CreditCardType.INSTALLMENT) {
+            if (type == CreditCardType.REVOLVING || type == CreditCardType.INSTALLMENT || type == CreditCardType.AMEX_HYBRID) {
                 Text(
                     text = stringResource(R.string.revolving_utilized_label),
                     style = MaterialTheme.typography.bodyMedium,
@@ -1040,8 +1085,13 @@ fun CreditCardItem(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                val remainingLabel = if (type == CreditCardType.REVOLVING || type == CreditCardType.AMEX_HYBRID) {
+                    stringResource(R.string.revolving_remaining_label)
+                } else {
+                    stringResource(R.string.spent_label)
+                }
                 Text(
-                    text = if (isAmountHidden) "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol *****" else "${if (type == CreditCardType.REVOLVING) stringResource(R.string.revolving_remaining_label) else stringResource(R.string.spent_label)} $currencySymbol ${String.format(locale, "%.2f", spent)}",
+                    text = if (isAmountHidden) "$remainingLabel $currencySymbol *****" else "$remainingLabel $currencySymbol ${String.format(locale, "%.2f", spent)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
