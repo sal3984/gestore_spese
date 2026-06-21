@@ -543,11 +543,7 @@ fun AppNavHost(
                     },
                     onCreatePagoFlexPlan = { paymentMethodId, transactionId, totalAmount, installmentCount, startDate ->
                         val currentMonth = java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-                        val statement = amexStatements.find { it.paymentMethodId == paymentMethodId && it.statementMonth == currentMonth }
-                        val statementId = statement?.id ?: ""
-                        if (statementId.isNotEmpty()) {
-                            viewModel.addPagoFlexToAmexStatement(statementId, transactionId, totalAmount, installmentCount, startDate)
-                        }
+                        viewModel.addPagoFlexToAmexStatement(paymentMethodId, currentMonth, transactionId, totalAmount, installmentCount, startDate)
                     },
                 )
             }

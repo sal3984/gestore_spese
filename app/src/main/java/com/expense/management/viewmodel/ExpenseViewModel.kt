@@ -257,10 +257,18 @@ class ExpenseViewModel(
     val dashboardFilteredTransactions: StateFlow<List<TransactionEntity>> = combine(
         allTransactions,
         _currentDashboardMonth,
-    ) { tx, month ->
-        tx.filter {
-            try {
-                YearMonth.from(LocalDate.parse(it.effectiveDate)) == month
+        activeCreditCards,
+    ) { tx, month, cards ->
+        val amexCardIds = cards
+            .filter { it.cardType == CreditCardType.AMEX_HYBRID }
+            .map { it.id }
+            .toSet()
+        tx.filter { transaction ->
+            val isAmexCreditExpense = transaction.isCreditCard &&
+                transaction.type == TransactionType.EXPENSE &&
+                (transaction.creditCardId in amexCardIds || transaction.paymentMethodId in amexCardIds)
+            !isAmexCreditExpense && try {
+                YearMonth.from(LocalDate.parse(transaction.effectiveDate)) == month
             } catch (_: Exception) {
                 false
             }
@@ -622,18 +630,30 @@ class ExpenseViewModel(
     }
 
     fun addPagoFlexToAmexStatement(
-        statementId: String,
+        paymentMethodId: String,
+        statementMonth: String,
         transactionId: String,
         amount: Double,
         installmentCount: Int,
         startDate: String,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.addPagoflexToAmexStatement(statementId, amount)
+            val today = java.time.LocalDate.now()
+            val statement = repository.getAmexStatementByMonth(paymentMethodId, statementMonth)
+                ?: AmexStatementEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    paymentMethodId = paymentMethodId,
+                    statementMonth = statementMonth,
+                    closingDate = today.withDayOfMonth(today.lengthOfMonth()).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE),
+                    paymentDueDate = today.plusDays(15).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE),
+                    paymentMode = com.expense.management.domain.model.AmexPaymentMode.SALDO.name,
+                ).also { repository.insertAmexStatement(it) }
+            repository.addExpenseToAmexStatement(statement.id, amount)
+            repository.addPagoflexToAmexStatement(statement.id, amount)
             val strategy = AmexInstallmentStrategy.FixedDuration(installmentCount)
             val (plan, payments) = CreateAmexInstallmentPlanUseCase().execute(
                 planId = java.util.UUID.randomUUID().toString(),
-                statementId = statementId,
+                statementId = statement.id,
                 transactionId = transactionId,
                 totalAmount = amount,
                 startDate = startDate,
