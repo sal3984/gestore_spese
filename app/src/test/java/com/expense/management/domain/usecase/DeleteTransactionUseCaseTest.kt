@@ -1,5 +1,7 @@
 package com.expense.management.domain.usecase
 
+import com.expense.management.data.AmexPagoFlexPlanEntity
+import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
@@ -21,8 +23,10 @@ class DeleteTransactionUseCaseTest {
 
     @BeforeEach
     fun setUp() {
-        repository = mockk()
+        repository = mockk(relaxed = true)
         useCase = DeleteTransactionUseCase(repository)
+        coEvery { repository.getAmexScheduledPaymentByExpenseTxId(any()) } returns null
+        coEvery { repository.getGenericScheduledPaymentByExpenseTxId(any()) } returns null
     }
 
     @Test
@@ -160,5 +164,52 @@ class DeleteTransactionUseCaseTest {
 
         coVerify(exactly = 1) { repository.deleteTransaction("tx_1") }
         coVerify(exactly = 0) { repository.deleteTransactionsByIds(any()) }
+    }
+
+    @Test
+    fun `should revert amex scheduled payment to pending when linked transaction is deleted`() {
+        val transaction = TransactionEntity(
+            id = "tx_amex_debit",
+            date = "2024-06-15",
+            description = "Rata Amex 1/6",
+            amount = 200.0,
+            categoryId = "credit_card_payment",
+            type = TransactionType.EXPENSE,
+            isCreditCard = false,
+            effectiveDate = "2024-06-15",
+            originalAmount = 200.0,
+            originalCurrency = "€",
+        )
+        val scheduledPayment = AmexPagoFlexScheduledPaymentEntity(
+            id = "sp_1",
+            planId = "plan_1",
+            sequenceNumber = 1,
+            dueDate = "2024-06-15",
+            amount = 200.0,
+            status = "PAID",
+            expenseTransactionId = "tx_amex_debit",
+        )
+        val plan = AmexPagoFlexPlanEntity(
+            id = "plan_1",
+            statementId = "stmt_1",
+            transactionId = "orig_tx",
+            totalAmount = 1200.0,
+            installmentCount = 6,
+            installmentAmount = 200.0,
+            paidCount = 1,
+            startDate = "2024-06-15",
+        )
+        coEvery { repository.getTransactionById("tx_amex_debit") } returns transaction
+        coEvery { repository.deleteTransaction("tx_amex_debit") } returns Unit
+        coEvery { repository.getAmexScheduledPaymentByExpenseTxId("tx_amex_debit") } returns scheduledPayment
+        coEvery { repository.getAmexPagoFlexPlanById("plan_1") } returns plan
+        coEvery { repository.getAmexScheduledPaymentsForPlan("plan_1") } returns listOf(scheduledPayment.copy(status = "PENDING", expenseTransactionId = null))
+        coEvery { repository.updateAmexPagoFlexPaidCount(any(), any()) } returns Unit
+        coEvery { repository.revertAmexScheduledPaymentToPending(any()) } returns Unit
+
+        runBlocking { useCase("tx_amex_debit", DeleteType.SINGLE) }
+
+        coVerify(exactly = 1) { repository.revertAmexScheduledPaymentToPending("sp_1") }
+        coVerify(exactly = 1) { repository.updateAmexPagoFlexPaidCount("plan_1", 0) }
     }
 }

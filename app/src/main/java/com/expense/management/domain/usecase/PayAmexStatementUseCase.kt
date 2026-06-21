@@ -58,17 +58,25 @@ class PayAmexStatementUseCase {
             .groupBy { it.planId }
         val dueNow = pendingByPlan.values
             .mapNotNull { payments -> payments.minByOrNull { it.sequenceNumber } }
-        val paymentTransactions = dueNow.map { payment ->
+        val totalPlanned = dueNow.sumOf { it.amount }
+        val paymentTransactions = dueNow.mapIndexed { index, payment ->
             val plan = plans.find { it.id == payment.planId }
+            val txAmount = if (index < dueNow.size - 1) {
+                round2(amount * payment.amount / totalPlanned)
+            } else {
+                round2(amount - dueNow.subList(0, dueNow.size - 1).sumOf { p ->
+                    amount * p.amount / totalPlanned
+                })
+            }
             TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
                 description = "Rata Amex ${payment.sequenceNumber}/${plan?.installmentCount ?: "-"}",
-                amount = payment.amount,
+                amount = txAmount,
                 categoryId = "credit_card_payment",
                 type = TransactionType.EXPENSE,
                 isCreditCard = false,
-                originalAmount = payment.amount,
+                originalAmount = txAmount,
                 originalCurrency = "€",
                 effectiveDate = paymentDate,
                 installmentNumber = payment.sequenceNumber,
@@ -89,4 +97,6 @@ class PayAmexStatementUseCase {
         val incomeTransaction: TransactionEntity?,
         val paidInstallments: List<AmexPagoFlexScheduledPaymentEntity>,
     )
+
+    private fun round2(value: Double): Double = kotlin.math.round(value * 100.0) / 100.0
 }

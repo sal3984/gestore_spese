@@ -148,6 +148,12 @@ interface PaymentMethodDao {
     @Query("UPDATE installment_scheduled_payments SET status = :status, expenseTransactionId = :expenseTransactionId WHERE id = :paymentId")
     suspend fun updateScheduledPaymentStatus(paymentId: String, status: String, expenseTransactionId: String?)
 
+    @Query("SELECT * FROM installment_scheduled_payments WHERE expenseTransactionId = :transactionId LIMIT 1")
+    suspend fun getScheduledPaymentByExpenseTxId(transactionId: String): InstallmentScheduledPaymentEntity?
+
+    @Query("UPDATE installment_scheduled_payments SET status = 'PENDING', expenseTransactionId = NULL WHERE id = :paymentId")
+    suspend fun revertScheduledPaymentToPending(paymentId: String)
+
     @Query("DELETE FROM installment_scheduled_payments WHERE planId = :planId")
     suspend fun deleteScheduledPaymentsByPlan(planId: String)
 

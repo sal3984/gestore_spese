@@ -111,6 +111,12 @@ interface AmexDao {
     @Query("UPDATE amex_pagoflex_scheduled_payments SET status = 'PAID', expenseTransactionId = :transactionId WHERE id = :paymentId")
     suspend fun markScheduledPaymentAsPaid(paymentId: String, transactionId: String)
 
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE expenseTransactionId = :transactionId LIMIT 1")
+    suspend fun getScheduledPaymentByExpenseTxId(transactionId: String): AmexPagoFlexScheduledPaymentEntity?
+
+    @Query("UPDATE amex_pagoflex_scheduled_payments SET status = 'PENDING', expenseTransactionId = NULL WHERE id = :paymentId")
+    suspend fun revertScheduledPaymentToPending(paymentId: String)
+
     @Query("UPDATE amex_pagoflex_scheduled_payments SET amount = :amount WHERE id = :paymentId")
     suspend fun updateScheduledPaymentAmount(paymentId: String, amount: Double)
 

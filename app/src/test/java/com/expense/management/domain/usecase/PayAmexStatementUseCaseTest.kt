@@ -91,7 +91,7 @@ class PayAmexStatementUseCaseTest {
 
         val result = useCase.execute(
             statement = statement,
-            amount = 1200.0,
+            amount = 200.0,
             paymentDate = "2024-06-20",
             plans = listOf(plan),
             scheduledPayments = pendingPayments,
@@ -106,7 +106,45 @@ class PayAmexStatementUseCaseTest {
             assertTrue(!tx.isCreditCard)
             assertEquals("credit_card_payment", tx.categoryId)
         }
+        assertEquals(200.0, result.paymentTransactions[0].amount, 0.01)
         assertEquals("2024-06-20", result.paymentTransactions[0].effectiveDate)
+    }
+
+    @Test
+    fun `custom amount overrides planned installment amount in transaction`() {
+        val useCase = PayAmexStatementUseCase()
+        val plan = AmexPagoFlexPlanEntity(
+            id = "plan1",
+            statementId = "stmt1",
+            transactionId = "tx1",
+            totalAmount = 1200.0,
+            installmentCount = 6,
+            installmentAmount = 200.0,
+            paidCount = 0,
+            startDate = "2024-06-15",
+        )
+        val pendingPayments = listOf(
+            AmexPagoFlexScheduledPaymentEntity(
+                id = "p1",
+                planId = "plan1",
+                sequenceNumber = 1,
+                dueDate = "2024-07-15",
+                amount = 200.0,
+                status = "PENDING",
+            ),
+        )
+
+        val result = useCase.execute(
+            statement = statement,
+            amount = 250.0,
+            paymentDate = "2024-06-20",
+            plans = listOf(plan),
+            scheduledPayments = pendingPayments,
+        )
+
+        assertEquals(250.0, result.paymentTransactions[0].amount, 0.01)
+        assertEquals(250.0, result.paymentTransactions[0].originalAmount, 0.01)
+        assertEquals(200.0, result.paidInstallments[0].amount, 0.01)
     }
 
     @Test

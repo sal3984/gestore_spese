@@ -751,41 +751,49 @@ class ExpenseViewModel(
         currentStatementPaymentDueDate: String,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val plan = repository.getAmexPagoFlexPlanById(planId) ?: return@launch
-            val existingPayments = repository.getAmexScheduledPaymentsForPlan(planId)
-            val syncedPending = existingPayments
-                .filter { it.status == "PENDING" && it.expenseTransactionId != null }
-            val syncedByMonth = syncedPending.associate { it.dueDate.take(7) to it.expenseTransactionId!! }
-            val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
-            val (updatedPlan, newPendingPayments) = RecalculateAmexInstallmentPlanUseCase().execute(
-                existingPlan = plan,
-                existingPayments = existingPayments,
-                newStrategy = strategy,
-                today = today,
-                currentStatementPaymentDueDate = currentStatementPaymentDueDate,
-            )
-            repository.updateAmexPagoFlexPlanCalculation(
-                planId = updatedPlan.id,
-                installmentCount = updatedPlan.installmentCount,
-                installmentAmount = updatedPlan.installmentAmount,
-                planType = updatedPlan.planType,
-                initialInstallmentAmount = updatedPlan.initialInstallmentAmount,
-            )
-            repository.deletePendingAmexScheduledPaymentsForPlan(planId)
-            repository.insertAmexScheduledPayments(newPendingPayments)
+            recalculateAmexInstallmentPlanInternal(planId, strategy, currentStatementPaymentDueDate)
+        }
+    }
 
-            val linkedTxIds = mutableSetOf<String>()
-            for (newPayment in newPendingPayments) {
-                val monthKey = newPayment.dueDate.take(7)
-                val oldTxId = syncedByMonth[monthKey] ?: continue
-                repository.updateAmexScheduledPaymentExpenseTransactionId(newPayment.id, oldTxId)
-                val tx = repository.getTransactionById(oldTxId) ?: continue
-                repository.insertTransaction(tx.copy(amount = newPayment.amount, originalAmount = newPayment.amount, effectiveDate = newPayment.dueDate))
-                linkedTxIds.add(oldTxId)
-            }
-            for (orphanTxId in syncedByMonth.values.filter { it !in linkedTxIds }) {
-                repository.deleteTransaction(orphanTxId)
-            }
+    private suspend fun recalculateAmexInstallmentPlanInternal(
+        planId: String,
+        strategy: AmexInstallmentStrategy,
+        currentStatementPaymentDueDate: String,
+    ) {
+        val plan = repository.getAmexPagoFlexPlanById(planId) ?: return
+        val existingPayments = repository.getAmexScheduledPaymentsForPlan(planId)
+        val syncedPending = existingPayments
+            .filter { it.status == "PENDING" && it.expenseTransactionId != null }
+        val syncedByMonth = syncedPending.associate { it.dueDate.take(7) to it.expenseTransactionId!! }
+        val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+        val (updatedPlan, newPendingPayments) = RecalculateAmexInstallmentPlanUseCase().execute(
+            existingPlan = plan,
+            existingPayments = existingPayments,
+            newStrategy = strategy,
+            today = today,
+            currentStatementPaymentDueDate = currentStatementPaymentDueDate,
+        )
+        repository.updateAmexPagoFlexPlanCalculation(
+            planId = updatedPlan.id,
+            installmentCount = updatedPlan.installmentCount,
+            installmentAmount = updatedPlan.installmentAmount,
+            planType = updatedPlan.planType,
+            initialInstallmentAmount = updatedPlan.initialInstallmentAmount,
+        )
+        repository.deletePendingAmexScheduledPaymentsForPlan(planId)
+        repository.insertAmexScheduledPayments(newPendingPayments)
+
+        val linkedTxIds = mutableSetOf<String>()
+        for (newPayment in newPendingPayments) {
+            val monthKey = newPayment.dueDate.take(7)
+            val oldTxId = syncedByMonth[monthKey] ?: continue
+            repository.updateAmexScheduledPaymentExpenseTransactionId(newPayment.id, oldTxId)
+            val tx = repository.getTransactionById(oldTxId) ?: continue
+            repository.insertTransaction(tx.copy(amount = newPayment.amount, originalAmount = newPayment.amount, effectiveDate = newPayment.dueDate))
+            linkedTxIds.add(oldTxId)
+        }
+        for (orphanTxId in syncedByMonth.values.filter { it !in linkedTxIds }) {
+            repository.deleteTransaction(orphanTxId)
         }
     }
 
@@ -899,10 +907,16 @@ class ExpenseViewModel(
             result.paymentTransactions.forEach { repository.insertTransaction(it) }
             result.incomeTransaction?.let { repository.insertTransaction(it) }
             result.paidInstallments.forEachIndexed { i, payment ->
-                val txId = result.paymentTransactions.getOrNull(i)?.id
-                if (txId != null) repository.markAmexScheduledPaymentAsPaid(payment.id, txId)
+                val tx = result.paymentTransactions.getOrNull(i)
+                if (tx != null) {
+                    if (tx.amount != payment.amount) {
+                        repository.updateAmexScheduledPaymentAmount(payment.id, tx.amount)
+                    }
+                    repository.markAmexScheduledPaymentAsPaid(payment.id, tx.id)
+                }
             }
             updateAmexPlanPaidCounts(statementPlans)
+            autoRecalculateAmexPlans(statementPlans)
             repository.closeAmexStatement(statement.id)
         }
     }
@@ -911,6 +925,22 @@ class ExpenseViewModel(
         for (plan in plans) {
             val paidCount = repository.getAmexScheduledPaymentsForPlan(plan.id).count { it.status == "PAID" }
             repository.updateAmexPagoFlexPaidCount(plan.id, paidCount)
+        }
+    }
+
+    private suspend fun autoRecalculateAmexPlans(plans: List<AmexPagoFlexPlanEntity>) {
+        for (plan in plans) {
+            val updatedPlan = repository.getAmexPagoFlexPlanById(plan.id) ?: continue
+            val newPaidCount = repository.getAmexScheduledPaymentsForPlan(plan.id).count { it.status == "PAID" }
+            val remainingMonths = updatedPlan.installmentCount - newPaidCount
+            if (remainingMonths <= 0) continue
+            val statement = repository.getAmexStatementById(updatedPlan.statementId) ?: continue
+            val strategy = if (updatedPlan.planType == "FIXED_AMOUNT") {
+                AmexInstallmentStrategy.FixedAmount(updatedPlan.initialInstallmentAmount ?: updatedPlan.installmentAmount)
+            } else {
+                AmexInstallmentStrategy.FixedDuration(remainingMonths)
+            }
+            recalculateAmexInstallmentPlanInternal(updatedPlan.id, strategy, statement.paymentDueDate)
         }
     }
 
@@ -947,10 +977,16 @@ class ExpenseViewModel(
             result.paymentTransactions.forEach { repository.insertTransaction(it) }
             result.incomeTransaction?.let { repository.insertTransaction(it) }
             result.paidInstallments.forEachIndexed { i, payment ->
-                val txId = result.paymentTransactions.getOrNull(i)?.id
-                if (txId != null) repository.markAmexScheduledPaymentAsPaid(payment.id, txId)
+                val tx = result.paymentTransactions.getOrNull(i)
+                if (tx != null) {
+                    if (tx.amount != payment.amount) {
+                        repository.updateAmexScheduledPaymentAmount(payment.id, tx.amount)
+                    }
+                    repository.markAmexScheduledPaymentAsPaid(payment.id, tx.id)
+                }
             }
             updateAmexPlanPaidCounts(statementPlans)
+            autoRecalculateAmexPlans(statementPlans)
             repository.closeAmexStatement(due.statement.id)
         }
     }

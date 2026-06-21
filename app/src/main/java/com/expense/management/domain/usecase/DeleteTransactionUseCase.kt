@@ -11,7 +11,10 @@ class DeleteTransactionUseCase(private val repository: ExpenseRepository) {
         val transactionToDelete = repository.getTransactionById(transactionId) ?: return
 
         when (deleteType) {
-            DeleteType.SINGLE -> repository.deleteTransaction(transactionId)
+            DeleteType.SINGLE -> {
+                repository.deleteTransaction(transactionId)
+                revertLinkedScheduledPayments(transactionId)
+            }
             DeleteType.THIS_AND_SUBSEQUENT -> {
                 val groupId = transactionToDelete.groupId
                 if (groupId != null && transactionToDelete.recurrenceType != RecurrenceType.NONE) {
@@ -27,10 +30,30 @@ class DeleteTransactionUseCase(private val repository: ExpenseRepository) {
 
                     val idsToDelete = transactionsInGroup.map { it.id }
                     repository.deleteTransactionsByIds(idsToDelete)
+                    idsToDelete.forEach { revertLinkedScheduledPayments(it) }
                 } else {
                     repository.deleteTransaction(transactionId)
+                    revertLinkedScheduledPayments(transactionId)
                 }
             }
+        }
+    }
+
+    private suspend fun revertLinkedScheduledPayments(transactionId: String) {
+        val amexPayment = repository.getAmexScheduledPaymentByExpenseTxId(transactionId)
+        if (amexPayment != null) {
+            repository.revertAmexScheduledPaymentToPending(amexPayment.id)
+            val plan = repository.getAmexPagoFlexPlanById(amexPayment.planId)
+            if (plan != null) {
+                val paidCount = repository.getAmexScheduledPaymentsForPlan(plan.id).count { it.status == "PAID" }
+                repository.updateAmexPagoFlexPaidCount(plan.id, paidCount)
+            }
+        }
+        val genericPayment = repository.getGenericScheduledPaymentByExpenseTxId(transactionId)
+        if (genericPayment != null) {
+            repository.revertGenericScheduledPaymentToPending(genericPayment.id)
+            val paidCount = repository.getScheduledPaymentsByPlan(genericPayment.planId).count { it.status == "PAID" }
+            repository.updateInstallmentPlanPaidCount(genericPayment.planId, paidCount)
         }
     }
 }

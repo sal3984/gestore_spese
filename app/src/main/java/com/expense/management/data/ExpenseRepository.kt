@@ -364,6 +364,10 @@ class ExpenseRepository(
         }
     }
 
+    suspend fun updateAmexScheduledPaymentAmount(paymentId: String, amount: Double) {
+        amexDao.updateScheduledPaymentAmount(paymentId, amount)
+    }
+
     suspend fun updateAmexScheduledPaymentExpenseTransactionId(paymentId: String, transactionId: String) {
         amexDao.updateScheduledPaymentExpenseTransactionId(paymentId, transactionId)
     }
@@ -389,6 +393,20 @@ class ExpenseRepository(
 
     suspend fun deletePendingAmexScheduledPaymentsForPlan(planId: String) {
         amexDao.deletePendingScheduledPaymentsForPlan(planId)
+    }
+
+    suspend fun getAmexScheduledPaymentByExpenseTxId(transactionId: String): AmexPagoFlexScheduledPaymentEntity? =
+        amexDao.getScheduledPaymentByExpenseTxId(transactionId)
+
+    suspend fun revertAmexScheduledPaymentToPending(paymentId: String) {
+        amexDao.revertScheduledPaymentToPending(paymentId)
+    }
+
+    suspend fun getGenericScheduledPaymentByExpenseTxId(transactionId: String): InstallmentScheduledPaymentEntity? =
+        paymentMethodDao.getScheduledPaymentByExpenseTxId(transactionId)
+
+    suspend fun revertGenericScheduledPaymentToPending(paymentId: String) {
+        paymentMethodDao.revertScheduledPaymentToPending(paymentId)
     }
 
     // AMEX Plan Changes
