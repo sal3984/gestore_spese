@@ -362,6 +362,7 @@
     <string name="apply">Apply</string>
     <string name="discard">Discard</string>
     <string name="pay_installment">Pay Installment</string>
+    <string name="amex_installment_icon_cd">Amex installment</string>
     <string name="setup_installment_plan">Set up installment plan</string>
     <string name="edit_installment_plan">Edit plan</string>
     <string name="top_up_method">Top-up another method</string>
