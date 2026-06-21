@@ -141,6 +141,8 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val amexRevolvingStates by viewModel.allAmexRevolvingStates.collectAsStateWithLifecycle()
     val amexProjections by viewModel.amexDashboardProjections.collectAsStateWithLifecycle()
     val isAmexAutoPayEnabled by viewModel.isAmexAutoPayEnabled.collectAsStateWithLifecycle()
+    val amexScheduledPayments by viewModel.allAmexScheduledPayments.collectAsStateWithLifecycle()
+    val amexCurrentAccountOutflow by viewModel.amexCurrentAccountOutflow.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
 
     val restoreLauncher =
@@ -302,6 +304,14 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         amexProjections = amexProjections,
                         isAmexAutoPayEnabled = isAmexAutoPayEnabled,
                         onToggleAmexAutoPay = viewModel::toggleAmexAutoPay,
+                        amexScheduledPayments = amexScheduledPayments,
+                        amexCurrentAccountOutflow = amexCurrentAccountOutflow,
+                        onEditAmexInstallment = { planId, strategy ->
+                            val statement = amexStatements.find { statement ->
+                                amexPagoFlexPlans.any { it.id == planId && it.statementId == statement.id }
+                            }
+                            statement?.let { viewModel.recalculateAmexInstallmentPlan(planId, strategy, it.paymentDueDate) }
+                        },
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },
                         onExportCsv = { exportCsvLauncher.launch("gestore_spese_spese_${LocalDate.now()}.csv") },
