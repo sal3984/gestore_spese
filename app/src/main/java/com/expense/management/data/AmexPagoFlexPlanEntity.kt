@@ -35,4 +35,6 @@ data class AmexPagoFlexPlanEntity(
     val installmentAmount: Double,
     val paidCount: Int = 0,
     val startDate: String,
+    val planType: String = "FIXED_DURATION",
+    val initialInstallmentAmount: Double? = null,
 )

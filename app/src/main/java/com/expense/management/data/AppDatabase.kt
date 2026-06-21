@@ -8,6 +8,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.util.UUID
 
 @Database(
     entities = [
@@ -26,9 +27,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         InstallmentScheduledPaymentEntity::class,
         AmexStatementEntity::class,
         AmexPagoFlexPlanEntity::class,
+        AmexPagoFlexScheduledPaymentEntity::class,
+        AmexPagoFlexPlanChangeEntity::class,
         AmexRevolvingStateEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -387,6 +390,88 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `amex_pagoflex_scheduled_payments` (
+                        `id` TEXT NOT NULL,
+                        `planId` TEXT NOT NULL,
+                        `sequenceNumber` INTEGER NOT NULL,
+                        `dueDate` TEXT NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `status` TEXT NOT NULL DEFAULT 'PENDING',
+                        `expenseTransactionId` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`planId`) REFERENCES `amex_pagoflex_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_amex_pagoflex_scheduled_payments_planId` ON `amex_pagoflex_scheduled_payments` (`planId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_amex_pagoflex_scheduled_payments_dueDate` ON `amex_pagoflex_scheduled_payments` (`dueDate`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_amex_pagoflex_scheduled_payments_status` ON `amex_pagoflex_scheduled_payments` (`status`)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `amex_pagoflex_plan_changes` (
+                        `id` TEXT NOT NULL,
+                        `planId` TEXT NOT NULL,
+                        `changedAt` TEXT NOT NULL,
+                        `previousInstallmentCount` INTEGER NOT NULL,
+                        `newInstallmentCount` INTEGER NOT NULL,
+                        `previousInstallmentAmount` REAL NOT NULL,
+                        `newInstallmentAmount` REAL NOT NULL,
+                        `remainingDebtAtChange` REAL NOT NULL,
+                        `reason` TEXT DEFAULT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`planId`) REFERENCES `amex_pagoflex_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_amex_pagoflex_plan_changes_planId` ON `amex_pagoflex_plan_changes` (`planId`)")
+
+                db.execSQL("ALTER TABLE `amex_pagoflex_plans` ADD COLUMN `planType` TEXT NOT NULL DEFAULT 'FIXED_DURATION'")
+                db.execSQL("ALTER TABLE `amex_pagoflex_plans` ADD COLUMN `initialInstallmentAmount` REAL DEFAULT NULL")
+
+                db.query("SELECT id, totalAmount, installmentCount, installmentAmount, paidCount, startDate FROM `amex_pagoflex_plans`").use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val planId = cursor.getString(0)
+                        val totalAmount = cursor.getDouble(1)
+                        val installmentCount = cursor.getInt(2)
+                        val installmentAmount = cursor.getDouble(3)
+                        val paidCount = cursor.getInt(4)
+                        val startDate = cursor.getString(5)
+                        val parts = startDate.split("-")
+                        val baseYear = parts.getOrNull(0)?.toIntOrNull() ?: 2024
+                        val baseMonth = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                        val baseDay = (parts.getOrNull(2)?.toIntOrNull() ?: 1).coerceIn(1, 28)
+
+                        for (i in 0 until installmentCount) {
+                            val paymentId = "migrated_${planId}_$i" + UUID.randomUUID().toString()
+                            val monthOffset = i
+                            val year = baseYear + (baseMonth - 1 + monthOffset) / 12
+                            val month = ((baseMonth - 1 + monthOffset) % 12) + 1
+                            val day = baseDay.coerceAtMost(28)
+                            val dueDate = "%04d-%02d-%02d".format(year, month, day)
+                            val status = if (i < paidCount) "PAID" else "PENDING"
+                            val amount = if (i == installmentCount - 1) {
+                                val regularTotal = installmentAmount * (installmentCount - 1)
+                                (totalAmount - regularTotal).coerceAtLeast(0.0)
+                            } else {
+                                installmentAmount
+                            }
+                            db.execSQL(
+                                "INSERT INTO `amex_pagoflex_scheduled_payments` (" +
+                                    "`id`, `planId`, `sequenceNumber`, `dueDate`, `amount`, `status`) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?)",
+                                arrayOf(paymentId, planId, i, dueDate, amount, status),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -432,7 +517,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                 if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     builder.fallbackToDestructiveMigration(dropAllTables = true)
                 }

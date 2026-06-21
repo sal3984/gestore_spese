@@ -45,6 +45,9 @@ interface AmexDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPagoFlexPlan(plan: AmexPagoFlexPlanEntity)
 
+    @Query("SELECT * FROM amex_pagoflex_plans WHERE id = :planId LIMIT 1")
+    suspend fun getPagoFlexPlanById(planId: String): AmexPagoFlexPlanEntity?
+
     @Query("SELECT * FROM amex_pagoflex_plans WHERE statementId = :statementId ORDER BY startDate ASC")
     suspend fun getPagoFlexPlansForStatement(statementId: String): List<AmexPagoFlexPlanEntity>
 
@@ -66,8 +69,59 @@ interface AmexDao {
     @Query("UPDATE amex_pagoflex_plans SET paidCount = :paidCount WHERE id = :planId")
     suspend fun updatePagoFlexPaidCount(planId: String, paidCount: Int)
 
+    @Query("UPDATE amex_pagoflex_plans SET installmentCount = :installmentCount, installmentAmount = :installmentAmount, planType = :planType, initialInstallmentAmount = :initialInstallmentAmount WHERE id = :planId")
+    suspend fun updatePagoFlexPlanCalculation(
+        planId: String,
+        installmentCount: Int,
+        installmentAmount: Double,
+        planType: String,
+        initialInstallmentAmount: Double?,
+    )
+
     @Query("DELETE FROM amex_pagoflex_plans WHERE statementId = :statementId")
     suspend fun deletePagoFlexPlansForStatement(statementId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAmexScheduledPayments(payments: List<AmexPagoFlexScheduledPaymentEntity>)
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE planId = :planId ORDER BY sequenceNumber ASC")
+    suspend fun getScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity>
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments ORDER BY dueDate ASC")
+    fun getAllScheduledPaymentsFlow(): Flow<List<AmexPagoFlexScheduledPaymentEntity>>
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments ORDER BY dueDate ASC")
+    suspend fun getAllScheduledPaymentsList(): List<AmexPagoFlexScheduledPaymentEntity>
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE planId = :planId ORDER BY sequenceNumber ASC")
+    fun getScheduledPaymentsForPlanFlow(planId: String): Flow<List<AmexPagoFlexScheduledPaymentEntity>>
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE planId = :planId AND status = 'PENDING' ORDER BY sequenceNumber ASC")
+    suspend fun getPendingScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity>
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE status = 'PENDING' AND strftime('%Y-%m', dueDate) = :month ORDER BY dueDate ASC")
+    suspend fun getPendingScheduledPaymentsForMonth(month: String): List<AmexPagoFlexScheduledPaymentEntity>
+
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE status = 'PENDING' AND strftime('%Y-%m', dueDate) = :month ORDER BY dueDate ASC")
+    fun getPendingScheduledPaymentsForMonthFlow(month: String): Flow<List<AmexPagoFlexScheduledPaymentEntity>>
+
+    @Query("UPDATE amex_pagoflex_scheduled_payments SET status = 'PAID', expenseTransactionId = :transactionId WHERE id = :paymentId")
+    suspend fun markScheduledPaymentAsPaid(paymentId: String, transactionId: String)
+
+    @Query("UPDATE amex_pagoflex_scheduled_payments SET amount = :amount WHERE id = :paymentId")
+    suspend fun updateScheduledPaymentAmount(paymentId: String, amount: Double)
+
+    @Query("UPDATE amex_pagoflex_scheduled_payments SET expenseTransactionId = :transactionId WHERE id = :paymentId")
+    suspend fun updateScheduledPaymentExpenseTransactionId(paymentId: String, transactionId: String)
+
+    @Query("DELETE FROM amex_pagoflex_scheduled_payments WHERE planId = :planId AND status = 'PENDING'")
+    suspend fun deletePendingScheduledPaymentsForPlan(planId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAmexPlanChange(change: AmexPagoFlexPlanChangeEntity)
+
+    @Query("SELECT * FROM amex_pagoflex_plan_changes WHERE planId = :planId ORDER BY changedAt DESC")
+    suspend fun getPlanChanges(planId: String): List<AmexPagoFlexPlanChangeEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRevolvingState(state: AmexRevolvingStateEntity)

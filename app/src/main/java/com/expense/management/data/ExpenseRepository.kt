@@ -311,13 +311,83 @@ class ExpenseRepository(
     suspend fun getAmexPagoFlexPlanByTransaction(transactionId: String): AmexPagoFlexPlanEntity? =
         amexDao.getPagoFlexPlanByTransaction(transactionId)
 
+    suspend fun getAmexPagoFlexPlanById(planId: String): AmexPagoFlexPlanEntity? =
+        amexDao.getPagoFlexPlanById(planId)
+
     suspend fun updateAmexPagoFlexPaidCount(planId: String, paidCount: Int) {
         amexDao.updatePagoFlexPaidCount(planId, paidCount)
+    }
+
+    suspend fun updateAmexPagoFlexPlanCalculation(
+        planId: String,
+        installmentCount: Int,
+        installmentAmount: Double,
+        planType: String,
+        initialInstallmentAmount: Double?,
+    ) {
+        amexDao.updatePagoFlexPlanCalculation(
+            planId,
+            installmentCount,
+            installmentAmount,
+            planType,
+            initialInstallmentAmount,
+        )
     }
 
     suspend fun deleteAmexPagoFlexPlansForStatement(statementId: String) {
         amexDao.deletePagoFlexPlansForStatement(statementId)
     }
+
+    // AMEX Scheduled Payments
+    val allAmexScheduledPayments: Flow<List<AmexPagoFlexScheduledPaymentEntity>> = amexDao.getAllScheduledPaymentsFlow()
+
+    suspend fun getAllAmexScheduledPaymentsList(): List<AmexPagoFlexScheduledPaymentEntity> = amexDao.getAllScheduledPaymentsList()
+
+    suspend fun insertAmexScheduledPayments(payments: List<AmexPagoFlexScheduledPaymentEntity>) {
+        amexDao.insertAmexScheduledPayments(payments)
+    }
+
+    suspend fun updateAmexScheduledPayment(payment: AmexPagoFlexScheduledPaymentEntity) {
+        amexDao.updateScheduledPaymentAmount(payment.id, payment.amount)
+        payment.expenseTransactionId?.let {
+            amexDao.updateScheduledPaymentExpenseTransactionId(payment.id, it)
+        }
+    }
+
+    suspend fun updateAmexScheduledPaymentExpenseTransactionId(paymentId: String, transactionId: String) {
+        amexDao.updateScheduledPaymentExpenseTransactionId(paymentId, transactionId)
+    }
+
+    suspend fun getAmexScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity> =
+        amexDao.getScheduledPaymentsForPlan(planId)
+
+    fun getAmexScheduledPaymentsForPlanFlow(planId: String): Flow<List<AmexPagoFlexScheduledPaymentEntity>> =
+        amexDao.getScheduledPaymentsForPlanFlow(planId)
+
+    suspend fun getPendingAmexScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity> =
+        amexDao.getPendingScheduledPaymentsForPlan(planId)
+
+    suspend fun getPendingAmexScheduledPaymentsForMonth(month: String): List<AmexPagoFlexScheduledPaymentEntity> =
+        amexDao.getPendingScheduledPaymentsForMonth(month)
+
+    fun getPendingAmexScheduledPaymentsForMonthFlow(month: String): Flow<List<AmexPagoFlexScheduledPaymentEntity>> =
+        amexDao.getPendingScheduledPaymentsForMonthFlow(month)
+
+    suspend fun markAmexScheduledPaymentAsPaid(paymentId: String, transactionId: String) {
+        amexDao.markScheduledPaymentAsPaid(paymentId, transactionId)
+    }
+
+    suspend fun deletePendingAmexScheduledPaymentsForPlan(planId: String) {
+        amexDao.deletePendingScheduledPaymentsForPlan(planId)
+    }
+
+    // AMEX Plan Changes
+    suspend fun insertAmexPlanChange(change: AmexPagoFlexPlanChangeEntity) {
+        amexDao.insertAmexPlanChange(change)
+    }
+
+    suspend fun getAmexPlanChanges(planId: String): List<AmexPagoFlexPlanChangeEntity> =
+        amexDao.getPlanChanges(planId)
 
     // AMEX Revolving
     suspend fun insertAmexRevolvingState(state: AmexRevolvingStateEntity) {
