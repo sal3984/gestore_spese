@@ -133,6 +133,8 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val enabledWidgets by viewModel.enabledWidgets.collectAsStateWithLifecycle()
     val defaultPaymentMethodId by viewModel.defaultPaymentMethodId.collectAsStateWithLifecycle()
     val dashboardFilteredTransactions by viewModel.dashboardFilteredTransactions.collectAsStateWithLifecycle()
+    val currentAccountIncomeForMonth by viewModel.currentAccountIncomeForMonth.collectAsStateWithLifecycle()
+    val currentAccountOutflowsForMonth by viewModel.currentAccountOutflowsForMonth.collectAsStateWithLifecycle()
     val creditCardSummaries by viewModel.creditCardSummaries.collectAsStateWithLifecycle()
     val installmentPlans by viewModel.allInstallmentPlans.collectAsStateWithLifecycle()
     val scheduledPayments by viewModel.allScheduledPayments.collectAsStateWithLifecycle()
@@ -306,6 +308,8 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         onToggleAmexAutoPay = viewModel::toggleAmexAutoPay,
                         amexScheduledPayments = amexScheduledPayments,
                         amexCurrentAccountOutflow = amexCurrentAccountOutflow,
+                        currentAccountIncomeForMonth = currentAccountIncomeForMonth,
+                        currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
                         onEditAmexInstallment = { planId, strategy ->
                             val statement = amexStatements.find { statement ->
                                 amexPagoFlexPlans.any { it.id == planId && it.statementId == statement.id }

@@ -41,7 +41,7 @@ class GenerateCreditCardPaymentUseCase {
             originalAmount = paymentAmount,
             originalCurrency = "",
             creditCardId = null,
-            paymentMethodId = null,
+            paymentMethodId = card.linkedPaymentMethodId,
             groupId = groupId,
         )
 

@@ -115,6 +115,8 @@ fun AppNavHost(
     onToggleAmexAutoPay: (Boolean) -> Unit = {},
     amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
     amexCurrentAccountOutflow: Double = 0.0,
+    currentAccountIncomeForMonth: Double = 0.0,
+    currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
     onBackup: () -> Unit,
     onRestore: () -> Unit,
@@ -177,6 +179,8 @@ fun AppNavHost(
                 onToggleAmexAutoPay = onToggleAmexAutoPay,
                 amexScheduledPayments = amexScheduledPayments,
                 amexCurrentAccountOutflow = amexCurrentAccountOutflow,
+                currentAccountIncomeForMonth = currentAccountIncomeForMonth,
+                currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
                 onEditAmexInstallment = onEditAmexInstallment,
                 onPayRevolving = { card, amount, date ->
                     viewModel.payCreditCardInstallment(card, amount, date)
@@ -296,8 +300,8 @@ fun AppNavHost(
                 allPaymentMethods = allPaymentMethods,
                 legacyCreditCards = allCreditCards,
                 onNavigateBack = { navController.popBackStack() },
-                onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit ->
-                    viewModel.addPaymentMethod(method, closingDay, paymentDay, creditLimit, debitIssuer, debitCardNumber, debitNotes)
+                onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit, linkedPaymentMethodId ->
+                    viewModel.addPaymentMethod(method, closingDay, paymentDay, creditLimit, debitIssuer, debitCardNumber, debitNotes, linkedPaymentMethodId)
                 },
                 onDelete = { viewModel.deletePaymentMethod(it) },
                 onEditPaymentMethod = { method, details ->

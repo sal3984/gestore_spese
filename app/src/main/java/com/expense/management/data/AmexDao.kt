@@ -15,6 +15,9 @@ interface AmexDao {
     @Query("SELECT * FROM amex_statements WHERE paymentMethodId = :paymentMethodId AND statementMonth = :month LIMIT 1")
     suspend fun getStatementByMonth(paymentMethodId: String, month: String): AmexStatementEntity?
 
+    @Query("SELECT * FROM amex_statements WHERE id = :statementId LIMIT 1")
+    suspend fun getStatementById(statementId: String): AmexStatementEntity?
+
     @Query("SELECT * FROM amex_statements WHERE paymentMethodId = :paymentMethodId AND isClosed = 0 ORDER BY statementMonth DESC LIMIT 1")
     suspend fun getOpenStatementForCard(paymentMethodId: String): AmexStatementEntity?
 

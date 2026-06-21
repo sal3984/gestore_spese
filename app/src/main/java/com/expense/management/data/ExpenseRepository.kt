@@ -260,6 +260,9 @@ class ExpenseRepository(
     suspend fun getAmexStatementByMonth(paymentMethodId: String, month: String): AmexStatementEntity? =
         amexDao.getStatementByMonth(paymentMethodId, month)
 
+    suspend fun getAmexStatementById(statementId: String): AmexStatementEntity? =
+        amexDao.getStatementById(statementId)
+
     suspend fun getOpenAmexStatementForCard(paymentMethodId: String): AmexStatementEntity? =
         amexDao.getOpenStatementForCard(paymentMethodId)
 

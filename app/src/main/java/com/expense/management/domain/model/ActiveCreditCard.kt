@@ -8,4 +8,5 @@ data class ActiveCreditCard(
     val limit: Double,
     val closingDay: Int,
     val paymentDay: Int,
+    val linkedPaymentMethodId: String? = null,
 )

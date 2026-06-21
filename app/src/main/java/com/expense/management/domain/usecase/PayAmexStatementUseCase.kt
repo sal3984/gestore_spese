@@ -15,6 +15,7 @@ class PayAmexStatementUseCase {
         paymentDate: String,
         plans: List<AmexPagoFlexPlanEntity>,
         scheduledPayments: List<AmexPagoFlexScheduledPaymentEntity>,
+        linkedPaymentMethodId: String? = null,
     ): AmexPaymentResult {
         val hasInstallmentPlan = plans.isNotEmpty()
         val paymentTransaction = if (!hasInstallmentPlan) {
@@ -29,6 +30,7 @@ class PayAmexStatementUseCase {
                 originalAmount = amount,
                 originalCurrency = "€",
                 effectiveDate = paymentDate,
+                paymentMethodId = linkedPaymentMethodId,
             )
         } else {
             null
@@ -41,10 +43,12 @@ class PayAmexStatementUseCase {
                 amount = amount,
                 categoryId = "credit_card_adjustment",
                 type = TransactionType.INCOME,
-                isCreditCard = false,
+                isCreditCard = true,
                 originalAmount = amount,
                 originalCurrency = "€",
                 effectiveDate = paymentDate,
+                creditCardId = statement.paymentMethodId,
+                paymentMethodId = statement.paymentMethodId,
             )
         } else {
             null

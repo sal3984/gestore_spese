@@ -157,6 +157,8 @@ fun DashboardScreen(
     onToggleAmexAutoPay: (Boolean) -> Unit = {},
     amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
     amexCurrentAccountOutflow: Double = 0.0,
+    currentAccountIncomeForMonth: Double = 0.0,
+    currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
 ) {
     val today = YearMonth.now()
@@ -169,9 +171,9 @@ fun DashboardScreen(
         currentTrans.groupBy { it.effectiveDate }
     }
 
-    val totalIncome = remember(currentTrans) { currentTrans.filter { it.type == TransactionType.INCOME }.sumOf { it.amount } }
-    val totalExpense = remember(currentTrans) { currentTrans.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount } }
-    val netBalance = remember(totalIncome, totalExpense) { totalIncome - totalExpense }
+    val totalIncome = currentAccountIncomeForMonth
+    val totalExpense = currentAccountOutflowsForMonth
+    val netBalance = totalIncome - totalExpense
 
     // LIMITI NAVIGAZIONE
     val minMonth = if (earliestMonth.isBefore(today.minusMonths(3))) earliestMonth else today.minusMonths(3)

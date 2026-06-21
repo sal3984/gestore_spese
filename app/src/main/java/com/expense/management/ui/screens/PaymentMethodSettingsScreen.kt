@@ -1,5 +1,6 @@
 package com.expense.management.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -30,6 +32,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,7 +73,7 @@ fun PaymentMethodSettingsScreen(
     allPaymentMethods: List<PaymentMethodEntity>,
     legacyCreditCards: List<CreditCardEntity>,
     onNavigateBack: () -> Unit,
-    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int, debitIssuer: String?, debitCardNumber: String?, debitNotes: String?, creditLimit: Double) -> Unit,
+    onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int, debitIssuer: String?, debitCardNumber: String?, debitNotes: String?, creditLimit: Double, linkedPaymentMethodId: String?) -> Unit,
     onDelete: (String) -> Unit,
     onEditPaymentMethod: (PaymentMethodEntity, PaymentMethodDetails) -> Unit,
     onLoadDetails: suspend (String) -> PaymentMethodDetails?,
@@ -161,8 +165,9 @@ fun PaymentMethodSettingsScreen(
     // Add Payment Method Dialog
     if (showAddDialog) {
         AddPaymentMethodDialog(
+            allPaymentMethods = allPaymentMethods,
             onDismiss = { showAddDialog = false },
-            onConfirm = { provider, name, closingDay, _, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit ->
+            onConfirm = { provider, name, closingDay, _, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit, linkedPaymentMethodId ->
                 val newMethod = PaymentMethodEntity(
                     id = java.util.UUID.randomUUID().toString(),
                     name = name,
@@ -171,7 +176,7 @@ fun PaymentMethodSettingsScreen(
                     issuer = null,
                     currency = null,
                 )
-                onAdd(newMethod, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit)
+                onAdd(newMethod, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit, linkedPaymentMethodId)
                 showAddDialog = false
             },
         )
@@ -187,6 +192,7 @@ fun PaymentMethodSettingsScreen(
         EditPaymentMethodDialog(
             provider = provider,
             currentDetails = currentDetails,
+            allPaymentMethods = allPaymentMethods,
             onDismiss = { editingMethod = null },
             onSave = { name, details ->
                 val updatedMethod = method.copy(name = name)
@@ -305,8 +311,9 @@ private fun paymentMethodListItem(
 
 @Composable
 private fun AddPaymentMethodDialog(
+    allPaymentMethods: List<PaymentMethodEntity>,
     onDismiss: () -> Unit,
-    onConfirm: (PaymentProvider, String, Int, Boolean, Int, String?, String?, String?, Double) -> Unit,
+    onConfirm: (PaymentProvider, String, Int, Boolean, Int, String?, String?, String?, Double, String?) -> Unit,
 ) {
     var selectedProvider by remember { mutableStateOf(PaymentProvider.CREDIT_CARD_SALDO) }
     var name by remember { mutableStateOf("") }
@@ -319,8 +326,20 @@ private fun AddPaymentMethodDialog(
     var debitNotes by remember { mutableStateOf("") }
     val isCreditCard = selectedProvider == PaymentProvider.CREDIT_CARD_SALDO ||
         selectedProvider == PaymentProvider.CREDIT_CARD_REVOLVING ||
-        selectedProvider == PaymentProvider.CREDIT_CARD_INSTALLMENT
+        selectedProvider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
+        selectedProvider == PaymentProvider.CREDIT_CARD_AMEX
     val isDebitCard = selectedProvider == PaymentProvider.DEBIT_CARD
+
+    val eligibleCheckingAccounts = remember(allPaymentMethods) {
+        allPaymentMethods.filter {
+            it.provider != PaymentProvider.CREDIT_CARD_SALDO &&
+                it.provider != PaymentProvider.CREDIT_CARD_REVOLVING &&
+                it.provider != PaymentProvider.CREDIT_CARD_INSTALLMENT &&
+                it.provider != PaymentProvider.CREDIT_CARD_AMEX
+        }
+    }
+    var isCheckingDropdownExpanded by remember { mutableStateOf(false) }
+    var selectedCheckingAccountId by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -396,6 +415,43 @@ private fun AddPaymentMethodDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Conto di addebito", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: "Nessuno (Contanti)"
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = selectedCheckingAccountName,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { isCheckingDropdownExpanded = true }) {
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleziona conto di addebito")
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().clickable { isCheckingDropdownExpanded = true },
+                        )
+                        DropdownMenu(
+                            expanded = isCheckingDropdownExpanded,
+                            onDismissRequest = { isCheckingDropdownExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Nessuno (Contanti)") },
+                                onClick = {
+                                    selectedCheckingAccountId = null
+                                    isCheckingDropdownExpanded = false
+                                },
+                            )
+                            eligibleCheckingAccounts.forEach { account ->
+                                DropdownMenuItem(
+                                    text = { Text(account.name) },
+                                    onClick = {
+                                        selectedCheckingAccountId = account.id
+                                        isCheckingDropdownExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (isDebitCard) {
@@ -438,6 +494,7 @@ private fun AddPaymentMethodDialog(
                             debitCardNumber.ifBlank { null },
                             debitNotes.ifBlank { null },
                             limitText.toDoubleOrNull() ?: 0.0,
+                            selectedCheckingAccountId,
                         )
                     }
                 },
@@ -462,6 +519,7 @@ internal fun cardTypeForProvider(provider: PaymentProvider): CreditCardType = wh
 private fun EditPaymentMethodDialog(
     provider: PaymentProvider,
     currentDetails: PaymentMethodDetails?,
+    allPaymentMethods: List<PaymentMethodEntity>,
     onDismiss: () -> Unit,
     onSave: (String, PaymentMethodDetails) -> Unit,
 ) {
@@ -494,6 +552,18 @@ private fun EditPaymentMethodDialog(
             var paymentDayText by remember(details) { mutableStateOf(if (details != null) details.paymentDay.toString() else "0") }
             var isLastDayOfMonth by remember(details) {
                 mutableStateOf(details?.closingDay == null || details.closingDay >= 31)
+            }
+            val eligibleCheckingAccounts = remember(allPaymentMethods) {
+                allPaymentMethods.filter {
+                    it.provider != PaymentProvider.CREDIT_CARD_SALDO &&
+                        it.provider != PaymentProvider.CREDIT_CARD_REVOLVING &&
+                        it.provider != PaymentProvider.CREDIT_CARD_INSTALLMENT &&
+                        it.provider != PaymentProvider.CREDIT_CARD_AMEX
+                }
+            }
+            var isCheckingDropdownExpanded by remember { mutableStateOf(false) }
+            var selectedCheckingAccountId by remember(details) {
+                mutableStateOf(details?.linkedPaymentMethodId)
             }
 
             AlertDialog(
@@ -531,6 +601,43 @@ private fun EditPaymentMethodDialog(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text(stringResource(R.string.payment_day)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Conto di addebito", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                        val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: "Nessuno (Contanti)"
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = selectedCheckingAccountName,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { isCheckingDropdownExpanded = true }) {
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleziona conto di addebito")
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().clickable { isCheckingDropdownExpanded = true },
+                            )
+                            DropdownMenu(
+                                expanded = isCheckingDropdownExpanded,
+                                onDismissRequest = { isCheckingDropdownExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Nessuno (Contanti)") },
+                                    onClick = {
+                                        selectedCheckingAccountId = null
+                                        isCheckingDropdownExpanded = false
+                                    },
+                                )
+                                eligibleCheckingAccounts.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = { Text(account.name) },
+                                        onClick = {
+                                            selectedCheckingAccountId = account.id
+                                            isCheckingDropdownExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 confirmButton = {
@@ -538,7 +645,7 @@ private fun EditPaymentMethodDialog(
                         val limit = limitText.toDoubleOrNull() ?: return@TextButton
                         val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: return@TextButton)
                         val paymentDay = paymentDayText.toIntOrNull() ?: return@TextButton
-                        onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay))
+                        onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay, selectedCheckingAccountId))
                     }) { Text(stringResource(R.string.save)) }
                 },
                 dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },

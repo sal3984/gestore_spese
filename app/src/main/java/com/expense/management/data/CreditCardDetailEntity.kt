@@ -25,4 +25,5 @@ data class CreditCardDetailEntity(
     val paymentDay: Int = 0,
     val interestRate: Double? = null,
     val issuer: String? = null,
+    val linkedPaymentMethodId: String? = null,
 )

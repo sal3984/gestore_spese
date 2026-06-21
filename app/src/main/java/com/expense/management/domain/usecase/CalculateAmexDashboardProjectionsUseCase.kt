@@ -35,13 +35,17 @@ class CalculateAmexDashboardProjectionsUseCase {
                 plans.filter { plan ->
                     val startMonth = try {
                         YearMonth.parse(plan.startDate.substring(0, 7))
-                    } catch (_: Exception) { null }
+                    } catch (_: Exception) {
+                        null
+                    }
                     startMonth != null && startMonth <= targetMonth
                 }
             }.sumOf { plan ->
                 val startMonth = try {
                     YearMonth.parse(plan.startDate.substring(0, 7))
-                } catch (_: Exception) { null }
+                } catch (_: Exception) {
+                    null
+                }
                 if (startMonth != null) {
                     val monthsElapsed = YearMonth.from(targetMonth.atDay(1)).let { tm ->
                         (tm.year - startMonth.year) * 12 + (tm.monthValue - startMonth.monthValue)
@@ -49,25 +53,37 @@ class CalculateAmexDashboardProjectionsUseCase {
                     val effectivePaid = monthsElapsed + 1
                     if (effectivePaid <= plan.installmentCount && effectivePaid > 0) {
                         plan.installmentAmount
-                    } else 0.0
-                } else 0.0
+                    } else {
+                        0.0
+                    }
+                } else {
+                    0.0
+                }
             }
             val pagoflexPlanCount = plansByStatement.flatMap { (_, plans) -> plans }
                 .count { plan ->
                     val startMonth = try {
                         YearMonth.parse(plan.startDate.substring(0, 7))
-                    } catch (_: Exception) { null }
+                    } catch (_: Exception) {
+                        null
+                    }
                     startMonth != null && !startMonth.isAfter(targetMonth)
                 }
 
             val dueAmount = if (openStatement != null) {
                 val dueDate = try {
                     LocalDate.parse(openStatement.paymentDueDate, DateTimeFormatter.ISO_LOCAL_DATE)
-                } catch (_: Exception) { null }
+                } catch (_: Exception) {
+                    null
+                }
                 if (dueDate != null && dueDate.month == targetMonth.month && dueDate.year == targetMonth.year) {
                     openStatement.paymentAmount
-                } else 0.0
-            } else 0.0
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            }
 
             val hasDuePayment = dueAmount > 0.0 && openStatement != null && !openStatement.isClosed
 
