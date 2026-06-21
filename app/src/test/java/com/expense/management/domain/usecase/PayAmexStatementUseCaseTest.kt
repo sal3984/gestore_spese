@@ -50,7 +50,7 @@ class PayAmexStatementUseCaseTest {
     }
 
     @Test
-    fun `payment with installment plan pays only overdue installments and leaves future pending`() {
+    fun `payment with installment plan pays current installment per plan regardless of due date`() {
         val useCase = PayAmexStatementUseCase()
         val plan = AmexPagoFlexPlanEntity(
             id = "plan1",
@@ -67,7 +67,7 @@ class PayAmexStatementUseCaseTest {
                 id = "p1",
                 planId = "plan1",
                 sequenceNumber = 1,
-                dueDate = "2024-06-15",
+                dueDate = "2024-07-15",
                 amount = 200.0,
                 status = "PENDING",
             ),
@@ -75,7 +75,7 @@ class PayAmexStatementUseCaseTest {
                 id = "p2",
                 planId = "plan1",
                 sequenceNumber = 2,
-                dueDate = "2024-07-15",
+                dueDate = "2024-08-15",
                 amount = 200.0,
                 status = "PENDING",
             ),
@@ -83,7 +83,7 @@ class PayAmexStatementUseCaseTest {
                 id = "p3",
                 planId = "plan1",
                 sequenceNumber = 3,
-                dueDate = "2024-08-15",
+                dueDate = "2024-09-15",
                 amount = 200.0,
                 status = "PENDING",
             ),
@@ -92,23 +92,21 @@ class PayAmexStatementUseCaseTest {
         val result = useCase.execute(
             statement = statement,
             amount = 1200.0,
-            paymentDate = "2024-07-15",
+            paymentDate = "2024-06-20",
             plans = listOf(plan),
             scheduledPayments = pendingPayments,
         )
 
         assertNull(result.incomeTransaction)
-        assertEquals(2, result.paidInstallments.size)
-        assertEquals(listOf("p1", "p2"), result.paidInstallments.map { it.id })
-        assertEquals(2, result.paymentTransactions.size)
+        assertEquals(1, result.paidInstallments.size)
+        assertEquals(listOf("p1"), result.paidInstallments.map { it.id })
+        assertEquals(1, result.paymentTransactions.size)
         result.paymentTransactions.forEach { tx ->
             assertEquals(TransactionType.EXPENSE, tx.type)
             assertTrue(!tx.isCreditCard)
             assertEquals("credit_card_payment", tx.categoryId)
         }
-        assertEquals(listOf("p1", "p2"), result.paidInstallments.map { it.id })
-        assertEquals("2024-06-15", result.paymentTransactions[0].effectiveDate)
-        assertEquals("2024-07-15", result.paymentTransactions[1].effectiveDate)
+        assertEquals("2024-06-20", result.paymentTransactions[0].effectiveDate)
     }
 
     @Test

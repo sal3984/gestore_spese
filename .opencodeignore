@@ -1,0 +1,17 @@
+# Dipendenze e build di sistema
+.gradle/
+.idea/
+build/
+app/build/
+captures/
+.kotlin/
+
+# File locali e segreti (evita di inviare chiavi all'LLM)
+local.properties
+.signing/
+*.keystore
+*.jks
+
+# Log e file temporanei
+*.log
+.DS_Store

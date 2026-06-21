@@ -53,14 +53,16 @@ class PayAmexStatementUseCase {
             )
         }
         val planIds = plans.map { it.id }.toSet()
-        val dueNow = scheduledPayments
+        val pendingByPlan = scheduledPayments
             .filter { it.planId in planIds && it.status == "PENDING" && it.expenseTransactionId == null }
-            .filter { it.dueDate <= paymentDate }
+            .groupBy { it.planId }
+        val dueNow = pendingByPlan.values
+            .mapNotNull { payments -> payments.minByOrNull { it.sequenceNumber } }
         val paymentTransactions = dueNow.map { payment ->
             val plan = plans.find { it.id == payment.planId }
             TransactionEntity(
                 id = UUID.randomUUID().toString(),
-                date = payment.dueDate,
+                date = paymentDate,
                 description = "Rata Amex ${payment.sequenceNumber}/${plan?.installmentCount ?: "-"}",
                 amount = payment.amount,
                 categoryId = "credit_card_payment",
@@ -68,7 +70,7 @@ class PayAmexStatementUseCase {
                 isCreditCard = false,
                 originalAmount = payment.amount,
                 originalCurrency = "€",
-                effectiveDate = payment.dueDate,
+                effectiveDate = paymentDate,
                 installmentNumber = payment.sequenceNumber,
                 totalInstallments = plan?.installmentCount,
                 groupId = payment.planId,
