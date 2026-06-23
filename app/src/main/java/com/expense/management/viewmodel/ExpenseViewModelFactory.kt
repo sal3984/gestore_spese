@@ -65,6 +65,25 @@ class ExpenseViewModelFactory(
                 scanReceiptUseCase = ScanReceiptUseCase(),
             ) as T
         }
+        if (modelClass.isAssignableFrom(AmexViewModel::class.java)) {
+            val repository = sharedRepository ?: run {
+                val db = AppDatabase.getDatabase(context)
+                ExpenseRepository(
+                    db.transactionDao(),
+                    db.categoryDao(),
+                    db.currencyDao(),
+                    db.creditCardDao(),
+                    db.paymentMethodDao(),
+                    db.amexDao(),
+                )
+            }
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            @Suppress("UNCHECKED_CAST")
+            return AmexViewModel(
+                repository = repository,
+                prefs = prefs,
+            ) as T
+        }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

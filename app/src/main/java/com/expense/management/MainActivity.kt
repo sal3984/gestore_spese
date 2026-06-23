@@ -47,6 +47,7 @@ import com.expense.management.ui.navigation.BiometricGate
 import com.expense.management.ui.theme.AppTheme
 import com.expense.management.utils.BackupUtils
 import com.expense.management.utils.CurrencyUtils
+import com.expense.management.viewmodel.AmexViewModel
 import com.expense.management.viewmodel.CreditCardViewModel
 import com.expense.management.viewmodel.CreditCardViewModelFactory
 import com.expense.management.viewmodel.ExpenseViewModel
@@ -81,6 +82,7 @@ fun mainApp() {
     val sharedCurrencyUtils = remember { CurrencyUtils(sharedDb.currencyDao()) }
     val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context, sharedRepository, sharedCurrencyUtils))
     val creditCardViewModel: CreditCardViewModel = viewModel(factory = CreditCardViewModelFactory(sharedRepository, sharedCurrencyUtils))
+    val amexViewModel: AmexViewModel = viewModel(factory = ExpenseViewModelFactory(context, sharedRepository, sharedCurrencyUtils))
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isDarkTheme = when (themeMode) {
         "dark" -> true
@@ -89,13 +91,13 @@ fun mainApp() {
     }
     val currentAppStyle by viewModel.appStyle.collectAsStateWithLifecycle()
     AppTheme(appStyle = currentAppStyle, darkTheme = isDarkTheme) {
-        mainAppContent(viewModel, creditCardViewModel)
+        mainAppContent(viewModel, creditCardViewModel, amexViewModel)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: CreditCardViewModel) {
+private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: CreditCardViewModel, amexViewModel: AmexViewModel) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
@@ -138,8 +140,8 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val amexStatements by viewModel.allAmexStatements.collectAsStateWithLifecycle()
     val amexPagoFlexPlans by viewModel.allAmexPagoFlexPlans.collectAsStateWithLifecycle()
     val amexRevolvingStates by viewModel.allAmexRevolvingStates.collectAsStateWithLifecycle()
-    val amexProjections by viewModel.amexDashboardProjections.collectAsStateWithLifecycle()
-    val isAmexAutoPayEnabled by viewModel.isAmexAutoPayEnabled.collectAsStateWithLifecycle()
+    val amexProjections by amexViewModel.amexDashboardProjections.collectAsStateWithLifecycle()
+    val isAmexAutoPayEnabled by amexViewModel.isAmexAutoPayEnabled.collectAsStateWithLifecycle()
     val amexScheduledPayments by viewModel.allAmexScheduledPayments.collectAsStateWithLifecycle()
     val amexCurrentAccountOutflow by viewModel.amexCurrentAccountOutflow.collectAsStateWithLifecycle()
     val amexStatementSummaries by viewModel.amexStatementSummaries.collectAsStateWithLifecycle()
@@ -266,6 +268,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         sharedTransitionScope = this@SharedTransitionLayout,
                         viewModel = viewModel,
                         creditCardViewModel = creditCardViewModel,
+                        amexViewModel = amexViewModel,
                         allTransactions = allTransactions,
                         reportTransactions = reportTransactions,
                         reportData = reportData,
@@ -303,7 +306,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         amexRevolvingStates = amexRevolvingStates,
                         amexProjections = amexProjections,
                         isAmexAutoPayEnabled = isAmexAutoPayEnabled,
-                        onToggleAmexAutoPay = viewModel::toggleAmexAutoPay,
+                        onToggleAmexAutoPay = amexViewModel::toggleAmexAutoPay,
                         amexScheduledPayments = amexScheduledPayments,
                         amexCurrentAccountOutflow = amexCurrentAccountOutflow,
                         amexStatementSummaries = amexStatementSummaries,
@@ -313,7 +316,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                             val statement = amexStatements.find { statement ->
                                 amexPagoFlexPlans.any { it.id == planId && it.statementId == statement.id }
                             }
-                            statement?.let { viewModel.recalculateAmexInstallmentPlan(planId, strategy, it.paymentDueDate) }
+                            statement?.let { amexViewModel.recalculateAmexInstallmentPlan(planId, strategy, it.paymentDueDate) }
                         },
                         onBackup = { backupLauncher.launch("gestore_spese_backup_${LocalDate.now()}.json") },
                         onRestore = { restoreLauncher.launch(arrayOf("application/json")) },

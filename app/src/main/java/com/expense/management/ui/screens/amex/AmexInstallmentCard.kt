@@ -17,6 +17,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -54,6 +55,11 @@ fun AmexInstallmentCard(
     val monthPayments = remember(scheduledPayments, monthPrefix) {
         scheduledPayments.filter { it.dueDate.startsWith(monthPrefix) }
             .sortedBy { it.sequenceNumber }
+    }
+    val pendingPlanIds = remember(scheduledPayments) {
+        scheduledPayments.filter { it.status == "PENDING" }
+            .map { it.planId }
+            .distinct()
     }
 
     Card(
@@ -113,6 +119,17 @@ fun AmexInstallmentCard(
                         style = MaterialTheme.typography.bodySmall,
                         textDecoration = if (isPaid) TextDecoration.LineThrough else TextDecoration.None,
                     )
+                }
+            }
+            if (pendingPlanIds.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                pendingPlanIds.forEach { planId ->
+                    OutlinedButton(
+                        onClick = { onEditPayment(planId) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Modifica piano rateale")
+                    }
                 }
             }
         }

@@ -60,6 +60,8 @@ import com.expense.management.ui.screens.securityScreen
 import com.expense.management.ui.screens.settingsScreen
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.utils.BiometricUtils
+import com.expense.management.viewmodel.AmexUiAction
+import com.expense.management.viewmodel.AmexViewModel
 import com.expense.management.viewmodel.CreditCardViewModel
 import com.expense.management.viewmodel.ExpenseViewModel
 import com.google.android.gms.tasks.Tasks
@@ -77,6 +79,7 @@ fun AppNavHost(
     sharedTransitionScope: SharedTransitionScope,
     viewModel: ExpenseViewModel,
     creditCardViewModel: CreditCardViewModel,
+    amexViewModel: AmexViewModel,
     allTransactions: List<TransactionEntity>,
     reportTransactions: List<TransactionEntity>,
     reportData: ReportData,
@@ -118,6 +121,7 @@ fun AppNavHost(
     amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
     amexCurrentAccountOutflow: Double = 0.0,
     amexStatementSummaries: Map<String, AmexStatementSummary> = emptyMap(),
+
     currentAccountIncomeForMonth: Double = 0.0,
     currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
@@ -169,13 +173,13 @@ fun AppNavHost(
                 amexPagoFlexPlans = amexPagoFlexPlans,
                 amexRevolvingStates = amexRevolvingStates,
                 onCreateAmexStatement = { paymentMethodId, statementMonth, closingDate, paymentDueDate ->
-                    viewModel.createAmexStatement(paymentMethodId, statementMonth, closingDate, paymentDueDate)
+                    amexViewModel.onAction(AmexUiAction.CreateStatement(paymentMethodId, statementMonth, closingDate, paymentDueDate))
                 },
                 onSetAmexPaymentMode = { statementId, mode, amount ->
-                    viewModel.setAmexPaymentMode(statementId, mode, amount)
+                    amexViewModel.onAction(AmexUiAction.SetPaymentMode(statementId, mode, amount))
                 },
                 onPayAmexStatement = { statement, amount ->
-                    viewModel.payAmexStatement(statement, amount)
+                    amexViewModel.onAction(AmexUiAction.PayStatement(statement, amount))
                 },
                 amexProjections = amexProjections,
                 isAmexAutoPayEnabled = isAmexAutoPayEnabled,
@@ -551,7 +555,7 @@ fun AppNavHost(
                     },
                     onCreatePagoFlexPlan = { paymentMethodId, transactionId, totalAmount, installmentCount, startDate ->
                         val currentMonth = java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-                        viewModel.addPagoFlexToAmexStatement(paymentMethodId, currentMonth, transactionId, totalAmount, installmentCount, startDate)
+                        amexViewModel.onAction(AmexUiAction.AddPagoFlex(paymentMethodId, currentMonth, transactionId, totalAmount, installmentCount, startDate))
                     },
                 )
             }
