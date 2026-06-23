@@ -15,7 +15,6 @@ import java.util.UUID
         TransactionEntity::class,
         CategoryEntity::class,
         CurrencyRate::class,
-        CreditCardEntity::class,
         PaymentMethodEntity::class,
         CreditCardDetailEntity::class,
         RevolutDetailEntity::class,
@@ -31,7 +30,7 @@ import java.util.UUID
         AmexPagoFlexPlanChangeEntity::class,
         AmexRevolvingStateEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -41,8 +40,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
 
     abstract fun currencyDao(): CurrencyDao
-
-    abstract fun creditCardDao(): CreditCardDao
 
     abstract fun paymentMethodDao(): PaymentMethodDao
 
@@ -478,6 +475,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO `payment_methods` (`id`, `name`, `provider`, `isActive`, `issuer`, `currency`)
+                    SELECT cc.`id`, cc.`name`,
+                        CASE WHEN cc.`type` = 'SALDO' THEN 'CREDIT_CARD_SALDO' ELSE 'CREDIT_CARD_REVOLVING' END,
+                        1, NULL, NULL
+                    FROM `credit_cards` cc
+                    LEFT JOIN `payment_methods` pm ON cc.`id` = pm.`id`
+                    WHERE pm.`id` IS NULL
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO `credit_card_details` (`paymentMethodId`, `cardType`, `limit`, `closingDay`, `paymentDay`)
+                    SELECT cc.`id`, cc.`type`, cc.`limit`, cc.`closingDay`, cc.`paymentDay`
+                    FROM `credit_cards` cc
+                    LEFT JOIN `credit_card_details` ccd ON cc.`id` = ccd.`paymentMethodId`
+                    WHERE ccd.`paymentMethodId` IS NULL
+                    """.trimIndent(),
+                )
+                db.execSQL("DROP TABLE IF EXISTS `credit_cards`")
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -523,7 +546,7 @@ abstract class AppDatabase : RoomDatabase() {
                         AppDatabase::class.java,
                         "spese_db_v6",
                     )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
                 if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     builder.fallbackToDestructiveMigration(dropAllTables = true)
                 }

@@ -64,9 +64,11 @@ class PayAmexStatementUseCase {
             val txAmount = if (index < dueNow.size - 1) {
                 round2(amount * payment.amount / totalPlanned)
             } else {
-                round2(amount - dueNow.subList(0, dueNow.size - 1).sumOf { p ->
-                    amount * p.amount / totalPlanned
-                })
+                round2(
+                    amount - dueNow.subList(0, dueNow.size - 1).sumOf { p ->
+                        amount * p.amount / totalPlanned
+                    },
+                )
             }
             TransactionEntity(
                 id = UUID.randomUUID().toString(),

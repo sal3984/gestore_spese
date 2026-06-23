@@ -52,6 +52,7 @@ import com.expense.management.viewmodel.CreditCardViewModel
 import com.expense.management.viewmodel.CreditCardViewModelFactory
 import com.expense.management.viewmodel.ExpenseViewModel
 import com.expense.management.viewmodel.ExpenseViewModelFactory
+import com.expense.management.viewmodel.PaymentMethodsViewModel
 import java.time.LocalDate
 
 class MainActivity : FragmentActivity() {
@@ -74,7 +75,6 @@ fun mainApp() {
             sharedDb.transactionDao(),
             sharedDb.categoryDao(),
             sharedDb.currencyDao(),
-            sharedDb.creditCardDao(),
             sharedDb.paymentMethodDao(),
             sharedDb.amexDao(),
         )
@@ -83,6 +83,7 @@ fun mainApp() {
     val viewModel: ExpenseViewModel = viewModel(factory = ExpenseViewModelFactory(context, sharedRepository, sharedCurrencyUtils))
     val creditCardViewModel: CreditCardViewModel = viewModel(factory = CreditCardViewModelFactory(sharedRepository, sharedCurrencyUtils))
     val amexViewModel: AmexViewModel = viewModel(factory = ExpenseViewModelFactory(context, sharedRepository, sharedCurrencyUtils))
+    val paymentMethodsViewModel: PaymentMethodsViewModel = viewModel(factory = ExpenseViewModelFactory(context, sharedRepository, sharedCurrencyUtils))
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isDarkTheme = when (themeMode) {
         "dark" -> true
@@ -91,13 +92,13 @@ fun mainApp() {
     }
     val currentAppStyle by viewModel.appStyle.collectAsStateWithLifecycle()
     AppTheme(appStyle = currentAppStyle, darkTheme = isDarkTheme) {
-        mainAppContent(viewModel, creditCardViewModel, amexViewModel)
+        mainAppContent(viewModel, creditCardViewModel, amexViewModel, paymentMethodsViewModel)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: CreditCardViewModel, amexViewModel: AmexViewModel) {
+private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: CreditCardViewModel, amexViewModel: AmexViewModel, paymentMethodsViewModel: PaymentMethodsViewModel) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
@@ -118,33 +119,30 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val csvExportColumns by viewModel.csvExportColumns.collectAsStateWithLifecycle()
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
-    val allCreditCards by viewModel.allCreditCards.collectAsStateWithLifecycle()
-    val activeCreditCards by viewModel.activeCreditCards.collectAsStateWithLifecycle()
-    val allPaymentMethods by viewModel.allPaymentMethods.collectAsStateWithLifecycle()
+    val activeCreditCards by paymentMethodsViewModel.activeCreditCards.collectAsStateWithLifecycle()
+    val allPaymentMethods by paymentMethodsViewModel.allPaymentMethods.collectAsStateWithLifecycle()
     val currencyRates by viewModel.currencyRates.collectAsStateWithLifecycle()
     val lastRatesUpdate by viewModel.currencyRatesUpdate.collectAsStateWithLifecycle()
     val frequentExpenseCategories by viewModel.getFrequentCategories(TransactionType.EXPENSE).collectAsStateWithLifecycle()
     val frequentIncomeCategories by viewModel.getFrequentCategories(TransactionType.INCOME).collectAsStateWithLifecycle()
 
     val isAuthenticated by viewModel.isAppUnlocked.collectAsStateWithLifecycle()
-    val bnplProjections by viewModel.bnplProjections.collectAsStateWithLifecycle()
+    val bnplProjections by paymentMethodsViewModel.bnplProjections.collectAsStateWithLifecycle()
     val receiptScanResult by viewModel.receiptScanResult.collectAsStateWithLifecycle()
     val enabledWidgets by viewModel.enabledWidgets.collectAsStateWithLifecycle()
-    val defaultPaymentMethodId by viewModel.defaultPaymentMethodId.collectAsStateWithLifecycle()
+    val defaultPaymentMethodId by paymentMethodsViewModel.defaultPaymentMethodId.collectAsStateWithLifecycle()
     val dashboardFilteredTransactions by viewModel.dashboardFilteredTransactions.collectAsStateWithLifecycle()
     val currentAccountIncomeForMonth by viewModel.currentAccountIncomeForMonth.collectAsStateWithLifecycle()
     val currentAccountOutflowsForMonth by viewModel.currentAccountOutflowsForMonth.collectAsStateWithLifecycle()
-    val creditCardSummaries by viewModel.creditCardSummaries.collectAsStateWithLifecycle()
-    val installmentPlans by viewModel.allInstallmentPlans.collectAsStateWithLifecycle()
-    val scheduledPayments by viewModel.allScheduledPayments.collectAsStateWithLifecycle()
+    val creditCardSummaries by paymentMethodsViewModel.creditCardSummaries.collectAsStateWithLifecycle()
+    val installmentPlans by paymentMethodsViewModel.allInstallmentPlans.collectAsStateWithLifecycle()
+    val scheduledPayments by paymentMethodsViewModel.allScheduledPayments.collectAsStateWithLifecycle()
     val amexStatements by viewModel.allAmexStatements.collectAsStateWithLifecycle()
     val amexPagoFlexPlans by viewModel.allAmexPagoFlexPlans.collectAsStateWithLifecycle()
-    val amexRevolvingStates by viewModel.allAmexRevolvingStates.collectAsStateWithLifecycle()
     val amexProjections by amexViewModel.amexDashboardProjections.collectAsStateWithLifecycle()
-    val isAmexAutoPayEnabled by amexViewModel.isAmexAutoPayEnabled.collectAsStateWithLifecycle()
-    val amexScheduledPayments by viewModel.allAmexScheduledPayments.collectAsStateWithLifecycle()
-    val amexCurrentAccountOutflow by viewModel.amexCurrentAccountOutflow.collectAsStateWithLifecycle()
     val amexStatementSummaries by viewModel.amexStatementSummaries.collectAsStateWithLifecycle()
+    val amexHubData by amexViewModel.amexHubData.collectAsStateWithLifecycle()
+    val amexSelectedMonth by amexViewModel.selectedMonth.collectAsStateWithLifecycle()
     val hasTransactions = allTransactions.isNotEmpty()
 
     val restoreLauncher =
@@ -269,6 +267,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         viewModel = viewModel,
                         creditCardViewModel = creditCardViewModel,
                         amexViewModel = amexViewModel,
+                        paymentMethodsViewModel = paymentMethodsViewModel,
                         allTransactions = allTransactions,
                         reportTransactions = reportTransactions,
                         reportData = reportData,
@@ -284,7 +283,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         bnplProjections = bnplProjections,
                         csvExportColumns = csvExportColumns,
                         suggestions = suggestions,
-                        allCreditCards = allCreditCards,
+
                         frequentExpenseCategories = frequentExpenseCategories,
                         frequentIncomeCategories = frequentIncomeCategories,
                         currencyRates = currencyRates,
@@ -296,22 +295,20 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
                         enabledWidgets = enabledWidgets,
                         receiptScanResult = receiptScanResult,
                         onClearReceiptScanResult = viewModel::clearReceiptScanResult,
-                        defaultPaymentMethodId = defaultPaymentMethodId,
+                        defaultPaymentMethodId = defaultPaymentMethodId ?: "__cash__",
                         dashboardFilteredTransactions = dashboardFilteredTransactions,
                         creditCardSummaries = creditCardSummaries,
                         installmentPlans = installmentPlans,
                         scheduledPayments = scheduledPayments,
                         amexStatements = amexStatements,
                         amexPagoFlexPlans = amexPagoFlexPlans,
-                        amexRevolvingStates = amexRevolvingStates,
                         amexProjections = amexProjections,
-                        isAmexAutoPayEnabled = isAmexAutoPayEnabled,
-                        onToggleAmexAutoPay = amexViewModel::toggleAmexAutoPay,
-                        amexScheduledPayments = amexScheduledPayments,
-                        amexCurrentAccountOutflow = amexCurrentAccountOutflow,
                         amexStatementSummaries = amexStatementSummaries,
                         currentAccountIncomeForMonth = currentAccountIncomeForMonth,
                         currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
+                        amexHubData = amexHubData,
+                        amexSelectedMonth = amexSelectedMonth,
+                        onNavigateToAmexHub = { navController.navigate("amex_hub") },
                         onEditAmexInstallment = { planId, strategy ->
                             val statement = amexStatements.find { statement ->
                                 amexPagoFlexPlans.any { it.id == planId && it.statementId == statement.id }

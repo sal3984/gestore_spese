@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Expense Manager Wear</string>
+    <string name="add_expense">Add Expense</string>
+    <string name="default_description">Expense from Watch</string>
+    <string name="send">Send</string>
+    <string name="no_phone_connected">No phone connected</string>
+    <string name="sent">Sent!</string>
+    <string name="send_error">Send error</string>
+</resources>

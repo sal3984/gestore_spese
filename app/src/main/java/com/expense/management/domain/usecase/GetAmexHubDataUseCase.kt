@@ -56,18 +56,20 @@ class GetAmexHubDataUseCase(
                 .flatMap { it.pagoFlexPlans }
                 .map { it.id }
                 .toSet()
-            val cardScheduledPayments = cardPlanIds
+            val allCardScheduledPayments = cardPlanIds
                 .flatMap { pid -> scheduledByPlan[pid].orEmpty() }
-                .filter { it.dueDate.startsWith(targetMonthStr) }
+                .sortedBy { it.sequenceNumber }
 
-            val outflow = calculateOutflowUseCase.execute(targetMonthStr, cardScheduledPayments)
+            val monthCardPayments = allCardScheduledPayments
+                .filter { it.dueDate.startsWith(targetMonthStr) }
+            val outflow = calculateOutflowUseCase.execute(targetMonthStr, monthCardPayments)
 
             AmexCardHubData(
                 cardName = method.name,
                 paymentMethodId = method.id,
                 statements = statementsWithDetails,
                 projection = projectionByMethod[method.id],
-                scheduledPayments = cardScheduledPayments,
+                scheduledPayments = allCardScheduledPayments,
                 currentAccountOutflow = outflow,
             )
         }

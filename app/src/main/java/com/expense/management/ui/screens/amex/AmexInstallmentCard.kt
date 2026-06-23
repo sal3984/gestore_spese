@@ -36,25 +36,20 @@ import com.expense.management.R
 import com.expense.management.data.AmexPagoFlexPlanEntity
 import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
 import java.time.LocalDate
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
 fun AmexInstallmentCard(
-    outflowAmount: Double,
     scheduledPayments: List<AmexPagoFlexScheduledPaymentEntity>,
     plans: List<AmexPagoFlexPlanEntity>,
-    selectedMonth: YearMonth,
     currencySymbol: String,
     locale: Locale,
     isAmountHidden: Boolean,
-    onEditPayment: (planId: String) -> Unit,
+    onPayInstallment: (paymentId: String) -> Unit,
+    onEditPlan: (planId: String) -> Unit,
 ) {
-    val monthPrefix = selectedMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"))
-    val monthPayments = remember(scheduledPayments, monthPrefix) {
-        scheduledPayments.filter { it.dueDate.startsWith(monthPrefix) }
-            .sortedBy { it.sequenceNumber }
+    val allSorted = remember(scheduledPayments) {
+        scheduledPayments.sortedBy { it.sequenceNumber }
     }
     val pendingPlanIds = remember(scheduledPayments) {
         scheduledPayments.filter { it.status == "PENDING" }
@@ -74,34 +69,31 @@ fun AmexInstallmentCard(
                 Icon(Icons.Default.AttachMoney, contentDescription = stringResource(R.string.amex_installment_icon_cd), tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Uscite conto corrente Amex",
+                    stringResource(R.string.amex_installment_outflow),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.semantics { heading() },
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Totale mese: ${if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", outflowAmount)}"}",
-                style = MaterialTheme.typography.titleSmall,
-            )
-            monthPayments.forEach { payment ->
+            allSorted.forEach { payment ->
                 val plan = plans.find { it.id == payment.planId }
                 val parsedDueDate = runCatching { LocalDate.parse(payment.dueDate) }.getOrNull()
                 val isPaid = payment.status == "PAID"
-                val isCurrentMonthEditable = !isPaid && payment.dueDate.startsWith(monthPrefix) && parsedDueDate != null && !parsedDueDate.isBefore(LocalDate.now())
-                val installmentLabel = "Rata ${payment.sequenceNumber}/${plan?.installmentCount ?: "-"}"
+                val canPay = !isPaid && parsedDueDate != null && !parsedDueDate.isBefore(LocalDate.now())
+                val installmentLabel = stringResource(R.string.amex_installment_label, payment.sequenceNumber, plan?.installmentCount ?: 0)
                 val amountLabel = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", payment.amount)}"
-                val rowContentDescription = "$installmentLabel, $amountLabel" + if (isPaid) ", pagata" else if (isCurrentMonthEditable) ", tocca per modificare" else ", in attesa"
+                val dateLabel = payment.dueDate
+                val rowContentDescription = "$installmentLabel · $dateLabel, $amountLabel" + if (isPaid) ", " + stringResource(R.string.amex_paid) else if (canPay) ", " + "tap to pay" else ", " + stringResource(R.string.amex_pending)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 6.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 4.dp)
                         .then(
-                            if (isCurrentMonthEditable) {
+                            if (canPay) {
                                 Modifier.toggleable(
                                     role = Role.Button,
                                     value = false,
-                                    onValueChange = { onEditPayment(payment.planId) },
+                                    onValueChange = { onPayInstallment(payment.id) },
                                 ).semantics { contentDescription = rowContentDescription }
                             } else {
                                 Modifier.alpha(if (isPaid) 0.5f else 0.7f).semantics { contentDescription = rowContentDescription }
@@ -109,7 +101,7 @@ fun AmexInstallmentCard(
                         ),
                 ) {
                     Text(
-                        installmentLabel,
+                        "$installmentLabel · $dateLabel",
                         style = MaterialTheme.typography.bodySmall,
                         textDecoration = if (isPaid) TextDecoration.LineThrough else TextDecoration.None,
                         modifier = Modifier.weight(1f),
@@ -118,6 +110,7 @@ fun AmexInstallmentCard(
                         amountLabel,
                         style = MaterialTheme.typography.bodySmall,
                         textDecoration = if (isPaid) TextDecoration.LineThrough else TextDecoration.None,
+                        color = if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -125,10 +118,10 @@ fun AmexInstallmentCard(
                 Spacer(Modifier.height(8.dp))
                 pendingPlanIds.forEach { planId ->
                     OutlinedButton(
-                        onClick = { onEditPayment(planId) },
+                        onClick = { onEditPlan(planId) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Modifica piano rateale")
+                        Text(stringResource(R.string.amex_edit_plan))
                     }
                 }
             }

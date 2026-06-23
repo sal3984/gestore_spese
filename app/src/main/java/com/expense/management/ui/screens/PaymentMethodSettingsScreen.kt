@@ -1,6 +1,5 @@
 package com.expense.management.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -32,9 +30,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,32 +57,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
-import com.expense.management.data.CardType
-import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentMethodSettingsScreen(
     currentCurrency: String,
     allPaymentMethods: List<PaymentMethodEntity>,
-    legacyCreditCards: List<CreditCardEntity>,
     onNavigateBack: () -> Unit,
     onAdd: (PaymentMethodEntity, closingDay: Int, paymentDay: Int, debitIssuer: String?, debitCardNumber: String?, debitNotes: String?, creditLimit: Double, linkedPaymentMethodId: String?) -> Unit,
     onDelete: (String) -> Unit,
     onEditPaymentMethod: (PaymentMethodEntity, PaymentMethodDetails) -> Unit,
     onLoadDetails: suspend (String) -> PaymentMethodDetails?,
-    onAddLegacyCard: (CreditCardEntity) -> Unit,
-    onUpdateLegacyCard: (CreditCardEntity) -> Unit,
-    onDeleteLegacyCard: (CreditCardEntity) -> Unit,
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingMethod by remember { mutableStateOf<PaymentMethodEntity?>(null) }
-    var editingLegacyCard by remember { mutableStateOf<CreditCardEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -105,30 +96,8 @@ fun PaymentMethodSettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Legacy credit cards section
-            if (legacyCreditCards.isNotEmpty()) {
-                settingsSectionHeader(stringResource(R.string.credit_cards))
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                ) {
-                    legacyCreditCards.forEach { card ->
-                        paymentMethodListItem(
-                            icon = Icons.Default.CreditCard,
-                            title = card.name,
-                            subtitle = "${if (card.type == CardType.SALDO) stringResource(R.string.single_balance) else stringResource(R.string.installment_plan)} • ${stringResource(R.string.max_limit, currentCurrency)} ${String.format(Locale.US, "%.0f", card.limit)}",
-                            onEdit = { editingLegacyCard = card },
-                            onDelete = { onDeleteLegacyCard(card) },
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                    }
-                }
-            }
-
-            // New payment methods section
-            if (allPaymentMethods.isEmpty() && legacyCreditCards.isEmpty()) {
+            // Payment methods section
+            if (allPaymentMethods.isEmpty()) {
                 Text(
                     stringResource(R.string.no_payment_methods),
                     modifier = Modifier.padding(16.dp),
@@ -201,79 +170,6 @@ fun PaymentMethodSettingsScreen(
             },
         )
     }
-
-    // Edit Legacy Credit Card Dialog
-    editingLegacyCard?.let { card ->
-        var editName by remember(card) { mutableStateOf(card.name) }
-        var editLimitText by remember(card) { mutableStateOf(card.limit.toString()) }
-        var editClosingDayText by remember(card) { mutableStateOf(card.closingDay.toString()) }
-        var editPaymentDayText by remember(card) { mutableStateOf(card.paymentDay.toString()) }
-        var isLastDayOfMonth by remember(card) { mutableStateOf(card.closingDay >= 31) }
-
-        AlertDialog(
-            onDismissRequest = { editingLegacyCard = null },
-            title = { Text(stringResource(R.string.edit_card)) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    OutlinedTextField(
-                        value = editName,
-                        onValueChange = { editName = it },
-                        label = { Text(stringResource(R.string.card_name)) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = editLimitText,
-                        onValueChange = { editLimitText = it },
-                        label = { Text(stringResource(R.string.card_limit)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = isLastDayOfMonth,
-                            onCheckedChange = {
-                                isLastDayOfMonth = it
-                                if (it) editClosingDayText = ""
-                            },
-                        )
-                        Text(stringResource(R.string.end_of_month), style = MaterialTheme.typography.bodySmall)
-                    }
-                    if (!isLastDayOfMonth) {
-                        OutlinedTextField(
-                            value = editClosingDayText,
-                            onValueChange = {
-                                editClosingDayText = it
-                                if (it.isNotEmpty()) isLastDayOfMonth = false
-                            },
-                            label = { Text(stringResource(R.string.closing_day)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    OutlinedTextField(
-                        value = editPaymentDayText,
-                        onValueChange = { editPaymentDayText = it },
-                        label = { Text(stringResource(R.string.payment_day)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val limit = editLimitText.toDoubleOrNull() ?: return@TextButton
-                    val closingDay = if (isLastDayOfMonth) 31 else (editClosingDayText.toIntOrNull() ?: return@TextButton)
-                    val paymentDay = editPaymentDayText.toIntOrNull() ?: return@TextButton
-                    onUpdateLegacyCard(card.copy(name = editName, limit = limit, closingDay = closingDay, paymentDay = paymentDay))
-                    editingLegacyCard = null
-                }) { Text(stringResource(R.string.save)) }
-            },
-            dismissButton = { TextButton(onClick = { editingLegacyCard = null }) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
 }
 
 @Composable
@@ -309,6 +205,7 @@ private fun paymentMethodListItem(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddPaymentMethodDialog(
     allPaymentMethods: List<PaymentMethodEntity>,
@@ -416,30 +313,31 @@ private fun AddPaymentMethodDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Conto di addebito", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-                    val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: "Nessuno (Contanti)"
-                    Box(modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.debit_account), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: stringResource(R.string.none_cash)
+                    ExposedDropdownMenuBox(
+                        expanded = isCheckingDropdownExpanded,
+                        onExpandedChange = { isCheckingDropdownExpanded = !isCheckingDropdownExpanded },
+                    ) {
                         OutlinedTextField(
                             value = selectedCheckingAccountName,
                             onValueChange = {},
                             readOnly = true,
-                            trailingIcon = {
-                                IconButton(onClick = { isCheckingDropdownExpanded = true }) {
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleziona conto di addebito")
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().clickable { isCheckingDropdownExpanded = true },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCheckingDropdownExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         )
-                        DropdownMenu(
+                        ExposedDropdownMenu(
                             expanded = isCheckingDropdownExpanded,
                             onDismissRequest = { isCheckingDropdownExpanded = false },
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Nessuno (Contanti)") },
+                                text = { Text(stringResource(R.string.none_cash)) },
                                 onClick = {
                                     selectedCheckingAccountId = null
                                     isCheckingDropdownExpanded = false
                                 },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                             )
                             eligibleCheckingAccounts.forEach { account ->
                                 DropdownMenuItem(
@@ -448,6 +346,7 @@ private fun AddPaymentMethodDialog(
                                         selectedCheckingAccountId = account.id
                                         isCheckingDropdownExpanded = false
                                     },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                                 )
                             }
                         }
@@ -515,6 +414,7 @@ internal fun cardTypeForProvider(provider: PaymentProvider): CreditCardType = wh
     else -> CreditCardType.SALDO
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditPaymentMethodDialog(
     provider: PaymentProvider,
@@ -602,30 +502,31 @@ private fun EditPaymentMethodDialog(
                         }
                         OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text(stringResource(R.string.payment_day)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Conto di addebito", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-                        val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: "Nessuno (Contanti)"
-                        Box(modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.debit_account), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                        val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: stringResource(R.string.none_cash)
+                        ExposedDropdownMenuBox(
+                            expanded = isCheckingDropdownExpanded,
+                            onExpandedChange = { isCheckingDropdownExpanded = !isCheckingDropdownExpanded },
+                        ) {
                             OutlinedTextField(
                                 value = selectedCheckingAccountName,
                                 onValueChange = {},
                                 readOnly = true,
-                                trailingIcon = {
-                                    IconButton(onClick = { isCheckingDropdownExpanded = true }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Seleziona conto di addebito")
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth().clickable { isCheckingDropdownExpanded = true },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCheckingDropdownExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            DropdownMenu(
+                            ExposedDropdownMenu(
                                 expanded = isCheckingDropdownExpanded,
                                 onDismissRequest = { isCheckingDropdownExpanded = false },
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Nessuno (Contanti)") },
+                                    text = { Text(stringResource(R.string.none_cash)) },
                                     onClick = {
                                         selectedCheckingAccountId = null
                                         isCheckingDropdownExpanded = false
                                     },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                                 )
                                 eligibleCheckingAccounts.forEach { account ->
                                     DropdownMenuItem(
@@ -634,6 +535,7 @@ private fun EditPaymentMethodDialog(
                                             selectedCheckingAccountId = account.id
                                             isCheckingDropdownExpanded = false
                                         },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                                     )
                                 }
                             }

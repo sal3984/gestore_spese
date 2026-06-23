@@ -1,7 +1,5 @@
 package com.expense.management.domain.model
 
-import com.expense.management.data.TransactionType
-
 data class DefaultCategory(
     val id: String,
     val label: String,

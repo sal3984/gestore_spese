@@ -82,4 +82,15 @@ sealed class PaymentMethod {
         override val provider: PaymentProvider
             get() = PaymentProvider.KLARNA
     }
+
+    data class Cash(
+        override val id: String,
+        override val name: String,
+        override val isActive: Boolean = true,
+        override val issuer: String? = null,
+        override val currency: String? = null,
+    ) : PaymentMethod() {
+        override val provider: PaymentProvider
+            get() = PaymentProvider.CASH
+    }
 }

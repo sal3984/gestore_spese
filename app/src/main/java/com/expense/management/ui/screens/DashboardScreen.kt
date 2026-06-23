@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,8 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -61,7 +58,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -91,8 +87,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.AmexPagoFlexPlanEntity
-import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
-import com.expense.management.data.AmexRevolvingStateEntity
 import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.CreditCardInstallmentPlanEntity
@@ -103,7 +97,6 @@ import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexDashboardProjection
 import com.expense.management.domain.model.AmexInstallmentStrategy
-import com.expense.management.domain.model.AmexPaymentMode
 import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CreditCardSummary
@@ -111,8 +104,8 @@ import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.TransactionToDelete
-import com.expense.management.ui.screens.amex.AmexInstallmentCard
 import com.expense.management.ui.screens.amex.AmexInstallmentSetupDialog
+import com.expense.management.ui.screens.amex.AmexSummaryCard
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.AppTheme
 import com.expense.management.utils.TransactionItem
@@ -157,19 +150,12 @@ fun DashboardScreen(
     onSetupInstallmentPlan: (paymentMethodId: String, totalAmount: Double, installmentCount: Int, installmentAmount: Double, startDate: String) -> Unit = { _, _, _, _, _ -> },
     amexStatements: List<AmexStatementEntity> = emptyList(),
     amexPagoFlexPlans: List<AmexPagoFlexPlanEntity> = emptyList(),
-    amexRevolvingStates: List<AmexRevolvingStateEntity> = emptyList(),
-    onCreateAmexStatement: (paymentMethodId: String, statementMonth: String, closingDate: String, paymentDueDate: String) -> Unit = { _, _, _, _ -> },
-    onSetAmexPaymentMode: (statementId: String, mode: AmexPaymentMode, amount: Double) -> Unit = { _, _, _ -> },
-    onPayAmexStatement: (statement: AmexStatementEntity, amount: Double) -> Unit = { _, _ -> },
     amexProjections: List<AmexDashboardProjection> = emptyList(),
-    isAmexAutoPayEnabled: Boolean = true,
-    onToggleAmexAutoPay: (Boolean) -> Unit = {},
-    amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
-    amexCurrentAccountOutflow: Double = 0.0,
     amexStatementSummaries: Map<String, AmexStatementSummary> = emptyMap(),
     currentAccountIncomeForMonth: Double = 0.0,
     currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
+    onNavigateToAmexHub: () -> Unit = {},
 ) {
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
@@ -210,14 +196,16 @@ fun DashboardScreen(
             onDismissRequest = { showDeleteDialog = null },
             title = { Text(stringResource(R.string.delete_transaction_title)) },
             text = {
-                if (transactionToDelete.isInstallment) {
+                if (transactionToDelete.isAmexInstallment) {
+                    Text(stringResource(R.string.delete_amex_installment_message))
+                } else if (transactionToDelete.isInstallment) {
                     Text(stringResource(R.string.delete_installment_message))
                 } else {
                     Text(stringResource(R.string.delete_transaction_message))
                 }
             },
             confirmButton = {
-                if (transactionToDelete.isInstallment) {
+                if (transactionToDelete.isAmexInstallment || transactionToDelete.isInstallment) {
                     Column {
                         TextButton(
                             onClick = {
@@ -672,122 +660,32 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                         }
 
-                        // Card AMEX Ibride
+                        // Card AMEX Ibride — compatte su dashboard, dettaglio su hub
                         val amexPaymentMethods = allPaymentMethods.filter { it.provider == PaymentProvider.CREDIT_CARD_AMEX }
                         if (showAmex && amexPaymentMethods.isNotEmpty()) {
                             val amexByCard = remember(amexStatements) {
                                 amexStatements.groupBy { it.paymentMethodId }
                             }
-                            val pagoFlexByStatement = remember(amexPagoFlexPlans) {
-                                amexPagoFlexPlans.groupBy { it.statementId }
+                            val projByCard = remember(amexProjections) {
+                                amexProjections.associateBy { it.paymentMethodId }
                             }
                             amexPaymentMethods.forEach { method ->
                                 val cardStatements = amexByCard[method.id].orEmpty().sortedByDescending { it.statementMonth }
-                                if (cardStatements.isNotEmpty()) {
-                                    cardStatements.forEach { statement ->
-                                        val pagoFlexPlans = pagoFlexByStatement[statement.id].orEmpty()
-                                        val summary = amexStatementSummaries[statement.id]
-                                        if (summary != null) {
-                                            AmexStatementCard(
-                                                cardName = method.name,
-                                                statement = statement,
-                                                summary = summary,
-                                                pagoFlexPlans = pagoFlexPlans,
-                                                currencySymbol = currencySymbol,
-                                                isAmountHidden = isAmountHidden,
-                                                locale = locale,
-                                                onSetPaymentMode = { mode, amount -> onSetAmexPaymentMode(statement.id, mode, amount) },
-                                                onPay = { amount -> onPayAmexStatement(statement, amount) },
-                                                onClose = { onCreateAmexStatement(method.id, statement.statementMonth, statement.closingDate, statement.paymentDueDate) },
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    AmexStatementCardEmpty(
-                                        cardName = method.name,
-                                        currencySymbol = currencySymbol,
-                                        onCreate = { onCreateAmexStatement(method.id, "", "", "") },
-                                    )
+                                val openStatements = cardStatements.filter { !it.isClosed }
+                                val totalDue = openStatements.sumOf { amexStatementSummaries[it.id]?.paymentAmount ?: 0.0 }
+                                val hasPagoFlex = openStatements.any { st ->
+                                    amexPagoFlexPlans.any { it.statementId == st.id }
                                 }
-                            }
-                        }
-
-                        // AMEX Projections per month
-                        if (showAmex && amexProjections.isNotEmpty()) {
-                            amexProjections.forEach { proj ->
-                                if (proj.pagoflexQuotaTotal > 0.0 || proj.hasDuePayment) {
-                                    Card(
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                                        ),
-                                        shape = RoundedCornerShape(16.dp),
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    ) {
-                                        Column(Modifier.padding(12.dp)) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.DateRange, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
-                                                Spacer(Modifier.width(8.dp))
-                                                Text(
-                                                    "Amex ${proj.cardName} — Proiezioni",
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    fontWeight = FontWeight.Bold,
-                                                )
-                                            }
-                                            if (proj.pagoflexQuotaTotal > 0.0) {
-                                                Spacer(Modifier.height(4.dp))
-                                                Text(
-                                                    "Rate PagoFlex: $currencySymbol ${String.format(locale, "%.2f", proj.pagoflexQuotaTotal)} (${proj.pagoflexPlanCount} piani)",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.secondary,
-                                                )
-                                            }
-                                            if (proj.hasDuePayment) {
-                                                Spacer(Modifier.height(4.dp))
-                                                Text(
-                                                    "Pagamento in scadenza: $currencySymbol ${String.format(locale, "%.2f", proj.duePaymentAmount)}",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.error,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-                                    .heightIn(min = 48.dp)
-                                    .toggleable(
-                                        value = isAmexAutoPayEnabled,
-                                        role = androidx.compose.ui.semantics.Role.Switch,
-                                        onValueChange = onToggleAmexAutoPay,
-                                    ),
-                            ) {
-                                Text(
-                                    "Pagamento automatico Amex",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.weight(1f))
-                                androidx.compose.material3.Switch(
-                                    checked = isAmexAutoPayEnabled,
-                                    onCheckedChange = null,
-                                )
-                            }
-                            val amexMonthPrefix = currentDashboardMonth.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-                            if (amexScheduledPayments.any { it.dueDate.startsWith(amexMonthPrefix) }) {
-                                AmexInstallmentCard(
-                                    outflowAmount = amexCurrentAccountOutflow,
-                                    scheduledPayments = amexScheduledPayments,
-                                    plans = amexPagoFlexPlans,
-                                    selectedMonth = currentDashboardMonth,
+                                AmexSummaryCard(
+                                    cardName = method.name,
+                                    openStatementCount = openStatements.size,
+                                    totalDue = totalDue,
+                                    hasPagoFlex = hasPagoFlex,
+                                    projection = projByCard[method.id],
                                     currencySymbol = currencySymbol,
-                                    locale = locale,
                                     isAmountHidden = isAmountHidden,
-                                    onEditPayment = { planId ->
-                                        amexEditPlan = amexPagoFlexPlans.find { it.id == planId }
-                                    },
+                                    locale = locale,
+                                    onViewDetails = onNavigateToAmexHub,
                                 )
                             }
                         }
@@ -940,9 +838,11 @@ fun DashboardScreen(
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = {
                                 if (it == SwipeToDismissBoxValue.EndToStart) {
+                                    val amexPlanIds = amexPagoFlexPlans.map { p -> p.id }.toSet()
                                     showDeleteDialog = TransactionToDelete(
                                         transaction = t,
                                         isInstallment = t.installmentNumber != null && t.totalInstallments != null && t.totalInstallments > 1,
+                                        isAmexInstallment = t.groupId != null && t.groupId in amexPlanIds,
                                     )
                                     false
                                 } else {
@@ -1620,213 +1520,6 @@ private fun InstallmentPlanSetupDialog(
             TextButton(onClick = onDismiss) { Text("Annulla") }
         },
     )
-}
-
-@Composable
-private fun AmexStatementCard(
-    cardName: String,
-    statement: AmexStatementEntity,
-    summary: AmexStatementSummary,
-    pagoFlexPlans: List<AmexPagoFlexPlanEntity>,
-    currencySymbol: String,
-    isAmountHidden: Boolean,
-    locale: Locale,
-    onSetPaymentMode: (AmexPaymentMode, Double) -> Unit,
-    onPay: (Double) -> Unit,
-    onClose: () -> Unit,
-) {
-    var showModeMenu by remember { mutableStateOf(false) }
-    var showPayDialog by remember { mutableStateOf(false) }
-    var customAmount by remember { mutableStateOf("") }
-    var selectedMode by remember { mutableStateOf(AmexPaymentMode.SALDO) }
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
-        ),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.CreditCard, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Amex $cardName — ${statement.statementMonth}",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Totale spese: ${if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", summary.totalExpenses)}"}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (summary.totalPagoflex > 0.0) {
-                val pagoFlexCount = pagoFlexPlans.sumOf { it.installmentCount }
-                Text(
-                    "PagoFlex: $pagoFlexCount rate x $currencySymbol ${String.format(locale, "%.2f", summary.pagoflexQuota)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-            }
-            if (summary.carriedForward > 0.0) {
-                Text(
-                    "Saldo portato: $currencySymbol ${String.format(locale, "%.2f", summary.carriedForward)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            if (summary.paymentAmount > 0.0) {
-                Text(
-                    "Da pagare: $currencySymbol ${String.format(locale, "%.2f", summary.paymentAmount)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { showModeMenu = true },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        when (summary.paymentMode) {
-                            AmexPaymentMode.SALDO -> "Saldo"
-                            AmexPaymentMode.MINIMUM -> "Minimo"
-                            AmexPaymentMode.FIXED -> "Importo fisso"
-                            AmexPaymentMode.PAGOFLEX_ONLY -> "Solo PagoFlex"
-                        },
-                    )
-                }
-                OutlinedButton(
-                    onClick = { showPayDialog = true },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Paga")
-                }
-            }
-        }
-    }
-    if (showModeMenu) {
-        AlertDialog(
-            onDismissRequest = { showModeMenu = false },
-            title = { Text("Modalità pagamento") },
-            text = {
-                Column {
-                    AmexPaymentMode.entries.forEach { mode ->
-                        val label = when (mode) {
-                            AmexPaymentMode.SALDO -> "Saldo completo"
-                            AmexPaymentMode.MINIMUM -> "Pagamento minimo"
-                            AmexPaymentMode.FIXED -> "Importo fisso"
-                            AmexPaymentMode.PAGOFLEX_ONLY -> "Solo PagoFlex"
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 2.dp)
-                                .selectable(
-                                    selected = selectedMode == mode,
-                                    role = androidx.compose.ui.semantics.Role.RadioButton,
-                                    onClick = { selectedMode = mode },
-                                ),
-                        ) {
-                            RadioButton(
-                                selected = selectedMode == mode,
-                                onClick = null,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                    if (selectedMode == AmexPaymentMode.FIXED) {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = customAmount,
-                            onValueChange = { customAmount = it.filter { c -> c.isDigit() || c == '.' } },
-                            label = { Text("Importo") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val amount = if (selectedMode == AmexPaymentMode.FIXED) customAmount.toDoubleOrNull() ?: 0.0 else 0.0
-                    onSetPaymentMode(selectedMode, amount)
-                    showModeMenu = false
-                }) { Text("Conferma") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showModeMenu = false }) { Text("Annulla") }
-            },
-        )
-    }
-    if (showPayDialog) {
-        AlertDialog(
-            onDismissRequest = { showPayDialog = false },
-            title = { Text("Paga estratto conto") },
-            text = {
-                Column {
-                    Text("Importo da pagare: $currencySymbol ${String.format(locale, "%.2f", summary.paymentAmount)}")
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = customAmount,
-                        onValueChange = { customAmount = it.filter { c -> c.isDigit() || c == '.' } },
-                        label = { Text("Importo (lascia vuoto per il totale)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val amount = customAmount.toDoubleOrNull() ?: summary.paymentAmount
-                    onPay(amount)
-                    showPayDialog = false
-                }) { Text("Paga") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPayDialog = false }) { Text("Annulla") }
-            },
-        )
-    }
-}
-
-@Composable
-private fun AmexStatementCardEmpty(
-    cardName: String,
-    currencySymbol: String,
-    onCreate: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
-        ),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                "Amex $cardName",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Nessun estratto conto aperto.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onCreate,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Crea estratto conto")
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true, name = "Dashboard Light")

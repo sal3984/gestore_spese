@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -32,6 +33,7 @@ import androidx.wear.compose.material.CompactButton
 import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import com.expense.management.wear.R
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
@@ -75,7 +77,7 @@ class MainActivity : ComponentActivity() {
 
                 if (finalNodes.isEmpty()) {
                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Nessun telefono connesso", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, getString(R.string.no_phone_connected), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -86,12 +88,12 @@ class MainActivity : ComponentActivity() {
                 }
 
                 runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Inviato!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.sent), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Errore invio", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.send_error), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -102,7 +104,8 @@ class MainActivity : ComponentActivity() {
 fun WearApp(onSendTransaction: (String, String) -> Unit) {
     MaterialTheme {
         var amount by remember { mutableStateOf("") }
-        var description by remember { mutableStateOf("Spesa da Watch") }
+        val defaultDesc = stringResource(R.string.default_description)
+        var description by remember { mutableStateOf(defaultDesc) }
 
         val listState = rememberScalingLazyListState()
 
@@ -115,7 +118,7 @@ fun WearApp(onSendTransaction: (String, String) -> Unit) {
         ) {
             item {
                 Text(
-                    text = "Aggiungi Spesa",
+                    text = stringResource(R.string.add_expense),
                     style = MaterialTheme.typography.title3,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -179,7 +182,7 @@ fun WearApp(onSendTransaction: (String, String) -> Unit) {
                         .fillMaxWidth()
                         .padding(top = 12.dp, bottom = 8.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Check, contentDescription = "Invia")
+                    Icon(imageVector = Icons.Default.Check, contentDescription = stringResource(R.string.send))
                 }
             }
         }

@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,9 +25,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -827,20 +827,20 @@ fun CreditCardPaymentFields(
         if (uiState.isTopUp && topUpDestinations.isNotEmpty()) {
             var expanded by remember { mutableStateOf(false) }
             val selectedName = topUpDestinations.find { it.id == uiState.topUpDestinationId }?.name
-            Box {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+            ) {
                 OutlinedTextField(
                     value = selectedName ?: stringResource(R.string.select_destination),
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.destination_method)) },
-                    trailingIcon = {
-                        IconButton(onClick = { expanded = true }) {
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 )
-                DropdownMenu(
+                ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                 ) {
@@ -851,6 +851,7 @@ fun CreditCardPaymentFields(
                                 onEvent(AddTransactionEvent.OnTopUpDestinationChange(method.id))
                                 expanded = false
                             },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                         )
                     }
                 }

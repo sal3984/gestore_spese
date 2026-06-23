@@ -7,7 +7,6 @@ class ExpenseRepository(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
     private val currencyDao: CurrencyDao,
-    private val creditCardDao: CreditCardDao,
     private val paymentMethodDao: PaymentMethodDao,
     private val amexDao: AmexDao,
 ) {
@@ -57,8 +56,6 @@ class ExpenseRepository(
 
     suspend fun getAllCategories(): List<CategoryEntity> = categoryDao.getAllCategories()
 
-    suspend fun getAllCreditCard(): List<CreditCardEntity> = creditCardDao.getAllCreditCards()
-
     suspend fun insertCategory(category: CategoryEntity) {
         categoryDao.insertCategory(category)
     }
@@ -78,39 +75,11 @@ class ExpenseRepository(
     // Currencies
     suspend fun getAllCurrencyRates(): List<CurrencyRate> = currencyDao.getAllRates()
 
-    // Credit Cards
-    val allCreditCards: Flow<List<CreditCardEntity>> = creditCardDao.getAllCreditCardsFlow()
-
-    suspend fun getCreditCardById(id: String): CreditCardEntity? = creditCardDao.getCreditCardById(id)
-
-    suspend fun insertCreditCard(creditCard: CreditCardEntity) {
-        creditCardDao.insertCreditCard(creditCard)
-    }
-
-    suspend fun updateCreditCard(creditCard: CreditCardEntity) {
-        creditCardDao.updateCreditCard(creditCard)
-    }
-
-    @Transaction
-    suspend fun deleteCreditCard(creditCard: CreditCardEntity) {
-        transactionDao.nullifyCreditCardId(creditCard.id)
-        val migratedToPaymentMethod = paymentMethodDao.getPaymentMethodById(creditCard.id) != null
-        if (!migratedToPaymentMethod) {
-            transactionDao.nullifyPaymentMethodId(creditCard.id)
-        }
-        creditCardDao.deleteCreditCard(creditCard)
-    }
-
-    suspend fun insertAllCreditCard(creditCards: List<CreditCardEntity>) {
-        creditCardDao.insertAllCreditCards(creditCards)
-    }
-
     suspend fun getTransactionsByGroupId(groupId: String): List<TransactionEntity> =
         transactionDao.getByGroupId(groupId)
 
     suspend fun deleteAllTransactions() = transactionDao.deleteAll()
     suspend fun deleteAllCategories() = categoryDao.deleteAll()
-    suspend fun deleteAllCreditCards() = creditCardDao.deleteAll()
 
     // Payment Methods
     val allPaymentMethods: Flow<List<PaymentMethodEntity>> = paymentMethodDao.getAllPaymentMethodsFlow()
@@ -374,6 +343,9 @@ class ExpenseRepository(
 
     suspend fun getAmexScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity> =
         amexDao.getScheduledPaymentsForPlan(planId)
+
+    suspend fun getAmexScheduledPaymentById(paymentId: String): AmexPagoFlexScheduledPaymentEntity? =
+        amexDao.getScheduledPaymentById(paymentId)
 
     fun getAmexScheduledPaymentsForPlanFlow(planId: String): Flow<List<AmexPagoFlexScheduledPaymentEntity>> =
         amexDao.getScheduledPaymentsForPlanFlow(planId)

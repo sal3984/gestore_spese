@@ -9,53 +9,34 @@ import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
 import com.expense.management.data.AmexRevolvingStateEntity
 import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.BackupData
-import com.expense.management.data.CardType
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardDetailEntity
-import com.expense.management.data.CreditCardEntity
-import com.expense.management.data.CreditCardInstallmentPlanEntity
 import com.expense.management.data.CurrencyRate
-import com.expense.management.data.DebitCardDetailEntity
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.InstallmentScheduledPaymentEntity
-import com.expense.management.data.KlarnaDetailEntity
-import com.expense.management.data.PaymentMethodEntity
-import com.expense.management.data.PaypalDetailEntity
-import com.expense.management.data.RevolutDetailEntity
-import com.expense.management.data.SatispayDetailEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.data.toData
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexStatementSummary
-import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CATEGORIES
-import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.CurrentAccountCashFlow
 import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.domain.model.DeleteType
-import com.expense.management.domain.model.PaymentMethodDetails
-import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.model.ReportData
-import com.expense.management.domain.model.SatispayStatus
 import com.expense.management.domain.usecase.CalculateAmexCurrentAccountOutflowUseCase
 import com.expense.management.domain.usecase.CalculateAmexStatementUseCase
-import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.CalculateCurrentAccountCashFlowUseCase
 import com.expense.management.domain.usecase.CalculateReportUseCase
-import com.expense.management.domain.usecase.CalculateSatispayStatusUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GenerateCreditCardPaymentUseCase
+import com.expense.management.domain.usecase.GetActiveCreditCardsUseCase
 import com.expense.management.domain.usecase.GetBackupDataUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
-import com.expense.management.domain.usecase.GetCreditCardsUseCase
 import com.expense.management.domain.usecase.GetFrequentCategoriesUseCase
-import com.expense.management.domain.usecase.GetPaymentMethodsUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.InitializeCategoriesUseCase
-import com.expense.management.domain.usecase.ManageCreditCardUseCase
-import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.domain.usecase.ScanReceiptUseCase
@@ -85,15 +66,16 @@ class ExpenseViewModel(
     private val saveTransactionUseCase: SaveTransactionUseCase,
     private val deleteTransactionUseCase: DeleteTransactionUseCase,
     private val initializeCategoriesUseCase: InitializeCategoriesUseCase,
-    private val getCreditCardsUseCase: GetCreditCardsUseCase,
-    private val manageCreditCardUseCase: ManageCreditCardUseCase,
-    private val getPaymentMethodsUseCase: GetPaymentMethodsUseCase,
-    private val managePaymentMethodUseCase: ManagePaymentMethodUseCase,
+    private val getActiveCreditCardsUseCase: GetActiveCreditCardsUseCase,
     private val getBackupDataUseCase: GetBackupDataUseCase,
     private val restoreDataUseCase: RestoreDataUseCase,
     private val getFrequentCategoriesUseCase: GetFrequentCategoriesUseCase,
     private val calculateReportUseCase: CalculateReportUseCase,
     private val scanReceiptUseCase: ScanReceiptUseCase,
+    private val generateCreditCardPaymentUseCase: GenerateCreditCardPaymentUseCase,
+    private val calculateAmexCurrentAccountOutflowUseCase: CalculateAmexCurrentAccountOutflowUseCase,
+    private val calculateCurrentAccountCashFlowUseCase: CalculateCurrentAccountCashFlowUseCase,
+    private val calculateAmexStatementUseCase: CalculateAmexStatementUseCase,
 ) : ViewModel() {
 
     companion object {
@@ -106,14 +88,15 @@ class ExpenseViewModel(
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_APP_STYLE = "app_style"
         private const val KEY_ENABLED_WIDGETS = "enabled_widgets"
-        private const val KEY_DEFAULT_PAYMENT_METHOD = "default_payment_method_id"
     }
 
     // Frequent Categories Caching
-    private val frequentExpenses = getFrequentCategoriesUseCase(TransactionType.EXPENSE)
+    private val frequentExpenses = getFrequentCategoriesUseCase(com.expense.management.domain.model.TransactionType.EXPENSE)
+        .map { it.map { category -> category.toData() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val frequentIncome = getFrequentCategoriesUseCase(TransactionType.INCOME)
+    private val frequentIncome = getFrequentCategoriesUseCase(com.expense.management.domain.model.TransactionType.INCOME)
+        .map { it.map { category -> category.toData() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun getFrequentCategories(type: TransactionType): StateFlow<List<CategoryEntity>> =
@@ -130,6 +113,7 @@ class ExpenseViewModel(
     // Dati Transazioni
     val allTransactions: StateFlow<List<TransactionEntity>> =
         getTransactionsUseCase()
+            .map { it.map { transaction -> transaction.toData() } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val reportRangeState = MutableStateFlow(
@@ -157,6 +141,7 @@ class ExpenseViewModel(
     // DATI CATEGORIE
     val allCategories: StateFlow<List<CategoryEntity>> =
         getCategoriesUseCase()
+            .map { it.map { category -> category.toData() } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val reportData: StateFlow<ReportData> = combine(
@@ -167,79 +152,9 @@ class ExpenseViewModel(
         calculateReportUseCase.execute(tx, cats, range.first, range.second)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReportData.EMPTY)
 
-    // DATI CARTE DI CREDITO
-    val allCreditCards: StateFlow<List<CreditCardEntity>> =
-        getCreditCardsUseCase()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // DATI METODI DI PAGAMENTO (inietta Contante come metodo built-in)
-    val allPaymentMethods: StateFlow<List<PaymentMethodEntity>> =
-        getPaymentMethodsUseCase()
-            .map { methods ->
-                val cash = PaymentMethodEntity(
-                    id = "__cash__",
-                    name = "Contante",
-                    provider = PaymentProvider.CASH,
-                    isActive = true,
-                )
-                methods + cash
-            }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // CARTE DI CREDITO ATTIVE: unisce nuovo sistema (payment_methods + credit_card_details)
-    // e legacy (allCreditCards) per garantire visibilità anche dopo restore da vecchio backup
     val activeCreditCards: StateFlow<List<ActiveCreditCard>> =
-        combine(allPaymentMethods, repository.allCreditCardDetails, allCreditCards) { methods, details, legacyCards ->
-            val newCards = methods
-                .filter {
-                    it.provider == PaymentProvider.CREDIT_CARD_SALDO ||
-                        it.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
-                        it.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
-                        it.provider == PaymentProvider.CREDIT_CARD_AMEX
-                }
-                .mapNotNull { method ->
-                    val detail = details.find { it.paymentMethodId == method.id }
-                    val provider = method.provider
-                    if (provider == PaymentProvider.CREDIT_CARD_AMEX) {
-                        ActiveCreditCard(
-                            id = method.id,
-                            name = method.name,
-                            provider = provider,
-                            cardType = detail?.let { CreditCardType.safeValueOf(it.cardType) } ?: CreditCardType.AMEX_HYBRID,
-                            limit = detail?.limit ?: 0.0,
-                            closingDay = detail?.closingDay ?: 0,
-                            paymentDay = detail?.paymentDay ?: 0,
-                        )
-                    } else {
-                        detail?.let {
-                            ActiveCreditCard(
-                                id = method.id,
-                                name = method.name,
-                                provider = provider,
-                                cardType = CreditCardType.safeValueOf(it.cardType) ?: return@mapNotNull null,
-                                limit = it.limit,
-                                closingDay = it.closingDay,
-                                paymentDay = it.paymentDay,
-                            )
-                        }
-                    }
-                }
-            val existingIds = newCards.map { it.id }.toSet()
-            val fallbackCards = legacyCards
-                .filter { it.id !in existingIds }
-                .map { card ->
-                    ActiveCreditCard(
-                        id = card.id,
-                        name = card.name,
-                        provider = if (card.type == CardType.SALDO) PaymentProvider.CREDIT_CARD_SALDO else PaymentProvider.CREDIT_CARD_REVOLVING,
-                        cardType = if (card.type == CardType.SALDO) CreditCardType.SALDO else CreditCardType.REVOLVING,
-                        limit = card.limit,
-                        closingDay = card.closingDay,
-                        paymentDay = card.paymentDay,
-                    )
-                }
-            newCards + fallbackCards
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        getActiveCreditCardsUseCase()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _currentDashboardMonth = MutableStateFlow(YearMonth.now())
     val currentDashboardMonth = _currentDashboardMonth.asStateFlow()
@@ -341,11 +256,6 @@ class ExpenseViewModel(
     )
     val enabledWidgets = _enabledWidgets.asStateFlow()
 
-    private val _defaultPaymentMethodId = MutableStateFlow(
-        prefs?.getString(KEY_DEFAULT_PAYMENT_METHOD, "__cash__") ?: "__cash__",
-    )
-    val defaultPaymentMethodId = _defaultPaymentMethodId.asStateFlow()
-
     init {
         viewModelScope.launch {
             initializeCategoriesUseCase()
@@ -354,44 +264,7 @@ class ExpenseViewModel(
             _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
             refreshCurrencyRatesData()
         }
-        viewModelScope.launch(Dispatchers.IO) {
-            syncInstallmentPlanOutflows()
-        }
     }
-
-    // GESTIONE CARTE DI CREDITO
-    fun addCreditCard(creditCard: CreditCardEntity) {
-        viewModelScope.launch(Dispatchers.IO) {
-            manageCreditCardUseCase.add(creditCard)
-        }
-    }
-
-    fun updateCreditCard(creditCard: CreditCardEntity) {
-        viewModelScope.launch(Dispatchers.IO) {
-            manageCreditCardUseCase.update(creditCard)
-        }
-    }
-
-    fun deleteCreditCard(creditCard: CreditCardEntity) {
-        viewModelScope.launch(Dispatchers.IO) {
-            manageCreditCardUseCase.delete(creditCard)
-        }
-    }
-
-    // DATI DETTAGLIO PAYPAL
-    val allPaypalDetails: StateFlow<List<PaypalDetailEntity>> =
-        repository.allPaypalDetails
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // DATI DETTAGLIO KLARNA
-    val allKlarnaDetails: StateFlow<List<KlarnaDetailEntity>> =
-        repository.allKlarnaDetails
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // PIANI RATEALI CARTE INSTALLMENT
-    val allInstallmentPlans: StateFlow<List<CreditCardInstallmentPlanEntity>> =
-        repository.allInstallmentPlans
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val allScheduledPayments: StateFlow<List<InstallmentScheduledPaymentEntity>> =
         repository.allScheduledPayments
@@ -419,7 +292,7 @@ class ExpenseViewModel(
         allAmexScheduledPayments,
     ) { month, payments ->
         val monthPrefix = month.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-        CalculateAmexCurrentAccountOutflowUseCase().execute(monthPrefix, payments)
+        calculateAmexCurrentAccountOutflowUseCase.execute(monthPrefix, payments)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
@@ -429,7 +302,7 @@ class ExpenseViewModel(
         allScheduledPayments,
         _currentDashboardMonth,
     ) { tx, amexPayments, genericPayments, month ->
-        CalculateCurrentAccountCashFlowUseCase().execute(tx, amexPayments, genericPayments, month)
+        calculateCurrentAccountCashFlowUseCase.execute(tx, amexPayments, genericPayments, month)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CurrentAccountCashFlow(0.0, 0.0))
 
@@ -446,9 +319,8 @@ class ExpenseViewModel(
     ) { statements, plans, revolving ->
         val plansByStatement = plans.groupBy { it.statementId }
         val revolvingByStatement = revolving.associateBy { it.statementId }
-        val useCase = CalculateAmexStatementUseCase()
         statements.associateWith { stmt ->
-            useCase.execute(
+            calculateAmexStatementUseCase.execute(
                 statement = stmt,
                 pagoFlexPlans = plansByStatement[stmt.id].orEmpty(),
                 revolvingState = revolvingByStatement[stmt.id],
@@ -491,93 +363,6 @@ class ExpenseViewModel(
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val creditCardSummaries: StateFlow<Map<String, CreditCardSummary>> = combine(
-        allTransactions,
-        activeCreditCards,
-        _currentDashboardMonth,
-        amexPendingByCard,
-        amexPaidByCard,
-    ) { tx, cards, month, pendingByCard, paidByCard ->
-        cards.associate { card ->
-            card.id to when (card.cardType) {
-                CreditCardType.REVOLVING,
-                CreditCardType.INSTALLMENT,
-                -> {
-                    val cardTx = tx.filter {
-                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
-                    }
-                    val totalUtilized = cardTx
-                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val totalRepaid = cardTx
-                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val displayed = totalUtilized - totalRepaid
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = displayed,
-                        totalUtilized = totalUtilized,
-                        totalPaid = 0.0,
-                        totalRepaid = totalRepaid,
-                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
-                    )
-                }
-                CreditCardType.AMEX_HYBRID -> {
-                    val cardTx = tx.filter {
-                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
-                    }
-                    val totalUtilized = cardTx
-                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val incomeRepaid = cardTx
-                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val pagoflexPaid = paidByCard[card.id] ?: 0.0
-                    val pendingAmount = pendingByCard[card.id] ?: 0.0
-                    val totalRepaid = incomeRepaid + pagoflexPaid
-                    val displayed = (totalUtilized - totalRepaid).coerceAtLeast(0.0)
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = displayed,
-                        totalUtilized = totalUtilized,
-                        totalPaid = totalRepaid,
-                        totalRepaid = totalRepaid,
-                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
-                    )
-                }
-                CreditCardType.SALDO -> {
-                    val spent = tx
-                        .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
-                        .filter { t ->
-                            try {
-                                YearMonth.from(LocalDate.parse(t.effectiveDate)) == month
-                            } catch (_: Exception) {
-                                false
-                            }
-                        }
-                        .sumOf { it.amount }
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = spent,
-                        totalUtilized = spent,
-                        totalPaid = 0.0,
-                        progress = if (card.limit > 0) (spent / card.limit).toFloat() else 0f,
-                    )
-                }
-            }
-        }
-    }.flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
     fun syncInstallmentPlanOutflows() {
         viewModelScope.launch(Dispatchers.IO) {
             val today = java.time.LocalDate.now()
@@ -608,7 +393,7 @@ class ExpenseViewModel(
                         null
                     } ?: continue
                     if (dueDate.isAfter(today)) continue
-                    val transactions = GenerateCreditCardPaymentUseCase().execute(card, payment.amount, dueDate, categories)
+                    val transactions = generateCreditCardPaymentUseCase.execute(card, payment.amount, dueDate, categories)
                     transactions.forEach { repository.insertTransaction(it) }
                     val expenseTx = transactions.firstOrNull()
                     repository.updateScheduledPaymentStatus(payment.id, "PAID", expenseTx?.id)
@@ -618,24 +403,6 @@ class ExpenseViewModel(
             }
         }
     }
-
-    // PROIEZIONI BNPL
-    val bnplProjections: StateFlow<List<BnplProjection>> = combine(
-        allTransactions,
-        allPaymentMethods,
-        allPaypalDetails,
-        allKlarnaDetails,
-        _currentDashboardMonth,
-    ) { tx, methods, paypal, klarna, month ->
-        CalculateBnplProjectionsUseCase().execute(
-            allTransactions = tx,
-            allPaymentMethods = methods,
-            paypalDetails = paypal,
-            klarnaDetails = klarna,
-            targetMonth = month,
-        )
-    }.flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // SCANSIONE RICEVUTE (ML Kit OCR)
     private val _receiptScanResult = MutableStateFlow<ReceiptScanResult?>(null)
@@ -648,354 +415,6 @@ class ExpenseViewModel(
 
     fun clearReceiptScanResult() {
         _receiptScanResult.value = null
-    }
-
-    // GESTIONE METODI DI PAGAMENTO
-    fun addPaymentMethod(
-        paymentMethod: PaymentMethodEntity,
-        closingDay: Int = 0,
-        paymentDay: Int = 0,
-        creditLimit: Double = 0.0,
-        debitIssuer: String? = null,
-        debitCardNumber: String? = null,
-        debitNotes: String? = null,
-        linkedPaymentMethodId: String? = null,
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            managePaymentMethodUseCase.add(paymentMethod)
-            if (
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_SALDO ||
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_REVOLVING ||
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
-                paymentMethod.provider == PaymentProvider.CREDIT_CARD_AMEX
-            ) {
-                repository.insertCreditCardDetail(
-                    CreditCardDetailEntity(
-                        paymentMethodId = paymentMethod.id,
-                        cardType = when (paymentMethod.provider) {
-                            PaymentProvider.CREDIT_CARD_SALDO -> CreditCardType.SALDO.name
-                            PaymentProvider.CREDIT_CARD_REVOLVING -> CreditCardType.REVOLVING.name
-                            PaymentProvider.CREDIT_CARD_INSTALLMENT -> CreditCardType.INSTALLMENT.name
-                            PaymentProvider.CREDIT_CARD_AMEX -> CreditCardType.AMEX_HYBRID.name
-                            else -> CreditCardType.SALDO.name
-                        },
-                        limit = creditLimit,
-                        closingDay = closingDay,
-                        paymentDay = paymentDay,
-                        linkedPaymentMethodId = linkedPaymentMethodId,
-                    ),
-                )
-            } else if (paymentMethod.provider == PaymentProvider.DEBIT_CARD) {
-                repository.insertDebitCardDetail(
-                    DebitCardDetailEntity(
-                        paymentMethodId = paymentMethod.id,
-                        issuer = debitIssuer,
-                        cardNumber = debitCardNumber,
-                        notes = debitNotes,
-                    ),
-                )
-            }
-        }
-    }
-
-    fun updatePaymentMethod(paymentMethod: PaymentMethodEntity) {
-        viewModelScope.launch(Dispatchers.IO) {
-            managePaymentMethodUseCase.update(paymentMethod)
-        }
-    }
-
-    fun deletePaymentMethod(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            managePaymentMethodUseCase.delete(id)
-        }
-    }
-
-    suspend fun getPaymentMethodById(id: String): PaymentMethodEntity? =
-        managePaymentMethodUseCase.getPaymentMethodById(id)
-
-    suspend fun getAllPaymentMethods(): List<PaymentMethodEntity> =
-        managePaymentMethodUseCase.getAllPaymentMethods()
-
-    // DETTAGLI METODI DI PAGAMENTO
-    suspend fun getCreditCardDetail(paymentMethodId: String): CreditCardDetailEntity? =
-        repository.getCreditCardDetail(paymentMethodId)
-
-    suspend fun insertCreditCardDetail(detail: CreditCardDetailEntity) {
-        repository.insertCreditCardDetail(detail)
-    }
-
-    suspend fun getRevolutDetail(paymentMethodId: String): RevolutDetailEntity? =
-        repository.getRevolutDetail(paymentMethodId)
-
-    suspend fun insertRevolutDetail(detail: RevolutDetailEntity) {
-        repository.insertRevolutDetail(detail)
-    }
-
-    suspend fun getSatispayDetail(paymentMethodId: String): SatispayDetailEntity? =
-        repository.getSatispayDetail(paymentMethodId)
-
-    suspend fun insertSatispayDetail(detail: SatispayDetailEntity) {
-        repository.insertSatispayDetail(detail)
-    }
-
-    suspend fun getPaypalDetail(paymentMethodId: String): PaypalDetailEntity? =
-        repository.getPaypalDetail(paymentMethodId)
-
-    suspend fun insertPaypalDetail(detail: PaypalDetailEntity) {
-        repository.insertPaypalDetail(detail)
-    }
-
-    suspend fun getKlarnaDetail(paymentMethodId: String): KlarnaDetailEntity? =
-        repository.getKlarnaDetail(paymentMethodId)
-
-    suspend fun insertKlarnaDetail(detail: KlarnaDetailEntity) {
-        repository.insertKlarnaDetail(detail)
-    }
-
-    suspend fun getPaymentMethodDetails(method: PaymentMethodEntity): PaymentMethodDetails? {
-        val provider = method.provider
-        return when (provider) {
-            PaymentProvider.CREDIT_CARD_SALDO,
-            PaymentProvider.CREDIT_CARD_REVOLVING,
-            PaymentProvider.CREDIT_CARD_INSTALLMENT,
-            PaymentProvider.CREDIT_CARD_AMEX,
-            -> {
-                repository.getCreditCardDetail(method.id)?.let {
-                    PaymentMethodDetails.CreditCard(
-                        name = method.name,
-                        cardType = CreditCardType.safeValueOf(it.cardType) ?: return null,
-                        limit = it.limit,
-                        closingDay = it.closingDay,
-                        paymentDay = it.paymentDay,
-                        linkedPaymentMethodId = it.linkedPaymentMethodId,
-                    )
-                }
-            }
-            PaymentProvider.DEBIT_CARD -> {
-                repository.getDebitCardDetail(method.id)?.let {
-                    PaymentMethodDetails.DebitCard(
-                        name = method.name,
-                        issuer = it.issuer,
-                        cardNumber = it.cardNumber,
-                        notes = it.notes,
-                    )
-                }
-            }
-            PaymentProvider.REVOLUT -> {
-                repository.getRevolutDetail(method.id)?.let {
-                    PaymentMethodDetails.Revolut(
-                        name = method.name,
-                        currency = it.currency,
-                        iban = it.iban,
-                        accountNumber = it.accountNumber,
-                    )
-                }
-            }
-            PaymentProvider.SATISPAY -> {
-                repository.getSatispayDetail(method.id)?.let {
-                    PaymentMethodDetails.Satispay(
-                        name = method.name,
-                        weeklyBudget = it.weeklyBudget,
-                        sddDay = it.sddDay,
-                        iban = it.iban,
-                    )
-                }
-            }
-            PaymentProvider.PAYPAL -> {
-                repository.getPaypalDetail(method.id)?.let {
-                    PaymentMethodDetails.Paypal(
-                        name = method.name,
-                        email = it.email,
-                        bnplInstallmentCount = it.bnplInstallmentCount,
-                        bnplCycleDays = it.bnplCycleDays,
-                    )
-                }
-            }
-            PaymentProvider.KLARNA -> {
-                repository.getKlarnaDetail(method.id)?.let {
-                    PaymentMethodDetails.Klarna(
-                        name = method.name,
-                        bnplInstallmentCount = it.bnplInstallmentCount,
-                        bnplCycleDays = it.bnplCycleDays,
-                    )
-                }
-            }
-            PaymentProvider.CASH -> PaymentMethodDetails.Cash(name = method.name)
-        }
-    }
-
-    suspend fun calculateSatispayStatus(method: PaymentMethodEntity, detail: SatispayDetailEntity): SatispayStatus {
-        val useCase = CalculateSatispayStatusUseCase(repository)
-        return useCase.execute(method, detail)
-    }
-
-    fun payCreditCardInstallment(
-        card: ActiveCreditCard,
-        paymentAmount: Double,
-        paymentDate: LocalDate,
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val categories = repository.getAllCategories()
-            val useCase = GenerateCreditCardPaymentUseCase()
-            val transactions = useCase.execute(card, paymentAmount, paymentDate, categories)
-            transactions.forEach { repository.insertTransaction(it) }
-        }
-    }
-
-    fun payInstallmentPlan(
-        plan: CreditCardInstallmentPlanEntity,
-        card: ActiveCreditCard,
-        paymentDate: LocalDate,
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val nextPayment = repository.getNextPendingScheduledPayment(plan.id) ?: return@launch
-            val categories = repository.getAllCategories()
-            val useCase = GenerateCreditCardPaymentUseCase()
-            val transactions = useCase.execute(card, nextPayment.amount, paymentDate, categories)
-            transactions.forEach { repository.insertTransaction(it) }
-            val expenseTx = transactions.firstOrNull()
-            repository.updateScheduledPaymentStatus(nextPayment.id, "PAID", expenseTx?.id)
-            repository.updateInstallmentPlanPaidCount(plan.id, plan.paidCount + 1)
-        }
-    }
-
-    fun saveInstallmentPlan(
-        paymentMethodId: String,
-        totalAmount: Double,
-        installmentCount: Int,
-        installmentAmount: Double,
-        startDate: String,
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val existingPlan = repository.getInstallmentPlanByCard(paymentMethodId)
-            if (existingPlan != null) {
-                val existingPayments = repository.getScheduledPaymentsByPlan(existingPlan.id)
-                val paidCount = existingPayments.count { it.status == "PAID" }
-                val paidAmount = existingPayments.filter { it.status == "PAID" }.sumOf { it.amount }
-                val newTotal = existingPlan.totalAmount + totalAmount
-                val residual = newTotal - paidAmount
-                val remainingCount = installmentCount
-                val newInstallmentAmount = residual / remainingCount
-                val updatedPlan = existingPlan.copy(
-                    totalAmount = newTotal,
-                    installmentCount = paidCount + remainingCount,
-                    installmentAmount = newInstallmentAmount,
-                )
-                repository.insertInstallmentPlan(updatedPlan)
-                repository.deletePendingScheduledPaymentsByPlan(existingPlan.id)
-                val payments = generateScheduledPayments(
-                    planId = existingPlan.id,
-                    totalAmount = residual,
-                    installmentCount = remainingCount,
-                    installmentAmount = newInstallmentAmount,
-                    startDate = startDate,
-                )
-                repository.insertScheduledPayments(payments)
-            } else {
-                val planId = java.util.UUID.randomUUID().toString()
-                val plan = CreditCardInstallmentPlanEntity(
-                    id = planId,
-                    paymentMethodId = paymentMethodId,
-                    totalAmount = totalAmount,
-                    installmentCount = installmentCount,
-                    installmentAmount = installmentAmount,
-                    paidCount = 0,
-                    startDate = startDate,
-                )
-                repository.insertInstallmentPlan(plan)
-                val payments = generateScheduledPayments(planId, totalAmount, installmentCount, installmentAmount, startDate)
-                repository.insertScheduledPayments(payments)
-            }
-        }
-    }
-
-    private fun generateScheduledPayments(
-        planId: String,
-        totalAmount: Double,
-        installmentCount: Int,
-        installmentAmount: Double,
-        startDate: String,
-    ): List<InstallmentScheduledPaymentEntity> {
-        val parts = startDate.split("-")
-        val baseYear = parts[0].toIntOrNull() ?: 2024
-        val baseMonth = parts[1].toIntOrNull() ?: 1
-        val baseDay = (parts[2].toIntOrNull() ?: 1).coerceIn(1, 28)
-        return List(installmentCount) { i ->
-            val monthOffset = i
-            val year = baseYear + (baseMonth - 1 + monthOffset) / 12
-            val month = ((baseMonth - 1 + monthOffset) % 12) + 1
-            val dueDate = "%04d-%02d-%02d".format(year, month, baseDay)
-            val amount = if (i == installmentCount - 1) {
-                totalAmount - (installmentAmount * (installmentCount - 1))
-            } else {
-                installmentAmount
-            }
-            InstallmentScheduledPaymentEntity(
-                id = java.util.UUID.randomUUID().toString(),
-                planId = planId,
-                dueDate = dueDate,
-                amount = amount,
-                status = "PENDING",
-            )
-        }
-    }
-
-    fun updatePaymentMethodWithDetails(method: PaymentMethodEntity, details: PaymentMethodDetails) {
-        viewModelScope.launch(Dispatchers.IO) {
-            managePaymentMethodUseCase.update(method)
-            when (details) {
-                is PaymentMethodDetails.CreditCard -> repository.insertCreditCardDetail(
-                    CreditCardDetailEntity(
-                        paymentMethodId = method.id,
-                        cardType = details.cardType.name,
-                        limit = details.limit,
-                        closingDay = details.closingDay,
-                        paymentDay = details.paymentDay,
-                        linkedPaymentMethodId = details.linkedPaymentMethodId,
-                    ),
-                )
-                is PaymentMethodDetails.Revolut -> repository.insertRevolutDetail(
-                    RevolutDetailEntity(
-                        paymentMethodId = method.id,
-                        currency = details.currency,
-                        iban = details.iban,
-                        accountNumber = details.accountNumber,
-                    ),
-                )
-                is PaymentMethodDetails.Satispay -> repository.insertSatispayDetail(
-                    SatispayDetailEntity(
-                        paymentMethodId = method.id,
-                        weeklyBudget = details.weeklyBudget,
-                        sddDay = details.sddDay,
-                        iban = details.iban,
-                    ),
-                )
-                is PaymentMethodDetails.Paypal -> repository.insertPaypalDetail(
-                    PaypalDetailEntity(
-                        paymentMethodId = method.id,
-                        email = details.email,
-                        bnplInstallmentCount = details.bnplInstallmentCount,
-                        bnplCycleDays = details.bnplCycleDays,
-                    ),
-                )
-                is PaymentMethodDetails.Klarna -> repository.insertKlarnaDetail(
-                    KlarnaDetailEntity(
-                        paymentMethodId = method.id,
-                        bnplInstallmentCount = details.bnplInstallmentCount,
-                        bnplCycleDays = details.bnplCycleDays,
-                    ),
-                )
-                is PaymentMethodDetails.DebitCard -> repository.insertDebitCardDetail(
-                    DebitCardDetailEntity(
-                        paymentMethodId = method.id,
-                        issuer = details.issuer,
-                        cardNumber = details.cardNumber,
-                        notes = details.notes,
-                    ),
-                )
-                is PaymentMethodDetails.Cash -> {}
-            }
-        }
     }
 
     fun addCategory(category: CategoryEntity) {
@@ -1027,7 +446,42 @@ class ExpenseViewModel(
         deleteType: DeleteType,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
+            val amexPayment = repository.getAmexScheduledPaymentByExpenseTxId(transactionId)
+            val planIdToRecalculate = amexPayment?.planId
+            val planBeforeDelete = planIdToRecalculate?.let { repository.getAmexPagoFlexPlanById(it) }
+            val statementBeforeDelete = planBeforeDelete?.let { repository.getAmexStatementById(it.statementId) }
+
             deleteTransactionUseCase(transactionId, deleteType)
+
+            if (planIdToRecalculate != null && planBeforeDelete != null && statementBeforeDelete != null) {
+                val updatedPlan = repository.getAmexPagoFlexPlanById(planIdToRecalculate) ?: return@launch
+                val existingPayments = repository.getAmexScheduledPaymentsForPlan(planIdToRecalculate)
+                val strategy = if (updatedPlan.planType == "FIXED_AMOUNT") {
+                    com.expense.management.domain.model.AmexInstallmentStrategy.FixedAmount(updatedPlan.initialInstallmentAmount ?: updatedPlan.installmentAmount)
+                } else {
+                    com.expense.management.domain.model.AmexInstallmentStrategy.FixedDuration(updatedPlan.installmentCount)
+                }
+                val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                val useCase = com.expense.management.domain.usecase.RecalculateAmexInstallmentPlanUseCase()
+                val (newPlan, newPendingPayments) = useCase.execute(
+                    existingPlan = updatedPlan,
+                    existingPayments = existingPayments,
+                    newStrategy = strategy,
+                    today = today,
+                    currentStatementPaymentDueDate = statementBeforeDelete.paymentDueDate,
+                )
+                repository.updateAmexPagoFlexPlanCalculation(
+                    planId = newPlan.id,
+                    installmentCount = newPlan.installmentCount,
+                    installmentAmount = newPlan.installmentAmount,
+                    planType = newPlan.planType,
+                    initialInstallmentAmount = newPlan.initialInstallmentAmount,
+                )
+                repository.deletePendingAmexScheduledPaymentsForPlan(planIdToRecalculate)
+                repository.insertAmexScheduledPayments(newPendingPayments)
+                val paidCount = repository.getAmexScheduledPaymentsForPlan(planIdToRecalculate).count { it.status == "PAID" }
+                repository.updateAmexPagoFlexPaidCount(planIdToRecalculate, paidCount)
+            }
         }
     }
 
@@ -1095,12 +549,6 @@ class ExpenseViewModel(
         prefs?.edit { putStringSet(KEY_ENABLED_WIDGETS, widgets.map { it.name }.toSet()) }
     }
 
-    fun updateDefaultPaymentMethod(id: String?) {
-        val value = id ?: "__cash__"
-        _defaultPaymentMethodId.value = value
-        prefs?.edit { putString(KEY_DEFAULT_PAYMENT_METHOD, value) }
-    }
-
     fun refreshCurrencyRates() {
         viewModelScope.launch {
             _currencyRatesUpdate.value = currencyUtils.getLastUpdate()
@@ -1140,7 +588,7 @@ class ExpenseViewModel(
 
     suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE }
 
-    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id, it.label, it.icon, it.type) }
+    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id, it.label, it.icon, it.type.toData()) }
 
     fun updateCategory(category: CategoryEntity) {
         viewModelScope.launch(Dispatchers.IO) {

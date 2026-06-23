@@ -21,9 +21,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.expense.management.R
 import com.expense.management.domain.model.AmexInstallmentStrategy
 import kotlin.math.ceil
 import kotlin.math.round
@@ -73,11 +75,11 @@ fun AmexInstallmentSetupDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Imposta piano rateale Amex") },
+        title = { Text(stringResource(R.string.amex_setup_plan_title)) },
         text = {
             Column {
                 Text(
-                    "Importo totale: ${totalAmount.roundTo2()} $currencySymbol",
+                    stringResource(R.string.amex_total_amount, totalAmount.roundTo2().toDisplayString(), currencySymbol),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(16.dp))
@@ -94,7 +96,7 @@ fun AmexInstallmentSetupDialog(
                             selected = mode == Mode.FIXED_AMOUNT,
                             onClick = null,
                         )
-                        Text("Importo rata", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.amex_installment_amount), style = MaterialTheme.typography.bodyMedium)
                     }
                     Spacer(Modifier.width(16.dp))
                     Row(
@@ -109,7 +111,7 @@ fun AmexInstallmentSetupDialog(
                             selected = mode == Mode.FIXED_DURATION,
                             onClick = null,
                         )
-                        Text("Numero rate", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.amex_installment_count), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -117,7 +119,7 @@ fun AmexInstallmentSetupDialog(
                     Mode.FIXED_AMOUNT -> OutlinedTextField(
                         value = amountInput,
                         onValueChange = { amountInput = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
-                        label = { Text("Importo rata") },
+                        label = { Text(stringResource(R.string.amex_installment_amount)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -125,7 +127,7 @@ fun AmexInstallmentSetupDialog(
                     Mode.FIXED_DURATION -> OutlinedTextField(
                         value = durationInput,
                         onValueChange = { durationInput = it.filter { c -> c.isDigit() } },
-                        label = { Text("Numero di mesi") },
+                        label = { Text(stringResource(R.string.amex_months_count)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -150,10 +152,10 @@ fun AmexInstallmentSetupDialog(
                     }
                 },
                 enabled = isValid,
-            ) { Text("Conferma") }
+            ) { Text(stringResource(R.string.amex_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

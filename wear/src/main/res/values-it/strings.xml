@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Gestore Spese Wear</string>
+    <string name="add_expense">Aggiungi Spesa</string>
+    <string name="default_description">Spesa da Watch</string>
+    <string name="send">Invia</string>
+    <string name="no_phone_connected">Nessun telefono connesso</string>
+    <string name="sent">Inviato!</string>
+    <string name="send_error">Errore invio</string>
+</resources>

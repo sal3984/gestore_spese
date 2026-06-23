@@ -90,6 +90,9 @@ interface AmexDao {
     @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE planId = :planId ORDER BY sequenceNumber ASC")
     suspend fun getScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity>
 
+    @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE id = :paymentId LIMIT 1")
+    suspend fun getScheduledPaymentById(paymentId: String): AmexPagoFlexScheduledPaymentEntity?
+
     @Query("SELECT * FROM amex_pagoflex_scheduled_payments ORDER BY dueDate ASC")
     fun getAllScheduledPaymentsFlow(): Flow<List<AmexPagoFlexScheduledPaymentEntity>>
 

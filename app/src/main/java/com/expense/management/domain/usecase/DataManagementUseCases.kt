@@ -12,7 +12,7 @@ class GetBackupDataUseCase(private val repository: ExpenseRepository) {
     suspend operator fun invoke(): BackupData = BackupData(
         transactions = repository.getAllTransactionsList(),
         categories = repository.getAllCategories(),
-        creditCard = repository.getAllCreditCard(),
+        creditCard = emptyList(),
         paymentMethods = repository.getAllPaymentMethods(),
         creditCardDetails = repository.getAllCreditCardDetails(),
         revolutDetails = repository.getAllRevolutDetails(),
@@ -27,7 +27,6 @@ class RestoreDataUseCase(private val repository: ExpenseRepository) {
     suspend operator fun invoke(backupData: BackupData) {
         repository.deleteAllTransactions()
         repository.deleteAllCategories()
-        repository.deleteAllCreditCards()
         repository.deleteAllPaymentMethods()
         repository.insertAllTransactions(backupData.transactions ?: emptyList())
         repository.insertAllCategories(backupData.categories ?: emptyList())
@@ -56,11 +55,8 @@ class RestoreDataUseCase(private val repository: ExpenseRepository) {
         }
 
         val legacyCards = backupData.creditCard
-        if (!legacyCards.isNullOrEmpty()) {
-            repository.insertAllCreditCard(legacyCards)
-            if (paymentMethods.isNullOrEmpty()) {
-                migrateLegacyCreditCards(legacyCards)
-            }
+        if (!legacyCards.isNullOrEmpty() && paymentMethods.isNullOrEmpty()) {
+            migrateLegacyCreditCards(legacyCards)
         }
     }
 

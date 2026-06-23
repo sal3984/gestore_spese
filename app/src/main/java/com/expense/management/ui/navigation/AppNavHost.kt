@@ -31,11 +31,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.expense.management.data.AmexPagoFlexPlanEntity
-import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
-import com.expense.management.data.AmexRevolvingStateEntity
 import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.CategoryEntity
-import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.CreditCardInstallmentPlanEntity
 import com.expense.management.data.CurrencyRate
 import com.expense.management.data.InstallmentScheduledPaymentEntity
@@ -43,6 +40,7 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexDashboardProjection
+import com.expense.management.domain.model.AmexHubData
 import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.BnplProjection
@@ -55,6 +53,7 @@ import com.expense.management.ui.screens.DashboardScreen
 import com.expense.management.ui.screens.DataManagementScreen
 import com.expense.management.ui.screens.PaymentMethodSettingsScreen
 import com.expense.management.ui.screens.ReportScreen
+import com.expense.management.ui.screens.amex.AmexHubScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.screens.securityScreen
 import com.expense.management.ui.screens.settingsScreen
@@ -64,6 +63,7 @@ import com.expense.management.viewmodel.AmexUiAction
 import com.expense.management.viewmodel.AmexViewModel
 import com.expense.management.viewmodel.CreditCardViewModel
 import com.expense.management.viewmodel.ExpenseViewModel
+import com.expense.management.viewmodel.PaymentMethodsViewModel
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -80,6 +80,7 @@ fun AppNavHost(
     viewModel: ExpenseViewModel,
     creditCardViewModel: CreditCardViewModel,
     amexViewModel: AmexViewModel,
+    paymentMethodsViewModel: PaymentMethodsViewModel,
     allTransactions: List<TransactionEntity>,
     reportTransactions: List<TransactionEntity>,
     reportData: ReportData,
@@ -95,7 +96,6 @@ fun AppNavHost(
     bnplProjections: List<BnplProjection>,
     csvExportColumns: Set<String>,
     suggestions: List<String>,
-    allCreditCards: List<CreditCardEntity>,
     frequentExpenseCategories: List<CategoryEntity>,
     frequentIncomeCategories: List<CategoryEntity>,
     currencyRates: List<CurrencyRate>,
@@ -114,14 +114,11 @@ fun AppNavHost(
     scheduledPayments: List<InstallmentScheduledPaymentEntity> = emptyList(),
     amexStatements: List<AmexStatementEntity> = emptyList(),
     amexPagoFlexPlans: List<AmexPagoFlexPlanEntity> = emptyList(),
-    amexRevolvingStates: List<AmexRevolvingStateEntity> = emptyList(),
     amexProjections: List<AmexDashboardProjection> = emptyList(),
-    isAmexAutoPayEnabled: Boolean = true,
-    onToggleAmexAutoPay: (Boolean) -> Unit = {},
-    amexScheduledPayments: List<AmexPagoFlexScheduledPaymentEntity> = emptyList(),
-    amexCurrentAccountOutflow: Double = 0.0,
     amexStatementSummaries: Map<String, AmexStatementSummary> = emptyMap(),
-
+    amexHubData: AmexHubData = AmexHubData(autoPayEnabled = true, cards = emptyList()),
+    amexSelectedMonth: YearMonth = YearMonth.now(),
+    onNavigateToAmexHub: () -> Unit = {},
     currentAccountIncomeForMonth: Double = 0.0,
     currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
@@ -171,33 +168,20 @@ fun AppNavHost(
                 scheduledPayments = scheduledPayments,
                 amexStatements = amexStatements,
                 amexPagoFlexPlans = amexPagoFlexPlans,
-                amexRevolvingStates = amexRevolvingStates,
-                onCreateAmexStatement = { paymentMethodId, statementMonth, closingDate, paymentDueDate ->
-                    amexViewModel.onAction(AmexUiAction.CreateStatement(paymentMethodId, statementMonth, closingDate, paymentDueDate))
-                },
-                onSetAmexPaymentMode = { statementId, mode, amount ->
-                    amexViewModel.onAction(AmexUiAction.SetPaymentMode(statementId, mode, amount))
-                },
-                onPayAmexStatement = { statement, amount ->
-                    amexViewModel.onAction(AmexUiAction.PayStatement(statement, amount))
-                },
                 amexProjections = amexProjections,
-                isAmexAutoPayEnabled = isAmexAutoPayEnabled,
-                onToggleAmexAutoPay = onToggleAmexAutoPay,
-                amexScheduledPayments = amexScheduledPayments,
-                amexCurrentAccountOutflow = amexCurrentAccountOutflow,
                 amexStatementSummaries = amexStatementSummaries,
                 currentAccountIncomeForMonth = currentAccountIncomeForMonth,
                 currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
                 onEditAmexInstallment = onEditAmexInstallment,
+                onNavigateToAmexHub = onNavigateToAmexHub,
                 onPayRevolving = { card, amount, date ->
-                    viewModel.payCreditCardInstallment(card, amount, date)
+                    paymentMethodsViewModel.payCreditCardInstallment(card, amount, date)
                 },
                 onPayInstallmentPlan = { plan, card, date ->
-                    viewModel.payInstallmentPlan(plan, card, date)
+                    paymentMethodsViewModel.payInstallmentPlan(plan, card, date)
                 },
                 onSetupInstallmentPlan = { paymentMethodId, totalAmount, installmentCount, installmentAmount, startDate ->
-                    viewModel.saveInstallmentPlan(paymentMethodId, totalAmount, installmentCount, installmentAmount, startDate)
+                    paymentMethodsViewModel.saveInstallmentPlan(paymentMethodId, totalAmount, installmentCount, installmentAmount, startDate)
                 },
             )
         }
@@ -294,7 +278,7 @@ fun AppNavHost(
                 onEnabledWidgetsChange = viewModel::updateEnabledWidgets,
                 allPaymentMethods = allPaymentMethods,
                 defaultPaymentMethodId = defaultPaymentMethodId,
-                onDefaultPaymentMethodChange = viewModel::updateDefaultPaymentMethod,
+                onDefaultPaymentMethodChange = paymentMethodsViewModel::updateDefaultPaymentMethod,
             )
         }
 
@@ -306,23 +290,58 @@ fun AppNavHost(
             PaymentMethodSettingsScreen(
                 currentCurrency = currentCurrency,
                 allPaymentMethods = allPaymentMethods,
-                legacyCreditCards = allCreditCards,
                 onNavigateBack = { navController.popBackStack() },
                 onAdd = { method, closingDay, paymentDay, debitIssuer, debitCardNumber, debitNotes, creditLimit, linkedPaymentMethodId ->
-                    viewModel.addPaymentMethod(method, closingDay, paymentDay, creditLimit, debitIssuer, debitCardNumber, debitNotes, linkedPaymentMethodId)
+                    paymentMethodsViewModel.addPaymentMethod(method, closingDay, paymentDay, creditLimit, debitIssuer, debitCardNumber, debitNotes, linkedPaymentMethodId)
                 },
-                onDelete = { viewModel.deletePaymentMethod(it) },
+                onDelete = { paymentMethodsViewModel.deletePaymentMethod(it) },
                 onEditPaymentMethod = { method, details ->
-                    viewModel.updatePaymentMethodWithDetails(method, details)
+                    paymentMethodsViewModel.updatePaymentMethodWithDetails(method, details)
                 },
                 onLoadDetails = { id ->
-                    viewModel.allPaymentMethods.value.find { it.id == id }?.let { method ->
-                        viewModel.getPaymentMethodDetails(method)
+                    val method = paymentMethodsViewModel.getPaymentMethodById(id)
+                    if (method != null) paymentMethodsViewModel.getPaymentMethodDetails(method) else null
+                },
+            )
+        }
+
+        composable(
+            "amex_hub",
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) },
+        ) {
+            AmexHubScreen(
+                hubData = amexHubData,
+                selectedMonth = amexSelectedMonth,
+                currencySymbol = currentCurrency,
+                locale = java.util.Locale.getDefault(),
+                isAmountHidden = isAmountHidden,
+                onMonthChange = { amexViewModel.updateSelectedMonth(it) },
+                onPayStatement = { statementId, amount ->
+                    val statement = amexHubData.cards.flatMap { it.statements }
+                        .find { it.statement.id == statementId }?.statement
+                    if (statement != null) {
+                        amexViewModel.onAction(AmexUiAction.PayStatement(statement, amount))
                     }
                 },
-                onAddLegacyCard = { viewModel.addCreditCard(it) },
-                onUpdateLegacyCard = { viewModel.updateCreditCard(it) },
-                onDeleteLegacyCard = { viewModel.deleteCreditCard(it) },
+                onEditInstallment = { planId, strategy ->
+                    val plan = amexHubData.cards.flatMap { it.statements }
+                        .flatMap { it.pagoFlexPlans }
+                        .find { it.id == planId }
+                    if (plan != null) {
+                        val paymentDueDate = amexHubData.cards.flatMap { it.statements }
+                            .find { it.statement.id == plan.statementId }?.statement?.paymentDueDate ?: ""
+                        amexViewModel.recalculateAmexInstallmentPlan(planId, strategy, paymentDueDate)
+                    }
+                },
+                onToggleAutoPay = { amexViewModel.onAction(AmexUiAction.ToggleAutoPay(it)) },
+                onPayInstallment = { paymentId ->
+                    amexViewModel.payAmexScheduledPayment(paymentId)
+                },
+                onCreateStatement = { pmId, month, closing, due ->
+                    amexViewModel.onAction(AmexUiAction.CreateStatement(pmId, month, closing, due))
+                },
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
@@ -548,7 +567,7 @@ fun AppNavHost(
                     receiptScanResult = receiptScanResult,
                     onClearReceiptScanResult = onClearReceiptScanResult,
                     onCreateInstallmentPlan = { paymentMethodId, totalAmount, installmentCount, installmentAmount, startDate ->
-                        viewModel.saveInstallmentPlan(paymentMethodId, totalAmount, installmentCount, installmentAmount, startDate)
+                        paymentMethodsViewModel.saveInstallmentPlan(paymentMethodId, totalAmount, installmentCount, installmentAmount, startDate)
                     },
                     onSaveInstallment = { transaction ->
                         creditCardViewModel.saveTransactionWithInstallmentPlan(transaction)
