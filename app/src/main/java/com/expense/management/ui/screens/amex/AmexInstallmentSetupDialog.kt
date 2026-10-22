@@ -51,7 +51,7 @@ fun AmexInstallmentSetupDialog(
         )
     }
 
-    val parsedAmount = amountInput.toDoubleOrNull()
+    val parsedAmount = parseInstallmentAmount(amountInput)
     val parsedDuration = durationInput.toIntOrNull()
 
     val counterpart = when (mode) {
@@ -159,6 +159,8 @@ fun AmexInstallmentSetupDialog(
         },
     )
 }
+
+internal fun parseInstallmentAmount(input: String): Double? = input.replace(',', '.').toDoubleOrNull()
 
 private enum class Mode { FIXED_AMOUNT, FIXED_DURATION }
 

@@ -280,13 +280,14 @@ private fun AmexHubCardPage(
     }
 
     editingPlan?.let { plan ->
-        val paidAmount = cardData.scheduledPayments
+        val paidPayments = cardData.scheduledPayments
             .filter { it.planId == plan.id && it.status == "PAID" }
-            .sumOf { it.amount }
+        val paidAmount = paidPayments.sumOf { it.amount }
         val residual = (plan.totalAmount - paidAmount).coerceAtLeast(0.0)
+        val remainingMonths = (plan.installmentCount - paidPayments.size).coerceAtLeast(1)
         val initialStrategy = when (plan.planType) {
             "FIXED_AMOUNT" -> AmexInstallmentStrategy.FixedAmount(plan.initialInstallmentAmount ?: plan.installmentAmount)
-            else -> AmexInstallmentStrategy.FixedDuration(plan.installmentCount)
+            else -> AmexInstallmentStrategy.FixedDuration(remainingMonths)
         }
         AmexInstallmentSetupDialog(
             totalAmount = residual,

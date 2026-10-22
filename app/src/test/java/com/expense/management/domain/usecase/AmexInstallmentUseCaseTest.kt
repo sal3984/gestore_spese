@@ -297,6 +297,49 @@ class AmexInstallmentUseCaseTest {
     }
 
     @Test
+    fun `fixed duration months count the residual installments only`() {
+        val payments = BuildAmexScheduledPaymentsUseCase().execute(
+            planId = "plan1",
+            totalAmount = 1200.0,
+            strategy = AmexInstallmentStrategy.FixedDuration(6),
+            startDate = "2024-06-15",
+        ).mapIndexed { index, payment ->
+            if (index < 2) payment.copy(status = "PAID") else payment
+        }
+        val plan = com.expense.management.data.AmexPagoFlexPlanEntity(
+            id = "plan1",
+            statementId = "stmt1",
+            transactionId = "tx1",
+            totalAmount = 1200.0,
+            installmentCount = 6,
+            installmentAmount = 200.0,
+            paidCount = 2,
+            startDate = "2024-06-15",
+            planType = "FIXED_DURATION",
+            initialInstallmentAmount = null,
+        )
+        val useCase = RecalculateAmexInstallmentPlanUseCase()
+
+        val (withRemainingCount, _) = useCase.execute(
+            existingPlan = plan,
+            existingPayments = payments,
+            newStrategy = AmexInstallmentStrategy.FixedDuration(4),
+            today = "2024-08-10",
+            currentStatementPaymentDueDate = "2024-08-20",
+        )
+        assertEquals(6, withRemainingCount.installmentCount)
+
+        val (withTotalCount, _) = useCase.execute(
+            existingPlan = plan,
+            existingPayments = payments,
+            newStrategy = AmexInstallmentStrategy.FixedDuration(6),
+            today = "2024-08-10",
+            currentStatementPaymentDueDate = "2024-08-20",
+        )
+        assertEquals(8, withTotalCount.installmentCount)
+    }
+
+    @Test
     fun `calculate outflow sums all target month scheduled payments regardless of status`() {
         val payments = listOf(
             com.expense.management.data.AmexPagoFlexScheduledPaymentEntity(
