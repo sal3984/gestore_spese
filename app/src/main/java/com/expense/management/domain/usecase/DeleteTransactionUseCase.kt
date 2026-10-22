@@ -5,6 +5,7 @@ import com.expense.management.data.RecurrenceType
 import com.expense.management.domain.model.DeleteType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 class DeleteTransactionUseCase(private val repository: ExpenseRepository) {
     suspend operator fun invoke(transactionId: String, deleteType: DeleteType) {
@@ -23,7 +24,7 @@ class DeleteTransactionUseCase(private val repository: ExpenseRepository) {
                             try {
                                 LocalDate.parse(it.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE) >=
                                     LocalDate.parse(transactionToDelete.effectiveDate, DateTimeFormatter.ISO_LOCAL_DATE)
-                            } catch (e: Exception) {
+                            } catch (e: DateTimeParseException) {
                                 false
                             }
                         }

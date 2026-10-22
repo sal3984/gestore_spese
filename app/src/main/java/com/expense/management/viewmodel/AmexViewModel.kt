@@ -20,13 +20,13 @@ import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexPaymentMode
 import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.usecase.ApplyAmexPlanRecalculationUseCase
 import com.expense.management.domain.usecase.AutoPayAmexStatementsUseCase
 import com.expense.management.domain.usecase.CalculateAmexDashboardProjectionsUseCase
 import com.expense.management.domain.usecase.CalculateAmexStatementUseCase
 import com.expense.management.domain.usecase.CreateAmexInstallmentPlanUseCase
 import com.expense.management.domain.usecase.GetAmexHubDataUseCase
 import com.expense.management.domain.usecase.PayAmexStatementUseCase
-import com.expense.management.domain.usecase.RecalculateAmexInstallmentPlanUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -365,41 +365,7 @@ class AmexViewModel(
         strategy: AmexInstallmentStrategy,
         currentStatementPaymentDueDate: String,
     ) {
-        val plan = repository.getAmexPagoFlexPlanById(planId) ?: return
-        val existingPayments = repository.getAmexScheduledPaymentsForPlan(planId)
-        val syncedPending = existingPayments
-            .filter { it.status == "PENDING" && it.expenseTransactionId != null }
-        val syncedByMonth = syncedPending.associate { it.dueDate.take(7) to it.expenseTransactionId!! }
-        val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
-        val (updatedPlan, newPendingPayments) = RecalculateAmexInstallmentPlanUseCase().execute(
-            existingPlan = plan,
-            existingPayments = existingPayments,
-            newStrategy = strategy,
-            today = today,
-            currentStatementPaymentDueDate = currentStatementPaymentDueDate,
-        )
-        repository.updateAmexPagoFlexPlanCalculation(
-            planId = updatedPlan.id,
-            installmentCount = updatedPlan.installmentCount,
-            installmentAmount = updatedPlan.installmentAmount,
-            planType = updatedPlan.planType,
-            initialInstallmentAmount = updatedPlan.initialInstallmentAmount,
-        )
-        repository.deletePendingAmexScheduledPaymentsForPlan(planId)
-        repository.insertAmexScheduledPayments(newPendingPayments)
-
-        val linkedTxIds = mutableSetOf<String>()
-        for (newPayment in newPendingPayments) {
-            val monthKey = newPayment.dueDate.take(7)
-            val oldTxId = syncedByMonth[monthKey] ?: continue
-            repository.updateAmexScheduledPaymentExpenseTransactionId(newPayment.id, oldTxId)
-            val tx = repository.getTransactionById(oldTxId) ?: continue
-            repository.insertTransaction(tx.copy(amount = newPayment.amount, originalAmount = newPayment.amount, effectiveDate = newPayment.dueDate))
-            linkedTxIds.add(oldTxId)
-        }
-        for (orphanTxId in syncedByMonth.values.filter { it !in linkedTxIds }) {
-            repository.deleteTransaction(orphanTxId)
-        }
+        ApplyAmexPlanRecalculationUseCase(repository)(planId, strategy, currentStatementPaymentDueDate)
     }
 
     fun syncAmexCurrentAccountOutflows() {

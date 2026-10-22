@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.navigation.NavHostController
@@ -314,7 +315,7 @@ fun AppNavHost(
                 hubData = amexHubData,
                 selectedMonth = amexSelectedMonth,
                 currencySymbol = currentCurrency,
-                locale = java.util.Locale.getDefault(),
+                locale = LocalConfiguration.current.locales[0],
                 isAmountHidden = isAmountHidden,
                 onMonthChange = { amexViewModel.updateSelectedMonth(it) },
                 onPayStatement = { statementId, amount ->

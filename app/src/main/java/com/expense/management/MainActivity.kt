@@ -77,6 +77,7 @@ fun mainApp() {
             sharedDb.currencyDao(),
             sharedDb.paymentMethodDao(),
             sharedDb.amexDao(),
+            sharedDb,
         )
     }
     val sharedCurrencyUtils = remember { CurrencyUtils(sharedDb.currencyDao()) }

@@ -205,7 +205,22 @@ fun DashboardScreen(
                 }
             },
             confirmButton = {
-                if (transactionToDelete.isAmexInstallment || transactionToDelete.isInstallment) {
+                if (transactionToDelete.isAmexInstallment) {
+                    Column {
+                        TextButton(
+                            onClick = {
+                                onDelete(transactionToDelete.transaction.id, DeleteType.SINGLE)
+                                showDeleteDialog = null
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) {
+                            Text(stringResource(R.string.delete_uppercase))
+                        }
+                        TextButton(onClick = { showDeleteDialog = null }) {
+                            Text(stringResource(R.string.cancel).uppercase())
+                        }
+                    }
+                } else if (transactionToDelete.isInstallment) {
                     Column {
                         TextButton(
                             onClick = {

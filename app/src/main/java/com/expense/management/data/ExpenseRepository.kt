@@ -1,6 +1,7 @@
 package com.expense.management.data
 
 import androidx.room.Transaction
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 
 class ExpenseRepository(
@@ -9,7 +10,10 @@ class ExpenseRepository(
     private val currencyDao: CurrencyDao,
     private val paymentMethodDao: PaymentMethodDao,
     private val amexDao: AmexDao,
+    private val database: AppDatabase,
 ) {
+    suspend fun <T> withTransaction(block: suspend () -> T): T = database.withTransaction(block)
+
     // Transactions
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllFlow()
 

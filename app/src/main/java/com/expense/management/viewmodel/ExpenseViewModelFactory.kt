@@ -42,6 +42,7 @@ class ExpenseViewModelFactory(
                     db.currencyDao(),
                     db.paymentMethodDao(),
                     db.amexDao(),
+                    db,
                 )
             }
             val currencyUtils = sharedCurrencyUtils ?: CurrencyUtils(
@@ -81,6 +82,7 @@ class ExpenseViewModelFactory(
                     db.currencyDao(),
                     db.paymentMethodDao(),
                     db.amexDao(),
+                    db,
                 )
             }
             val paymentMethodRepo = PaymentMethodRepositoryAdapter(repository)
@@ -111,6 +113,7 @@ class ExpenseViewModelFactory(
                     db.currencyDao(),
                     db.paymentMethodDao(),
                     db.amexDao(),
+                    db,
                 )
             }
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)

@@ -17,6 +17,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.data.toData
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.CATEGORIES
 import com.expense.management.domain.model.CreditCardType
@@ -25,6 +26,7 @@ import com.expense.management.domain.model.DashboardWidget
 import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.model.ReportData
+import com.expense.management.domain.usecase.ApplyAmexPlanRecalculationUseCase
 import com.expense.management.domain.usecase.CalculateAmexCurrentAccountOutflowUseCase
 import com.expense.management.domain.usecase.CalculateAmexStatementUseCase
 import com.expense.management.domain.usecase.CalculateCurrentAccountCashFlowUseCase
@@ -447,40 +449,26 @@ class ExpenseViewModel(
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val amexPayment = repository.getAmexScheduledPaymentByExpenseTxId(transactionId)
-            val planIdToRecalculate = amexPayment?.planId
-            val planBeforeDelete = planIdToRecalculate?.let { repository.getAmexPagoFlexPlanById(it) }
+            val planBeforeDelete = amexPayment?.let { repository.getAmexPagoFlexPlanById(it.planId) }
             val statementBeforeDelete = planBeforeDelete?.let { repository.getAmexStatementById(it.statementId) }
 
             deleteTransactionUseCase(transactionId, deleteType)
 
-            if (planIdToRecalculate != null && planBeforeDelete != null && statementBeforeDelete != null) {
-                val updatedPlan = repository.getAmexPagoFlexPlanById(planIdToRecalculate) ?: return@launch
-                val existingPayments = repository.getAmexScheduledPaymentsForPlan(planIdToRecalculate)
-                val strategy = if (updatedPlan.planType == "FIXED_AMOUNT") {
-                    com.expense.management.domain.model.AmexInstallmentStrategy.FixedAmount(updatedPlan.initialInstallmentAmount ?: updatedPlan.installmentAmount)
+            if (planBeforeDelete != null && statementBeforeDelete != null) {
+                val plan = repository.getAmexPagoFlexPlanById(planBeforeDelete.id) ?: return@launch
+                val paidCount = repository.getAmexScheduledPaymentsForPlan(plan.id).count { it.status == "PAID" }
+                val remainingMonths = plan.installmentCount - paidCount
+                if (remainingMonths <= 0) return@launch
+                val strategy = if (plan.planType == "FIXED_AMOUNT") {
+                    AmexInstallmentStrategy.FixedAmount(plan.initialInstallmentAmount ?: plan.installmentAmount)
                 } else {
-                    com.expense.management.domain.model.AmexInstallmentStrategy.FixedDuration(updatedPlan.installmentCount)
+                    AmexInstallmentStrategy.FixedDuration(remainingMonths)
                 }
-                val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
-                val useCase = com.expense.management.domain.usecase.RecalculateAmexInstallmentPlanUseCase()
-                val (newPlan, newPendingPayments) = useCase.execute(
-                    existingPlan = updatedPlan,
-                    existingPayments = existingPayments,
-                    newStrategy = strategy,
-                    today = today,
-                    currentStatementPaymentDueDate = statementBeforeDelete.paymentDueDate,
+                ApplyAmexPlanRecalculationUseCase(repository)(
+                    plan.id,
+                    strategy,
+                    statementBeforeDelete.paymentDueDate,
                 )
-                repository.updateAmexPagoFlexPlanCalculation(
-                    planId = newPlan.id,
-                    installmentCount = newPlan.installmentCount,
-                    installmentAmount = newPlan.installmentAmount,
-                    planType = newPlan.planType,
-                    initialInstallmentAmount = newPlan.initialInstallmentAmount,
-                )
-                repository.deletePendingAmexScheduledPaymentsForPlan(planIdToRecalculate)
-                repository.insertAmexScheduledPayments(newPendingPayments)
-                val paidCount = repository.getAmexScheduledPaymentsForPlan(planIdToRecalculate).count { it.status == "PAID" }
-                repository.updateAmexPagoFlexPaidCount(planIdToRecalculate, paidCount)
             }
         }
     }

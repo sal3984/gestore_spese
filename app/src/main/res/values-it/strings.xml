@@ -52,6 +52,7 @@
     <string name="delete_transaction_message">Sei sicuro di voler eliminare questa transazione? L\'azione non può essere annullata.</string>
     <string name="delete_installment_message">Questa transazione fa parte di un piano rateale. L\'eliminazione rimuoverà tutte le rate associate. Continuare?</string>
     <string name="delete_amex_installment_message">Questa transazione fa parte di un piano PagoFlex Amex. L\'eliminazione invaliderà il piano e ricalcolerà le rate rimanenti. Continuare?</string>
+    <string name="amex_installment_icon_cd">Rata Amex</string>
     <string name="delete_uppercase">ELIMINA</string>
     <string name="error_invalid_input">Inserisci un importo e una descrizione validi.</string>
     <string name="error_invalid_date_format">Formato data non valido.</string>
