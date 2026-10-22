@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.domain.model.AmexInstallmentStrategy
+import com.expense.management.utils.parseAmountInput
 import kotlin.math.ceil
 import kotlin.math.round
 
@@ -51,7 +52,7 @@ fun AmexInstallmentSetupDialog(
         )
     }
 
-    val parsedAmount = parseInstallmentAmount(amountInput)
+    val parsedAmount = parseAmountInput(amountInput)
     val parsedDuration = durationInput.toIntOrNull()
 
     val counterpart = when (mode) {
@@ -159,8 +160,6 @@ fun AmexInstallmentSetupDialog(
         },
     )
 }
-
-internal fun parseInstallmentAmount(input: String): Double? = input.replace(',', '.').toDoubleOrNull()
 
 private enum class Mode { FIXED_AMOUNT, FIXED_DURATION }
 

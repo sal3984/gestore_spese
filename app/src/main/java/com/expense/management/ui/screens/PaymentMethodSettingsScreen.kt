@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,6 +62,9 @@ import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.utils.parseAmountInput
+import java.time.DayOfWeek
+import java.time.format.TextStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -615,8 +619,11 @@ private fun EditPaymentMethodDialog(
         PaymentProvider.SATISPAY -> {
             val details = currentDetails as? PaymentMethodDetails.Satispay
             var weeklyBudgetText by remember(details) { mutableStateOf(if (details != null) details.weeklyBudget.toString() else "0") }
-            var sddDayText by remember(details) { mutableStateOf(if (details != null) details.sddDay.toString() else "1") }
+            var sddDay by remember(details) { mutableStateOf((details?.sddDay ?: 1).coerceIn(1, 7)) }
+            var isSddDropdownExpanded by remember { mutableStateOf(false) }
             var ibanText by remember(details) { mutableStateOf(details?.iban ?: "") }
+            val locale = LocalConfiguration.current.locales[0]
+            val weeklyBudget = parseAmountInput(weeklyBudgetText)
 
             AlertDialog(
                 onDismissRequest = onDismiss,
@@ -625,19 +632,55 @@ private fun EditPaymentMethodDialog(
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.card_name)) }, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(value = weeklyBudgetText, onValueChange = { weeklyBudgetText = it }, label = { Text(stringResource(R.string.weekly_budget)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(
+                            value = weeklyBudgetText,
+                            onValueChange = { weeklyBudgetText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
+                            label = { Text(stringResource(R.string.weekly_budget)) },
+                            isError = weeklyBudgetText.isNotBlank() && weeklyBudget == null,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(value = sddDayText, onValueChange = { sddDayText = it }, label = { Text(stringResource(R.string.sdd_day)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        ExposedDropdownMenuBox(
+                            expanded = isSddDropdownExpanded,
+                            onExpandedChange = { isSddDropdownExpanded = !isSddDropdownExpanded },
+                        ) {
+                            OutlinedTextField(
+                                value = DayOfWeek.of(sddDay).getDisplayName(TextStyle.FULL, locale),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.sdd_day)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSddDropdownExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = isSddDropdownExpanded,
+                                onDismissRequest = { isSddDropdownExpanded = false },
+                            ) {
+                                DayOfWeek.entries.forEach { day ->
+                                    DropdownMenuItem(
+                                        text = { Text(day.getDisplayName(TextStyle.FULL, locale)) },
+                                        onClick = {
+                                            sddDay = day.value
+                                            isSddDropdownExpanded = false
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                    )
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(value = ibanText, onValueChange = { ibanText = it }, label = { Text(stringResource(R.string.iban)) }, modifier = Modifier.fillMaxWidth())
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        val weeklyBudget = weeklyBudgetText.toDoubleOrNull() ?: return@TextButton
-                        val sddDay = sddDayText.toIntOrNull() ?: return@TextButton
-                        onSave(name, PaymentMethodDetails.Satispay(name, weeklyBudget, sddDay, ibanText.ifBlank { null }))
-                    }) { Text(stringResource(R.string.save)) }
+                    TextButton(
+                        onClick = {
+                            onSave(name, PaymentMethodDetails.Satispay(name, weeklyBudget ?: 0.0, sddDay, ibanText.ifBlank { null }))
+                        },
+                        enabled = weeklyBudget != null,
+                    ) { Text(stringResource(R.string.save)) }
                 },
                 dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
             )

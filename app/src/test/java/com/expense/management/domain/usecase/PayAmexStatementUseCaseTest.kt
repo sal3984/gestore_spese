@@ -180,4 +180,119 @@ class PayAmexStatementUseCaseTest {
         assertEquals(0, result.paidInstallments.size)
         assertEquals(0, result.paymentTransactions.size)
     }
+
+    @Test
+    fun `payment across two plans is split in proportion to the due installments`() {
+        val useCase = PayAmexStatementUseCase()
+        val plans = listOf(
+            AmexPagoFlexPlanEntity(
+                id = "planA",
+                statementId = "stmt1",
+                transactionId = "tx_planA",
+                totalAmount = 400.0,
+                installmentCount = 4,
+                installmentAmount = 100.0,
+                paidCount = 0,
+                startDate = "2024-06-15",
+            ),
+            AmexPagoFlexPlanEntity(
+                id = "planB",
+                statementId = "stmt1",
+                transactionId = "tx_planB",
+                totalAmount = 1200.0,
+                installmentCount = 4,
+                installmentAmount = 300.0,
+                paidCount = 0,
+                startDate = "2024-06-15",
+            ),
+        )
+        val pendingPayments = listOf(
+            AmexPagoFlexScheduledPaymentEntity(
+                id = "a1",
+                planId = "planA",
+                sequenceNumber = 1,
+                dueDate = "2024-07-15",
+                amount = 100.0,
+                status = "PENDING",
+            ),
+            AmexPagoFlexScheduledPaymentEntity(
+                id = "b1",
+                planId = "planB",
+                sequenceNumber = 1,
+                dueDate = "2024-07-15",
+                amount = 300.0,
+                status = "PENDING",
+            ),
+        )
+
+        val result = useCase.execute(
+            statement = statement,
+            amount = 200.0,
+            paymentDate = "2024-06-20",
+            plans = plans,
+            scheduledPayments = pendingPayments,
+        )
+
+        assertEquals(2, result.paymentTransactions.size)
+        assertEquals(listOf(50.0, 150.0), result.paymentTransactions.map { it.amount }.sorted())
+        assertEquals(200.0, result.paymentTransactions.sumOf { it.amount }, 0.01)
+    }
+
+    @Test
+    fun `payment is split evenly when the due installments add up to zero`() {
+        val useCase = PayAmexStatementUseCase()
+        val plans = listOf(
+            AmexPagoFlexPlanEntity(
+                id = "planA",
+                statementId = "stmt1",
+                transactionId = "tx_planA",
+                totalAmount = 0.0,
+                installmentCount = 4,
+                installmentAmount = 0.0,
+                paidCount = 0,
+                startDate = "2024-06-15",
+            ),
+            AmexPagoFlexPlanEntity(
+                id = "planB",
+                statementId = "stmt1",
+                transactionId = "tx_planB",
+                totalAmount = 0.0,
+                installmentCount = 4,
+                installmentAmount = 0.0,
+                paidCount = 0,
+                startDate = "2024-06-15",
+            ),
+        )
+        val pendingPayments = listOf(
+            AmexPagoFlexScheduledPaymentEntity(
+                id = "a1",
+                planId = "planA",
+                sequenceNumber = 1,
+                dueDate = "2024-07-15",
+                amount = 0.0,
+                status = "PENDING",
+            ),
+            AmexPagoFlexScheduledPaymentEntity(
+                id = "b1",
+                planId = "planB",
+                sequenceNumber = 1,
+                dueDate = "2024-07-15",
+                amount = 0.0,
+                status = "PENDING",
+            ),
+        )
+
+        val result = useCase.execute(
+            statement = statement,
+            amount = 100.0,
+            paymentDate = "2024-06-20",
+            plans = plans,
+            scheduledPayments = pendingPayments,
+        )
+
+        assertEquals(2, result.paymentTransactions.size)
+        assertTrue(result.paymentTransactions.none { it.amount.isNaN() })
+        assertEquals(listOf(50.0, 50.0), result.paymentTransactions.map { it.amount })
+        assertEquals(100.0, result.paymentTransactions.sumOf { it.amount }, 0.01)
+    }
 }

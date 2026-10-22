@@ -58,18 +58,10 @@ class PayAmexStatementUseCase {
             .groupBy { it.planId }
         val dueNow = pendingByPlan.values
             .mapNotNull { payments -> payments.minByOrNull { it.sequenceNumber } }
-        val totalPlanned = dueNow.sumOf { it.amount }
+        val splitAmounts = splitProportionally(amount, dueNow.map { it.amount })
         val paymentTransactions = dueNow.mapIndexed { index, payment ->
             val plan = plans.find { it.id == payment.planId }
-            val txAmount = if (index < dueNow.size - 1) {
-                round2(amount * payment.amount / totalPlanned)
-            } else {
-                round2(
-                    amount - dueNow.subList(0, dueNow.size - 1).sumOf { p ->
-                        amount * p.amount / totalPlanned
-                    },
-                )
-            }
+            val txAmount = splitAmounts[index]
             TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
@@ -99,6 +91,18 @@ class PayAmexStatementUseCase {
         val incomeTransaction: TransactionEntity?,
         val paidInstallments: List<AmexPagoFlexScheduledPaymentEntity>,
     )
+
+    private fun splitProportionally(total: Double, weights: List<Double>): List<Double> {
+        if (weights.isEmpty()) return emptyList()
+        val weightSum = weights.sum()
+        val shares = if (weightSum > 0.0) {
+            weights.map { total * it / weightSum }
+        } else {
+            weights.map { total / weights.size }
+        }
+        val allButLast = shares.dropLast(1).map { round2(it) }
+        return allButLast + round2(total - allButLast.sum())
+    }
 
     private fun round2(value: Double): Double = kotlin.math.round(value * 100.0) / 100.0
 }
