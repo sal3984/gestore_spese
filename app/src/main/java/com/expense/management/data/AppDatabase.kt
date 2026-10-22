@@ -294,36 +294,41 @@ abstract class AppDatabase : RoomDatabase() {
                     """.trimIndent(),
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_installment_scheduled_payments_planId` ON `installment_scheduled_payments` (`planId`)")
-                val cursor = db.query("SELECT id, totalAmount, installmentCount, installmentAmount, paidCount, startDate FROM `credit_card_installment_plans`")
-                while (cursor.moveToNext()) {
-                    val planId = cursor.getString(0)
-                    val totalAmount = cursor.getDouble(1)
-                    val installmentCount = cursor.getInt(2)
-                    val installmentAmount = cursor.getDouble(3)
-                    val paidCount = cursor.getInt(4)
-                    val startDate = cursor.getString(5)
-                    val parts = startDate.split("-")
-                    val baseYear = parts[0].toIntOrNull() ?: 2024
-                    val baseMonth = parts[1].toIntOrNull() ?: 1
-                    val baseDay = (parts[2].toIntOrNull() ?: 1).coerceIn(1, 28)
-                    for (i in paidCount until installmentCount) {
-                        val paymentId = "migrated_${planId}_$i"
-                        val monthOffset = i - paidCount
-                        var year = baseYear + (baseMonth - 1 + monthOffset) / 12
-                        var month = ((baseMonth - 1 + monthOffset) % 12) + 1
-                        val day = baseDay.coerceAtMost(28)
-                        val ym = "%04d-%02d".format(year, month)
-                        val dueDate = "$ym-${"%02d".format(day)}"
-                        val remaining = totalAmount - (installmentAmount * (installmentCount - 1))
-                        val amount = if (i == installmentCount - 1 && remaining != installmentAmount) {
-                            remaining
-                        } else {
-                            installmentAmount
+                db.query("SELECT id, totalAmount, installmentCount, installmentAmount, paidCount, startDate FROM `credit_card_installment_plans`").use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val planId = cursor.getString(0)
+                        val totalAmount = cursor.getDouble(1)
+                        val installmentCount = cursor.getInt(2)
+                        val installmentAmount = cursor.getDouble(3)
+                        val paidCount = cursor.getInt(4)
+                        val startDate = cursor.getString(5)
+                        val parts = startDate.split("-")
+                        val baseYear = parts.getOrNull(0)?.toIntOrNull() ?: 2024
+                        val baseMonth = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                        val baseDay = (parts.getOrNull(2)?.toIntOrNull() ?: 1).coerceIn(1, 28)
+
+                        for (i in 0 until installmentCount) {
+                            val paymentId = "migrated_${planId}_$i"
+                            val year = baseYear + (baseMonth - 1 + i) / 12
+                            val month = ((baseMonth - 1 + i) % 12) + 1
+                            val day = baseDay.coerceAtMost(28)
+                            val dueDate = "%04d-%02d-%02d".format(year, month, day)
+                            val status = if (i < paidCount) "PAID" else "PENDING"
+                            val amount = if (i == installmentCount - 1) {
+                                val regularTotal = installmentAmount * (installmentCount - 1)
+                                (totalAmount - regularTotal).coerceAtLeast(0.0)
+                            } else {
+                                installmentAmount
+                            }
+                            db.execSQL(
+                                "INSERT INTO `installment_scheduled_payments` (" +
+                                    "`id`, `planId`, `dueDate`, `amount`, `status`) " +
+                                    "VALUES (?, ?, ?, ?, ?)",
+                                arrayOf(paymentId, planId, dueDate, amount, status),
+                            )
                         }
-                        db.execSQL("INSERT INTO `installment_scheduled_payments` (`id`, `planId`, `dueDate`, `amount`, `status`) VALUES ('$paymentId', '$planId', '$dueDate', $amount, 'PENDING')")
                     }
                 }
-                cursor.close()
             }
         }
 
@@ -461,7 +466,7 @@ abstract class AppDatabase : RoomDatabase() {
                                 "INSERT INTO `amex_pagoflex_scheduled_payments` (" +
                                     "`id`, `planId`, `sequenceNumber`, `dueDate`, `amount`, `status`) " +
                                     "VALUES (?, ?, ?, ?, ?, ?)",
-                                arrayOf(paymentId, planId, i, dueDate, amount, status),
+                                arrayOf(paymentId, planId, i + 1, dueDate, amount, status),
                             )
                         }
                     }
