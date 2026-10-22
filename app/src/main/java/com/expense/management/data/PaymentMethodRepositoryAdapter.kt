@@ -29,8 +29,9 @@ class PaymentMethodRepositoryAdapter(
         val satispayDetails = repository.getAllSatispayDetails()
         val paypalDetails = repository.getAllPaypalDetails()
         val klarnaDetails = repository.getAllKlarnaDetails()
+        val debitDetails = repository.getAllDebitCardDetails()
         return methods.map {
-            it.toDomain(resolveDetails(it, ccDetails, revolutDetails, satispayDetails, paypalDetails, klarnaDetails))
+            it.toDomain(resolveDetails(it, ccDetails, revolutDetails, satispayDetails, paypalDetails, klarnaDetails, debitDetails))
         }
     }
 
@@ -79,20 +80,22 @@ class PaymentMethodRepositoryAdapter(
 
     override suspend fun savePaymentMethod(method: PaymentMethod, details: PaymentMethodDetails?) {
         repository.insertPaymentMethod(method.toData())
+        writeDetails(method.id, details)
+    }
+
+    override suspend fun updatePaymentMethod(method: PaymentMethod, details: PaymentMethodDetails?) {
+        repository.updatePaymentMethod(method.toData())
+        writeDetails(method.id, details)
+    }
+
+    private suspend fun writeDetails(paymentMethodId: String, details: PaymentMethodDetails?) {
         when (details) {
             is PaymentMethodDetails.CreditCard -> repository.insertCreditCardDetail(
-                CreditCardDetailEntity(
-                    paymentMethodId = method.id,
-                    cardType = details.cardType.name,
-                    limit = details.limit,
-                    closingDay = details.closingDay,
-                    paymentDay = details.paymentDay,
-                    linkedPaymentMethodId = details.linkedPaymentMethodId,
-                ),
+                creditCardDetailEntity(paymentMethodId, details),
             )
             is PaymentMethodDetails.Revolut -> repository.insertRevolutDetail(
                 RevolutDetailEntity(
-                    paymentMethodId = method.id,
+                    paymentMethodId = paymentMethodId,
                     currency = details.currency,
                     iban = details.iban,
                     accountNumber = details.accountNumber,
@@ -100,7 +103,7 @@ class PaymentMethodRepositoryAdapter(
             )
             is PaymentMethodDetails.Satispay -> repository.insertSatispayDetail(
                 SatispayDetailEntity(
-                    paymentMethodId = method.id,
+                    paymentMethodId = paymentMethodId,
                     weeklyBudget = details.weeklyBudget,
                     sddDay = details.sddDay,
                     iban = details.iban,
@@ -108,7 +111,7 @@ class PaymentMethodRepositoryAdapter(
             )
             is PaymentMethodDetails.Paypal -> repository.insertPaypalDetail(
                 PaypalDetailEntity(
-                    paymentMethodId = method.id,
+                    paymentMethodId = paymentMethodId,
                     email = details.email,
                     bnplInstallmentCount = details.bnplInstallmentCount,
                     bnplCycleDays = details.bnplCycleDays,
@@ -116,14 +119,14 @@ class PaymentMethodRepositoryAdapter(
             )
             is PaymentMethodDetails.Klarna -> repository.insertKlarnaDetail(
                 KlarnaDetailEntity(
-                    paymentMethodId = method.id,
+                    paymentMethodId = paymentMethodId,
                     bnplInstallmentCount = details.bnplInstallmentCount,
                     bnplCycleDays = details.bnplCycleDays,
                 ),
             )
             is PaymentMethodDetails.DebitCard -> repository.insertDebitCardDetail(
                 DebitCardDetailEntity(
-                    paymentMethodId = method.id,
+                    paymentMethodId = paymentMethodId,
                     issuer = details.issuer,
                     cardNumber = details.cardNumber,
                     notes = details.notes,
@@ -134,62 +137,21 @@ class PaymentMethodRepositoryAdapter(
         }
     }
 
-    override suspend fun updatePaymentMethod(method: PaymentMethod, details: PaymentMethodDetails?) {
-        repository.updatePaymentMethod(method.toData())
-        if (details != null) {
-            when (details) {
-                is PaymentMethodDetails.CreditCard -> repository.insertCreditCardDetail(
-                    CreditCardDetailEntity(
-                        paymentMethodId = method.id,
-                        cardType = details.cardType.name,
-                        limit = details.limit,
-                        closingDay = details.closingDay,
-                        paymentDay = details.paymentDay,
-                        linkedPaymentMethodId = details.linkedPaymentMethodId,
-                    ),
-                )
-                is PaymentMethodDetails.Revolut -> repository.insertRevolutDetail(
-                    RevolutDetailEntity(
-                        paymentMethodId = method.id,
-                        currency = details.currency,
-                        iban = details.iban,
-                        accountNumber = details.accountNumber,
-                    ),
-                )
-                is PaymentMethodDetails.Satispay -> repository.insertSatispayDetail(
-                    SatispayDetailEntity(
-                        paymentMethodId = method.id,
-                        weeklyBudget = details.weeklyBudget,
-                        sddDay = details.sddDay,
-                        iban = details.iban,
-                    ),
-                )
-                is PaymentMethodDetails.Paypal -> repository.insertPaypalDetail(
-                    PaypalDetailEntity(
-                        paymentMethodId = method.id,
-                        email = details.email,
-                        bnplInstallmentCount = details.bnplInstallmentCount,
-                        bnplCycleDays = details.bnplCycleDays,
-                    ),
-                )
-                is PaymentMethodDetails.Klarna -> repository.insertKlarnaDetail(
-                    KlarnaDetailEntity(
-                        paymentMethodId = method.id,
-                        bnplInstallmentCount = details.bnplInstallmentCount,
-                        bnplCycleDays = details.bnplCycleDays,
-                    ),
-                )
-                is PaymentMethodDetails.DebitCard -> repository.insertDebitCardDetail(
-                    DebitCardDetailEntity(
-                        paymentMethodId = method.id,
-                        issuer = details.issuer,
-                        cardNumber = details.cardNumber,
-                        notes = details.notes,
-                    ),
-                )
-                is PaymentMethodDetails.Cash -> {}
-            }
-        }
+    private suspend fun creditCardDetailEntity(
+        paymentMethodId: String,
+        details: PaymentMethodDetails.CreditCard,
+    ): CreditCardDetailEntity {
+        val existing = repository.getCreditCardDetail(paymentMethodId)
+        return CreditCardDetailEntity(
+            paymentMethodId = paymentMethodId,
+            cardType = details.cardType.name,
+            limit = details.limit,
+            closingDay = details.closingDay,
+            paymentDay = details.paymentDay,
+            interestRate = existing?.interestRate,
+            issuer = existing?.issuer,
+            linkedPaymentMethodId = details.linkedPaymentMethodId,
+        )
     }
 
     override suspend fun deletePaymentMethod(id: String) {
@@ -209,7 +171,7 @@ class PaymentMethodRepositoryAdapter(
         val klarnaDetails = repository.getAllKlarnaDetails()
         val debitDetails = repository.getAllDebitCardDetails()
         return methods.mapNotNull { method ->
-            resolveDetailsV2(method, ccDetails, revolutDetails, satispayDetails, paypalDetails, klarnaDetails, debitDetails)
+            resolveDetails(method, ccDetails, revolutDetails, satispayDetails, paypalDetails, klarnaDetails, debitDetails)
         }
     }
 
@@ -233,27 +195,6 @@ class PaymentMethodRepositoryAdapter(
     }
 
     private fun resolveDetails(
-        method: PaymentMethodEntity,
-        ccDetails: List<CreditCardDetailEntity>,
-        revolutDetails: List<RevolutDetailEntity>,
-        satispayDetails: List<SatispayDetailEntity>,
-        paypalDetails: List<PaypalDetailEntity>,
-        klarnaDetails: List<KlarnaDetailEntity>,
-    ): PaymentMethodDetails? = when (method.provider) {
-        PaymentProvider.CREDIT_CARD_SALDO,
-        PaymentProvider.CREDIT_CARD_REVOLVING,
-        PaymentProvider.CREDIT_CARD_INSTALLMENT,
-        PaymentProvider.CREDIT_CARD_AMEX,
-        -> ccDetails.find { it.paymentMethodId == method.id }?.toDomain(method.name)
-        PaymentProvider.REVOLUT -> revolutDetails.find { it.paymentMethodId == method.id }?.toDomain(method.name)
-        PaymentProvider.SATISPAY -> satispayDetails.find { it.paymentMethodId == method.id }?.toDomain(method.name)
-        PaymentProvider.PAYPAL -> paypalDetails.find { it.paymentMethodId == method.id }?.toDomain(method.name)
-        PaymentProvider.KLARNA -> klarnaDetails.find { it.paymentMethodId == method.id }?.toDomain(method.name)
-        PaymentProvider.DEBIT_CARD -> null
-        PaymentProvider.CASH -> PaymentMethodDetails.Cash(name = method.name)
-    }
-
-    private fun resolveDetailsV2(
         method: PaymentMethodEntity,
         ccDetails: List<CreditCardDetailEntity>,
         revolutDetails: List<RevolutDetailEntity>,
