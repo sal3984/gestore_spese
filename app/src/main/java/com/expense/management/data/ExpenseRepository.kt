@@ -357,6 +357,9 @@ class ExpenseRepository(
     suspend fun getPendingAmexScheduledPaymentsForPlan(planId: String): List<AmexPagoFlexScheduledPaymentEntity> =
         amexDao.getPendingScheduledPaymentsForPlan(planId)
 
+    suspend fun getPendingAmexScheduledPaymentsDueBy(date: String): List<AmexPagoFlexScheduledPaymentEntity> =
+        amexDao.getPendingScheduledPaymentsDueBy(date)
+
     suspend fun getPendingAmexScheduledPaymentsForMonth(month: String): List<AmexPagoFlexScheduledPaymentEntity> =
         amexDao.getPendingScheduledPaymentsForMonth(month)
 

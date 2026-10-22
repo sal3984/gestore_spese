@@ -337,7 +337,7 @@ fun AppNavHost(
                 },
                 onToggleAutoPay = { amexViewModel.onAction(AmexUiAction.ToggleAutoPay(it)) },
                 onPayInstallment = { paymentId ->
-                    amexViewModel.payAmexScheduledPayment(paymentId)
+                    amexViewModel.onAction(AmexUiAction.MarkScheduledPaymentPaid(paymentId))
                 },
                 onCreateStatement = { pmId, month, closing, due ->
                     amexViewModel.onAction(AmexUiAction.CreateStatement(pmId, month, closing, due))

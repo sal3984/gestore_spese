@@ -111,6 +111,13 @@ interface AmexDao {
     @Query("SELECT * FROM amex_pagoflex_scheduled_payments WHERE status = 'PENDING' AND strftime('%Y-%m', dueDate) = :month ORDER BY dueDate ASC")
     fun getPendingScheduledPaymentsForMonthFlow(month: String): Flow<List<AmexPagoFlexScheduledPaymentEntity>>
 
+    @Query(
+        "SELECT * FROM amex_pagoflex_scheduled_payments " +
+            "WHERE status = 'PENDING' AND expenseTransactionId IS NULL AND dueDate <= :date " +
+            "ORDER BY dueDate ASC",
+    )
+    suspend fun getPendingScheduledPaymentsDueBy(date: String): List<AmexPagoFlexScheduledPaymentEntity>
+
     @Query("UPDATE amex_pagoflex_scheduled_payments SET status = 'PAID', expenseTransactionId = :transactionId WHERE id = :paymentId")
     suspend fun markScheduledPaymentAsPaid(paymentId: String, transactionId: String)
 

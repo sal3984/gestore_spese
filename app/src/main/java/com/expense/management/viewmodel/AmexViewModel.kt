@@ -26,6 +26,7 @@ import com.expense.management.domain.usecase.CalculateAmexDashboardProjectionsUs
 import com.expense.management.domain.usecase.CalculateAmexStatementUseCase
 import com.expense.management.domain.usecase.CreateAmexInstallmentPlanUseCase
 import com.expense.management.domain.usecase.GetAmexHubDataUseCase
+import com.expense.management.domain.usecase.MaterializeDueAmexInstallmentsUseCase
 import com.expense.management.domain.usecase.PayAmexStatementUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -68,7 +69,7 @@ sealed interface AmexUiAction {
         val strategy: AmexInstallmentStrategy,
         val currentStatementPaymentDueDate: String,
     ) : AmexUiAction
-    data class MarkScheduledPaymentPaid(val paymentId: String, val amount: Double) : AmexUiAction
+    data class MarkScheduledPaymentPaid(val paymentId: String, val amount: Double? = null) : AmexUiAction
     data class UpdateScheduledAmount(val paymentId: String, val amount: Double) : AmexUiAction
     data object SyncOutflows : AmexUiAction
     data object TriggerAutoPay : AmexUiAction
@@ -88,6 +89,7 @@ class AmexViewModel(
     private val repository: ExpenseRepository,
     private val prefs: SharedPreferences?,
     private val getHubDataUseCase: GetAmexHubDataUseCase = GetAmexHubDataUseCase(),
+    private val materializeDueInstallments: MaterializeDueAmexInstallmentsUseCase = MaterializeDueAmexInstallmentsUseCase(repository),
 ) : ViewModel() {
 
     companion object {
@@ -216,7 +218,7 @@ class AmexViewModel(
             is AmexUiAction.AddPagoFlex -> addPagoFlexToAmexStatement(action.paymentMethodId, action.statementMonth, action.transactionId, action.amount, action.installmentCount, action.startDate)
             is AmexUiAction.CreateInstallmentPlan -> createAmexInstallmentPlan(action.statementId, action.transactionId, action.totalAmount, action.startDate, action.strategy)
             is AmexUiAction.RecalculateInstallmentPlan -> recalculateAmexInstallmentPlan(action.planId, action.strategy, action.currentStatementPaymentDueDate)
-            is AmexUiAction.MarkScheduledPaymentPaid -> updateAmexScheduledAmountAndPay(action.paymentId, action.amount)
+            is AmexUiAction.MarkScheduledPaymentPaid -> payAmexScheduledPayment(action.paymentId, action.amount)
             is AmexUiAction.UpdateScheduledAmount -> updateAmexScheduledPaymentAmount(action.paymentId, action.amount)
             is AmexUiAction.SyncOutflows -> syncAmexCurrentAccountOutflows()
             is AmexUiAction.TriggerAutoPay -> triggerAmexAutoPay()
@@ -370,47 +372,7 @@ class AmexViewModel(
 
     fun syncAmexCurrentAccountOutflows() {
         viewModelScope.launch(Dispatchers.IO) {
-            val today = java.time.LocalDate.now()
-            val monthPrefix = YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-            val plans = repository.getAllAmexPagoFlexPlans()
-            val payments = repository.getPendingAmexScheduledPaymentsForMonth(monthPrefix)
-            val ccDetails = repository.getAllCreditCardDetails()
-            val touchedPlans = mutableSetOf<String>()
-            for (payment in payments) {
-                if (payment.expenseTransactionId != null) continue
-                val dueDate = try {
-                    java.time.LocalDate.parse(payment.dueDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
-                } catch (_: Exception) {
-                    continue
-                }
-                if (dueDate.isAfter(today)) continue
-                val plan = plans.find { it.id == payment.planId } ?: continue
-                val statement = repository.getAmexStatementById(plan.statementId) ?: continue
-                val detail = ccDetails.find { it.paymentMethodId == statement.paymentMethodId }
-                val tx = TransactionEntity(
-                    id = java.util.UUID.randomUUID().toString(),
-                    date = payment.dueDate,
-                    description = "Rata Amex ${payment.sequenceNumber}/${plan.installmentCount}",
-                    amount = payment.amount,
-                    categoryId = "credit_card_payment",
-                    type = TransactionType.EXPENSE,
-                    isCreditCard = false,
-                    originalAmount = payment.amount,
-                    originalCurrency = "€",
-                    effectiveDate = payment.dueDate,
-                    installmentNumber = payment.sequenceNumber,
-                    totalInstallments = plan.installmentCount,
-                    groupId = plan.id,
-                    paymentMethodId = detail?.linkedPaymentMethodId,
-                )
-                repository.insertTransaction(tx)
-                repository.markAmexScheduledPaymentAsPaid(payment.id, tx.id)
-                touchedPlans.add(plan.id)
-            }
-            for (planId in touchedPlans) {
-                val paidCount = repository.getAmexScheduledPaymentsForPlan(planId).count { it.status == "PAID" }
-                repository.updateAmexPagoFlexPaidCount(planId, paidCount)
-            }
+            materializeDueInstallments()
             _events.send(AmexUiEvent.SyncCompleted)
         }
     }
@@ -437,23 +399,31 @@ class AmexViewModel(
                 val detail = repository.getCreditCardDetail(statement.paymentMethodId)
                 val linkedId = detail?.linkedPaymentMethodId
                 val result = PayAmexStatementUseCase().execute(statement, amount, paymentDate, statementPlans, scheduledPayments, linkedId)
-                result.paymentTransactions.forEach { repository.insertTransaction(it) }
-                result.incomeTransaction?.let { repository.insertTransaction(it) }
-                result.paidInstallments.forEachIndexed { i, payment ->
-                    val tx = result.paymentTransactions.getOrNull(i)
-                    if (tx != null) {
-                        if (tx.amount != payment.amount) {
-                            repository.updateAmexScheduledPaymentAmount(payment.id, tx.amount)
-                        }
-                        repository.markAmexScheduledPaymentAsPaid(payment.id, tx.id)
-                    }
-                }
-                updateAmexPlanPaidCounts(statementPlans)
-                repository.closeAmexStatement(statement.id)
+                applyStatementPayment(statement.id, result, statementPlans)
                 _events.send(AmexUiEvent.PaymentCompleted(statement.id, amount))
             } finally {
                 _payInProgressFor.value = null
             }
+        }
+    }
+
+    private suspend fun applyStatementPayment(
+        statementId: String,
+        result: PayAmexStatementUseCase.AmexPaymentResult,
+        statementPlans: List<AmexPagoFlexPlanEntity>,
+    ) {
+        repository.withTransaction {
+            result.paymentTransactions.forEach { repository.insertTransaction(it) }
+            result.incomeTransaction?.let { repository.insertTransaction(it) }
+            result.paidInstallments.forEachIndexed { index, payment ->
+                val tx = result.paymentTransactions.getOrNull(index) ?: return@forEachIndexed
+                if (tx.amount != payment.amount) {
+                    repository.updateAmexScheduledPaymentAmount(payment.id, tx.amount)
+                }
+                repository.markAmexScheduledPaymentAsPaid(payment.id, tx.id)
+            }
+            updateAmexPlanPaidCounts(statementPlans)
+            repository.closeAmexStatement(statementId)
         }
     }
 
@@ -487,22 +457,23 @@ class AmexViewModel(
         }
     }
 
-    fun payAmexScheduledPayment(paymentId: String) {
+    private fun payAmexScheduledPayment(paymentId: String, amount: Double? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             val payment = repository.getAmexScheduledPaymentById(paymentId) ?: return@launch
             if (payment.status == "PAID") return@launch
             val plan = repository.getAmexPagoFlexPlanById(payment.planId) ?: return@launch
             val statement = repository.getAmexStatementById(plan.statementId) ?: return@launch
             val detail = repository.getCreditCardDetail(statement.paymentMethodId)
-            val tx = com.expense.management.data.TransactionEntity(
+            val paidAmount = amount ?: payment.amount
+            val tx = TransactionEntity(
                 id = java.util.UUID.randomUUID().toString(),
                 date = payment.dueDate,
                 description = "Rata Amex ${payment.sequenceNumber}/${plan.installmentCount}",
-                amount = payment.amount,
+                amount = paidAmount,
                 categoryId = "credit_card_payment",
-                type = com.expense.management.data.TransactionType.EXPENSE,
+                type = TransactionType.EXPENSE,
                 isCreditCard = false,
-                originalAmount = payment.amount,
+                originalAmount = paidAmount,
                 originalCurrency = "€",
                 effectiveDate = payment.dueDate,
                 installmentNumber = payment.sequenceNumber,
@@ -510,10 +481,15 @@ class AmexViewModel(
                 groupId = plan.id,
                 paymentMethodId = detail?.linkedPaymentMethodId,
             )
-            repository.insertTransaction(tx)
-            repository.markAmexScheduledPaymentAsPaid(paymentId, tx.id)
-            val paidCount = repository.getAmexScheduledPaymentsForPlan(plan.id).count { it.status == "PAID" }
-            repository.updateAmexPagoFlexPaidCount(plan.id, paidCount)
+            repository.withTransaction {
+                if (paidAmount != payment.amount) {
+                    repository.updateAmexScheduledPaymentAmount(paymentId, paidAmount)
+                }
+                repository.insertTransaction(tx)
+                repository.markAmexScheduledPaymentAsPaid(paymentId, tx.id)
+                val paidCount = repository.getAmexScheduledPaymentsForPlan(plan.id).count { it.status == "PAID" }
+                repository.updateAmexPagoFlexPaidCount(plan.id, paidCount)
+            }
         }
     }
 
@@ -541,29 +517,11 @@ class AmexViewModel(
             val detail = repository.getCreditCardDetail(due.statement.paymentMethodId)
             val linkedId = detail?.linkedPaymentMethodId
             val result = PayAmexStatementUseCase().execute(due.statement, due.paymentAmount, today, statementPlans, scheduledPayments, linkedId)
-            result.paymentTransactions.forEach { repository.insertTransaction(it) }
-            result.incomeTransaction?.let { repository.insertTransaction(it) }
-            result.paidInstallments.forEachIndexed { i, payment ->
-                val tx = result.paymentTransactions.getOrNull(i)
-                if (tx != null) {
-                    if (tx.amount != payment.amount) {
-                        repository.updateAmexScheduledPaymentAmount(payment.id, tx.amount)
-                    }
-                    repository.markAmexScheduledPaymentAsPaid(payment.id, tx.id)
-                }
-            }
-            updateAmexPlanPaidCounts(statementPlans)
-            repository.closeAmexStatement(due.statement.id)
+            applyStatementPayment(due.statement.id, result, statementPlans)
             paidCount++
         }
         if (paidCount > 0) {
             _events.send(AmexUiEvent.AutoPayTriggered(paidCount))
-        }
-    }
-
-    private fun updateAmexScheduledAmountAndPay(paymentId: String, amount: Double) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateAmexScheduledPaymentAmount(paymentId, amount)
         }
     }
 
