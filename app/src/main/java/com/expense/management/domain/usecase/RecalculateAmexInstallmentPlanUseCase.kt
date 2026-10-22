@@ -56,10 +56,12 @@ class RecalculateAmexInstallmentPlanUseCase(
             DateTimeFormatter.ISO_LOCAL_DATE,
         )
 
-        val effectiveStartDate = if (todayDate.isBefore(dueDate)) {
-            firstPendingDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        } else {
+        val firstPendingAlreadyCharged = !todayDate.isBefore(dueDate) && !firstPendingDate.isAfter(dueDate)
+
+        val effectiveStartDate = if (firstPendingAlreadyCharged) {
             firstPendingDate.plusMonths(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        } else {
+            firstPendingDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
         }
 
         val newPendingPayments = buildPaymentsUseCase.execute(

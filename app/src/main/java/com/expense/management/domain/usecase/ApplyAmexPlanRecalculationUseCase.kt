@@ -35,17 +35,18 @@ class ApplyAmexPlanRecalculationUseCase(private val repository: ExpenseRepositor
             repository.deletePendingAmexScheduledPaymentsForPlan(planId)
             repository.insertAmexScheduledPayments(newPendingPayments)
 
-            val linkedTxIds = mutableSetOf<String>()
             for (newPayment in newPendingPayments) {
                 val monthKey = newPayment.dueDate.take(7)
                 val oldTxId = syncedByMonth[monthKey] ?: continue
-                repository.updateAmexScheduledPaymentExpenseTransactionId(newPayment.id, oldTxId)
                 val tx = repository.getTransactionById(oldTxId) ?: continue
-                repository.insertTransaction(tx.copy(amount = newPayment.amount, originalAmount = newPayment.amount, effectiveDate = newPayment.dueDate))
-                linkedTxIds.add(oldTxId)
-            }
-            for (orphanTxId in syncedByMonth.values.filter { it !in linkedTxIds }) {
-                repository.deleteTransaction(orphanTxId)
+                repository.updateAmexScheduledPaymentExpenseTransactionId(newPayment.id, oldTxId)
+                repository.insertTransaction(
+                    tx.copy(
+                        amount = newPayment.amount,
+                        originalAmount = newPayment.amount,
+                        effectiveDate = newPayment.dueDate,
+                    ),
+                )
             }
         }
     }

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class AmexPagoFlexCashFlowTest {
@@ -26,6 +28,9 @@ class AmexPagoFlexCashFlowTest {
         closingDay = 30,
         paymentDay = 15,
     )
+
+    private val displayFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val purchaseDate = LocalDate.now()
 
     private val categories = listOf(
         CategoryEntity(id = "shopping", label = "Shopping", type = TransactionType.EXPENSE, icon = "shopping"),
@@ -46,8 +51,8 @@ class AmexPagoFlexCashFlowTest {
             isPagoFlex = true,
             pagoFlexInstallments = 6,
             recurrenceType = RecurrenceType.NONE,
-            dateStr = "15/06/2026",
-            installmentStartDateStr = "15/07/2026",
+            dateStr = purchaseDate.format(displayFormatter),
+            installmentStartDateStr = purchaseDate.plusMonths(1).format(displayFormatter),
             ignoreDateWarning = true,
         )
 
