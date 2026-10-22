@@ -15,7 +15,6 @@ import com.expense.management.data.KlarnaDetailEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.PaypalDetailEntity
 import com.expense.management.data.TransactionEntity
-import com.expense.management.data.TransactionType
 import com.expense.management.data.toData
 import com.expense.management.data.toDomain
 import com.expense.management.domain.model.ActiveCreditCard
@@ -27,6 +26,7 @@ import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.SatispayStatus
 import com.expense.management.domain.repository.PaymentMethodRepository
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
+import com.expense.management.domain.usecase.CalculateCreditCardSummariesUseCase
 import com.expense.management.domain.usecase.CalculateSatispayStatusUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GenerateCreditCardPaymentUseCase
@@ -65,6 +65,7 @@ class PaymentMethodsViewModel(
     private val calculateBnplProjectionsUseCase: CalculateBnplProjectionsUseCase,
     private val calculateSatispayStatusUseCase: CalculateSatispayStatusUseCase,
     private val generateCreditCardPaymentUseCase: GenerateCreditCardPaymentUseCase,
+    private val calculateCreditCardSummariesUseCase: CalculateCreditCardSummariesUseCase = CalculateCreditCardSummariesUseCase(),
 ) : ViewModel() {
 
     companion object {
@@ -137,23 +138,6 @@ class PaymentMethodsViewModel(
     )
     val defaultPaymentMethodId: StateFlow<String?> = _defaultPaymentMethodId.asStateFlow()
 
-    private val amexPendingByCard: StateFlow<Map<String, Double>> = combine(
-        allAmexStatements,
-        allAmexPagoFlexPlans,
-        allAmexScheduledPayments,
-    ) { statements, plans, payments ->
-        val statementIdsByCard = statements
-            .groupBy { it.paymentMethodId }
-            .mapValues { it.value.map { s -> s.id }.toSet() }
-        statementIdsByCard.mapValues { (_, statementIds) ->
-            plans
-                .filter { it.statementId in statementIds }
-                .flatMap { plan -> payments.filter { it.planId == plan.id && it.status == "PENDING" } }
-                .sumOf { it.amount }
-        }
-    }.flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
     private val amexPaidByCard: StateFlow<Map<String, Double>> = combine(
         allAmexStatements,
         allAmexPagoFlexPlans,
@@ -175,85 +159,9 @@ class PaymentMethodsViewModel(
         allTransactions,
         activeCreditCards,
         _currentDashboardMonth,
-        amexPendingByCard,
         amexPaidByCard,
-    ) { tx, cards, month, pendingByCard, paidByCard ->
-        cards.associate { card ->
-            card.id to when (card.cardType) {
-                CreditCardType.REVOLVING,
-                CreditCardType.INSTALLMENT,
-                -> {
-                    val cardTx = tx.filter {
-                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
-                    }
-                    val totalUtilized = cardTx
-                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val totalRepaid = cardTx
-                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val displayed = totalUtilized - totalRepaid
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = displayed,
-                        totalUtilized = totalUtilized,
-                        totalPaid = 0.0,
-                        totalRepaid = totalRepaid,
-                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
-                    )
-                }
-                CreditCardType.AMEX_HYBRID -> {
-                    val cardTx = tx.filter {
-                        (it.creditCardId == card.id || it.paymentMethodId == card.id)
-                    }
-                    val totalUtilized = cardTx
-                        .filter { it.type == TransactionType.EXPENSE && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val incomeRepaid = cardTx
-                        .filter { it.type == TransactionType.INCOME && it.isCreditCard }
-                        .sumOf { it.amount }
-                    val pagoflexPaid = paidByCard[card.id] ?: 0.0
-                    val totalRepaid = incomeRepaid + pagoflexPaid
-                    val displayed = (totalUtilized - totalRepaid).coerceAtLeast(0.0)
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = displayed,
-                        totalUtilized = totalUtilized,
-                        totalPaid = totalRepaid,
-                        totalRepaid = totalRepaid,
-                        progress = if (card.limit > 0) (displayed / card.limit).toFloat() else 0f,
-                    )
-                }
-                CreditCardType.SALDO -> {
-                    val spent = tx
-                        .filter { (it.creditCardId == card.id || it.paymentMethodId == card.id) && it.type == TransactionType.EXPENSE }
-                        .filter { t ->
-                            try {
-                                YearMonth.from(LocalDate.parse(t.effectiveDate)) == month
-                            } catch (_: Exception) {
-                                false
-                            }
-                        }
-                        .sumOf { it.amount }
-                    CreditCardSummary(
-                        cardId = card.id,
-                        name = card.name,
-                        limit = card.limit,
-                        cardType = card.cardType,
-                        displayedSpent = spent,
-                        totalUtilized = spent,
-                        totalPaid = 0.0,
-                        progress = if (card.limit > 0) (spent / card.limit).toFloat() else 0f,
-                    )
-                }
-            }
-        }
+    ) { tx, cards, month, paidByCard ->
+        calculateCreditCardSummariesUseCase.execute(tx, cards, month, paidByCard)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 

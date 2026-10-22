@@ -41,4 +41,34 @@ class DateUtilsTest {
 
         assertEquals("2024-07-10", result)
     }
+
+    @Test
+    fun `purchase on the closing day falls into the next cycle`() {
+        val card = DateUtils.CardDateInfo(closingDay = 20, paymentDay = 15)
+
+        assertEquals("2024-06-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 19), card))
+        assertEquals("2024-07-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 20), card))
+    }
+
+    @Test
+    fun `closing day beyond the month length is clamped to the last day`() {
+        val card = DateUtils.CardDateInfo(closingDay = 31, paymentDay = 15)
+
+        assertEquals("2024-03-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 2, 28), card))
+        assertEquals("2024-04-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 2, 29), card))
+    }
+
+    @Test
+    fun `payment day beyond the month length is clamped to the last day`() {
+        val card = DateUtils.CardDateInfo(closingDay = 10, paymentDay = 31)
+
+        assertEquals("2024-04-30", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 3, 15), card))
+    }
+
+    @Test
+    fun `payment day equal to the closing day settles in the closing month`() {
+        val card = DateUtils.CardDateInfo(closingDay = 15, paymentDay = 15)
+
+        assertEquals("2024-05-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 10), card))
+    }
 }
