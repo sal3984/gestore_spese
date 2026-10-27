@@ -15,6 +15,7 @@ import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.InstallmentScheduledPaymentEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.data.isCycleSettlement
 import com.expense.management.data.toData
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexInstallmentStrategy
@@ -127,7 +128,7 @@ class ExpenseViewModel(
         reportRangeState,
     ) { allTx, (start, end) ->
         allTx.filter { tx ->
-            try {
+            !tx.isCycleSettlement && try {
                 val date = LocalDate.parse(tx.effectiveDate)
                 !date.isBefore(start.atDay(1)) && !date.isAfter(end.atEndOfMonth())
             } catch (_: Exception) {
@@ -174,7 +175,7 @@ class ExpenseViewModel(
             val isAmexCreditExpense = transaction.isCreditCard &&
                 transaction.type == TransactionType.EXPENSE &&
                 (transaction.creditCardId in amexCardIds || transaction.paymentMethodId in amexCardIds)
-            !isAmexCreditExpense && try {
+            !isAmexCreditExpense && !transaction.isCycleSettlement && try {
                 YearMonth.from(LocalDate.parse(transaction.effectiveDate)) == month
             } catch (_: Exception) {
                 false
@@ -574,7 +575,8 @@ class ExpenseViewModel(
         }
     }
 
-    suspend fun getExpensesForExport(): List<TransactionEntity> = repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE }
+    suspend fun getExpensesForExport(): List<TransactionEntity> =
+        repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE && !it.isCycleSettlement }
 
     suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id, it.label, it.icon, it.type.toData()) }
 

@@ -47,6 +47,8 @@ class ExpenseRepository(
 
     suspend fun getCardExpensesWithoutCycle(): List<TransactionEntity> = transactionDao.getCardExpensesWithoutCycle()
 
+    suspend fun getTransactionBySourceRef(sourceRef: String): TransactionEntity? = transactionDao.getBySourceRef(sourceRef)
+
     suspend fun setTransactionBillingCycle(transactionId: String, cycleId: String) {
         transactionDao.setBillingCycle(transactionId, cycleId)
     }
@@ -440,4 +442,16 @@ class ExpenseRepository(
 
     suspend fun getUnsettledCardExposure(paymentMethodId: String): Double =
         billingCycleDao.getUnsettledExposure(paymentMethodId)
+
+    suspend fun getBillingCyclesToClose(today: String): List<BillingCycleEntity> = billingCycleDao.getCyclesToClose(today)
+
+    suspend fun getBillingCyclesToSettle(today: String): List<BillingCycleEntity> = billingCycleDao.getCyclesToSettle(today)
+
+    suspend fun updateBillingCycleStatus(cycleId: String, status: String) {
+        billingCycleDao.updateStatus(cycleId, status)
+    }
+
+    suspend fun markBillingCycleSettled(cycleId: String, settlementTransactionId: String?) {
+        billingCycleDao.markSettled(cycleId, settlementTransactionId)
+    }
 }

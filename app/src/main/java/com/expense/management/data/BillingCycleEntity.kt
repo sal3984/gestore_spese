@@ -45,6 +45,15 @@ data class BillingCycleEntity(
     companion object {
         fun idFor(paymentMethodId: String, cycleMonth: String): String = "$paymentMethodId:$cycleMonth"
 
+        /** sourceRef dell'unico addebito sul conto che salda il ciclo. */
+        fun settlementRef(cycleId: String): String = "$SETTLEMENT_PREFIX$cycleId$SETTLEMENT_SUFFIX"
+
+        private const val SETTLEMENT_PREFIX = "cycle:"
+        private const val SETTLEMENT_SUFFIX = ":settlement"
+
+        internal fun isSettlementRef(sourceRef: String?): Boolean =
+            sourceRef != null && sourceRef.startsWith(SETTLEMENT_PREFIX) && sourceRef.endsWith(SETTLEMENT_SUFFIX)
+
         /**
          * Nuovo ciclo a saldo per un acquisto, con lo stato dato da oggi: addebito passato ->
          * PAID (fino alla Fase 2 ogni acquisto esce dal conto alla sua effectiveDate),
@@ -68,3 +77,10 @@ data class BillingCycleEntity(
         }
     }
 }
+
+/**
+ * Addebito sul conto che salda un ciclo: e' un trasferimento, non una spesa. Le spese della
+ * carta sono gia' contate una per una alla loro effectiveDate, quindi spese e report lo escludono.
+ */
+val TransactionEntity.isCycleSettlement: Boolean
+    get() = BillingCycleEntity.isSettlementRef(sourceRef)

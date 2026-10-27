@@ -32,6 +32,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
+    @Query("SELECT * FROM transactions WHERE sourceRef = :sourceRef LIMIT 1")
+    suspend fun getBySourceRef(sourceRef: String): TransactionEntity?
+
     @Query("SELECT * FROM transactions WHERE billingCycleId IS NULL AND isCreditCard = 1 AND type = 'expense'")
     suspend fun getCardExpensesWithoutCycle(): List<TransactionEntity>
 

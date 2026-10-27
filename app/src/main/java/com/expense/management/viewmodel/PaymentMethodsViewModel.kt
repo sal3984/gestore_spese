@@ -28,6 +28,7 @@ import com.expense.management.domain.repository.PaymentMethodRepository
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.CalculateCreditCardSummariesUseCase
 import com.expense.management.domain.usecase.CalculateSatispayStatusUseCase
+import com.expense.management.domain.usecase.CloseBillingCycleUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GenerateCreditCardPaymentUseCase
 import com.expense.management.domain.usecase.GetActiveCreditCardsUseCase
@@ -36,6 +37,7 @@ import com.expense.management.domain.usecase.GetPaymentMethodsUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
+import com.expense.management.domain.usecase.SettleBillingCycleUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,6 +68,8 @@ class PaymentMethodsViewModel(
     private val calculateSatispayStatusUseCase: CalculateSatispayStatusUseCase,
     private val generateCreditCardPaymentUseCase: GenerateCreditCardPaymentUseCase,
     private val calculateCreditCardSummariesUseCase: CalculateCreditCardSummariesUseCase = CalculateCreditCardSummariesUseCase(),
+    private val closeBillingCycles: CloseBillingCycleUseCase = CloseBillingCycleUseCase(repository),
+    private val settleBillingCycles: SettleBillingCycleUseCase = SettleBillingCycleUseCase(repository),
 ) : ViewModel() {
 
     companion object {
@@ -185,6 +189,9 @@ class PaymentMethodsViewModel(
     init {
         viewModelScope.launch(Dispatchers.IO) {
             syncInstallmentPlanOutflows()
+            // Prima si chiudono i cicli, poi si saldano quelli arrivati all'addebito
+            closeBillingCycles()
+            settleBillingCycles()
         }
     }
 
