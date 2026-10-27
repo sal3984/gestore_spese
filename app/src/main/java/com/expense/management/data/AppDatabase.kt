@@ -57,6 +57,8 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun amexDao(): AmexDao
 
+    abstract fun billingCycleDao(): BillingCycleDao
+
     companion object {
         @Volatile
         private var instance: AppDatabase? = null

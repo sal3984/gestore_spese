@@ -11,6 +11,7 @@ class ExpenseRepository(
     private val paymentMethodDao: PaymentMethodDao,
     private val amexDao: AmexDao,
     private val database: AppDatabase,
+    private val billingCycleDao: BillingCycleDao = database.billingCycleDao(),
 ) {
     suspend fun <T> withTransaction(block: suspend () -> T): T = database.withTransaction(block)
 
@@ -419,4 +420,18 @@ class ExpenseRepository(
         amexDao.getPagoFlexPlansForStatementFlow(statementId)
 
     val allAmexRevolvingStates: Flow<List<AmexRevolvingStateEntity>> = amexDao.getAllRevolvingStatesFlow()
+
+    // Billing cycles
+    /** False se il ciclo esisteva gia': la riga esistente non viene toccata. */
+    suspend fun insertBillingCycle(cycle: BillingCycleEntity): Boolean = billingCycleDao.insertCycle(cycle) != -1L
+
+    suspend fun getBillingCycleById(cycleId: String): BillingCycleEntity? = billingCycleDao.getCycleById(cycleId)
+
+    suspend fun getBillingCycleTotals(cycleId: String): CycleTotals = billingCycleDao.getCycleTotals(cycleId)
+
+    suspend fun getUnsettledBillingCycles(paymentMethodId: String): List<BillingCycleWithTotals> =
+        billingCycleDao.getUnsettledCyclesWithTotals(paymentMethodId)
+
+    suspend fun getUnsettledCardExposure(paymentMethodId: String): Double =
+        billingCycleDao.getUnsettledExposure(paymentMethodId)
 }

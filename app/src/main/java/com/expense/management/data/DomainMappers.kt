@@ -1,10 +1,15 @@
 package com.expense.management.data
 
+import com.expense.management.domain.model.BillingCycle
 import com.expense.management.domain.model.CreditCardDetails
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.CyclePaymentMode
+import com.expense.management.domain.model.CycleStatus
 import com.expense.management.domain.model.PaymentMethod
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
+import java.time.LocalDate
+import java.time.YearMonth
 
 fun com.expense.management.domain.model.TransactionType.toData(): TransactionType = when (this) {
     com.expense.management.domain.model.TransactionType.INCOME -> TransactionType.INCOME
@@ -395,4 +400,33 @@ fun ActiveCreditCardEntity.toDomain(): com.expense.management.domain.model.Activ
     closingDay = creditCardDetail.closingDay,
     paymentDay = creditCardDetail.paymentDay,
     linkedPaymentMethodId = creditCardDetail.linkedPaymentMethodId,
+)
+
+/** Null se la riga non rispetta le invarianti del ciclo (date illeggibili, stato sconosciuto...). */
+fun BillingCycleEntity.toDomain(): BillingCycle? = runCatching {
+    BillingCycle(
+        id = id,
+        paymentMethodId = paymentMethodId,
+        cycleMonth = YearMonth.parse(cycleMonth),
+        closingDate = LocalDate.parse(closingDate),
+        dueDate = LocalDate.parse(dueDate),
+        status = requireNotNull(CycleStatus.safeValueOf(status)),
+        paymentMode = requireNotNull(CyclePaymentMode.safeValueOf(paymentMode)),
+        chosenAmount = chosenAmount,
+        settlementTransactionId = settlementTransactionId,
+        carriedForward = carriedForward,
+    )
+}.getOrNull()
+
+fun BillingCycle.toEntity(): BillingCycleEntity = BillingCycleEntity(
+    id = id,
+    paymentMethodId = paymentMethodId,
+    cycleMonth = cycleMonth.toString(),
+    closingDate = closingDate.toString(),
+    dueDate = dueDate.toString(),
+    status = status.name,
+    paymentMode = paymentMode.name,
+    chosenAmount = chosenAmount,
+    settlementTransactionId = settlementTransactionId,
+    carriedForward = carriedForward,
 )
