@@ -3,25 +3,33 @@ package com.expense.management.domain.usecase
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import java.time.LocalDate
 import java.time.YearMonth
 
-class CalculateCreditCardSummariesUseCase {
+class CalculateCreditCardSummariesUseCase(
+    private val calculateCardExposure: CalculateCardExposureUseCase = CalculateCardExposureUseCase(),
+) {
 
     fun execute(
         transactions: List<TransactionEntity>,
         cards: List<ActiveCreditCard>,
         targetMonth: YearMonth,
         amexPaidByCard: Map<String, Double>,
+        unsettledExposureByCard: Map<String, Double> = emptyMap(),
     ): Map<String, CreditCardSummary> = cards.associate { card ->
         card.id to when (card.cardType) {
             CreditCardType.REVOLVING,
             CreditCardType.INSTALLMENT,
             -> revolvingSummary(card, transactions)
             CreditCardType.AMEX_HYBRID -> amexSummary(card, transactions, amexPaidByCard[card.id] ?: 0.0)
-            CreditCardType.SALDO -> saldoSummary(card, transactions, targetMonth)
+            CreditCardType.SALDO -> if (CardCycleRules.fromCardDays(card.closingDay, card.paymentDay) != null) {
+                saldoCycleSummary(card, unsettledExposureByCard[card.id] ?: 0.0)
+            } else {
+                saldoSummary(card, transactions, targetMonth)
+            }
         }
     }
 
@@ -74,6 +82,25 @@ class CalculateCreditCardSummariesUseCase {
         )
     }
 
+    /**
+     * Carta a saldo con ciclo: barra e importo sono l'esposizione non liquidata (spese dei cicli
+     * non ancora addebitati), non la spesa del mese visualizzato. Non dipende dal mese.
+     */
+    private fun saldoCycleSummary(card: ActiveCreditCard, unsettledExposure: Double): CreditCardSummary {
+        val exposure = calculateCardExposure.execute(card.limit, unsettledExposure)
+        return CreditCardSummary(
+            cardId = card.id,
+            name = card.name,
+            limit = card.limit,
+            cardType = card.cardType,
+            displayedSpent = exposure.exposure,
+            totalUtilized = exposure.exposure,
+            totalPaid = 0.0,
+            progress = exposure.utilization,
+        )
+    }
+
+    /** Carta a saldo senza giorni di chiusura/addebito: nessun ciclo, resta la spesa del mese. */
     private fun saldoSummary(
         card: ActiveCreditCard,
         transactions: List<TransactionEntity>,

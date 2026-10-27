@@ -5,6 +5,7 @@ import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 /** Totali di un ciclo ricavati dalle transazioni collegate: nessun contatore memorizzato. */
 data class CycleTotals(
@@ -12,6 +13,26 @@ data class CycleTotals(
     val credits: Double,
     val transactionCount: Int,
 )
+
+data class CardExposureRow(
+    val paymentMethodId: String,
+    val exposure: Double,
+)
+
+/**
+ * Esposizione per carta: spese meno accrediti dei cicli non saldati, meno quanto gia' versato
+ * con l'addebito di un ciclo pagato in parte. Solo acquisti con data fino a oggi: le
+ * ricorrenze future gia' generate non occupano il plafond.
+ */
+private const val UNSETTLED_EXPOSURE_BY_CARD =
+    "SELECT c.paymentMethodId AS paymentMethodId, " +
+        "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount WHEN t.type = 'income' THEN -t.amount ELSE 0 END), 0) - " +
+        "COALESCE((SELECT SUM(s.amount) FROM billing_cycles c2 JOIN transactions s ON s.id = c2.settlementTransactionId " +
+        "WHERE c2.paymentMethodId = c.paymentMethodId AND c2.status != 'PAID'), 0) AS exposure " +
+        "FROM billing_cycles c " +
+        "LEFT JOIN transactions t ON t.billingCycleId = c.id AND t.isCreditCard = 1 AND t.date <= :today " +
+        "WHERE c.status != 'PAID' " +
+        "GROUP BY c.paymentMethodId"
 
 data class BillingCycleWithTotals(
     @Embedded val cycle: BillingCycleEntity,
@@ -63,17 +84,9 @@ interface BillingCycleDao {
     )
     suspend fun getUnsettledCyclesWithTotals(paymentMethodId: String): List<BillingCycleWithTotals>
 
-    /**
-     * Esposizione della carta: spese meno accrediti dei cicli non saldati, meno quanto gia'
-     * versato con l'addebito di saldo di un ciclo pagato in parte.
-     */
-    @Query(
-        "SELECT " +
-            "COALESCE((SELECT SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE -t.amount END) " +
-            "FROM transactions t JOIN billing_cycles c ON t.billingCycleId = c.id " +
-            "WHERE c.paymentMethodId = :paymentMethodId AND c.status != 'PAID' AND t.isCreditCard = 1), 0) - " +
-            "COALESCE((SELECT SUM(s.amount) FROM billing_cycles c JOIN transactions s ON s.id = c.settlementTransactionId " +
-            "WHERE c.paymentMethodId = :paymentMethodId AND c.status != 'PAID'), 0)",
-    )
-    suspend fun getUnsettledExposure(paymentMethodId: String): Double
+    @Query(UNSETTLED_EXPOSURE_BY_CARD)
+    fun getUnsettledExposureByCardFlow(today: String): Flow<List<CardExposureRow>>
+
+    @Query(UNSETTLED_EXPOSURE_BY_CARD)
+    suspend fun getUnsettledExposureByCard(today: String): List<CardExposureRow>
 }

@@ -3,6 +3,8 @@ package com.expense.management.data
 import androidx.room.Transaction
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 
 class ExpenseRepository(
     private val transactionDao: TransactionDao,
@@ -440,8 +442,12 @@ class ExpenseRepository(
     suspend fun getUnsettledBillingCycles(paymentMethodId: String): List<BillingCycleWithTotals> =
         billingCycleDao.getUnsettledCyclesWithTotals(paymentMethodId)
 
-    suspend fun getUnsettledCardExposure(paymentMethodId: String): Double =
-        billingCycleDao.getUnsettledExposure(paymentMethodId)
+    suspend fun getUnsettledCardExposure(paymentMethodId: String, today: String = LocalDate.now().toString()): Double =
+        billingCycleDao.getUnsettledExposureByCard(today).firstOrNull { it.paymentMethodId == paymentMethodId }?.exposure ?: 0.0
+
+    /** Esposizione non liquidata per carta; le carte senza cicli aperti non compaiono. */
+    fun unsettledExposureByCard(today: String = LocalDate.now().toString()): Flow<Map<String, Double>> =
+        billingCycleDao.getUnsettledExposureByCardFlow(today).map { rows -> rows.associate { it.paymentMethodId to it.exposure } }
 
     suspend fun getBillingCyclesToClose(today: String): List<BillingCycleEntity> = billingCycleDao.getCyclesToClose(today)
 

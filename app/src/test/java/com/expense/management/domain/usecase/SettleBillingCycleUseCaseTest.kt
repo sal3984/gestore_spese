@@ -13,6 +13,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.data.isCycleSettlement
 import com.expense.management.domain.model.PaymentProvider
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -90,6 +91,19 @@ class SettleBillingCycleUseCaseTest {
         assertNull(settlement.billingCycleId)
         assertTrue(settlement.isCycleSettlement)
         assertEquals(0.0, repository.getUnsettledCardExposure("saldo1"), 0.001)
+    }
+
+    @Test
+    fun theExposureFlowDropsTheCycleOnceItIsSettled() = runBlocking {
+        save(purchase("a", "2025-05-02", 100.0))
+        save(purchase("b", "2025-05-19", 50.25))
+        repository.updateBillingCycleStatus("saldo1:2025-05", "CLOSED")
+
+        assertEquals(mapOf("saldo1" to 150.25), repository.unsettledExposureByCard("2025-06-15").first())
+
+        settle()
+
+        assertEquals(emptyMap<String, Double>(), repository.unsettledExposureByCard("2025-06-15").first())
     }
 
     @Test

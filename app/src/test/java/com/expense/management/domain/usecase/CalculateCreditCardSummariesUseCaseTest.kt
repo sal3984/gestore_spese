@@ -20,14 +20,16 @@ class CalculateCreditCardSummariesUseCaseTest {
         id: String,
         cardType: CreditCardType,
         limit: Double = 1000.0,
+        closingDay: Int = 20,
+        paymentDay: Int = 15,
     ) = ActiveCreditCard(
         id = id,
         name = "Card $id",
         provider = PaymentProvider.CREDIT_CARD_SALDO,
         cardType = cardType,
         limit = limit,
-        closingDay = 20,
-        paymentDay = 15,
+        closingDay = closingDay,
+        paymentDay = paymentDay,
     )
 
     private fun transaction(
@@ -54,25 +56,37 @@ class CalculateCreditCardSummariesUseCaseTest {
     )
 
     @Test
-    fun `saldo card counts only the expenses settling in the target month`() {
+    fun `saldo card with a cycle shows its unsettled exposure whatever the month`() {
         val saldo = card("saldo1", CreditCardType.SALDO, limit = 2000.0)
         val transactions = listOf(
             transaction("t1", 100.0, TransactionType.EXPENSE, true, "2026-10-15", creditCardId = "saldo1"),
-            transaction("t2", 250.0, TransactionType.EXPENSE, true, "2026-10-15", creditCardId = "saldo1"),
             transaction("t3", 999.0, TransactionType.EXPENSE, true, "2026-11-15", creditCardId = "saldo1"),
         )
 
-        val summary = useCase.execute(transactions, listOf(saldo), month, emptyMap())["saldo1"]!!
+        val october = useCase.execute(transactions, listOf(saldo), month, emptyMap(), mapOf("saldo1" to 350.0))["saldo1"]!!
+        val november = useCase.execute(transactions, listOf(saldo), month.plusMonths(1), emptyMap(), mapOf("saldo1" to 350.0))["saldo1"]!!
 
-        assertEquals(350.0, summary.displayedSpent, 0.01)
-        assertEquals(350.0, summary.totalUtilized, 0.01)
-        assertEquals(0.0, summary.totalPaid, 0.01)
-        assertEquals(0.175f, summary.progress, 0.001f)
+        assertEquals(350.0, october.displayedSpent, 0.01)
+        assertEquals(350.0, october.totalUtilized, 0.01)
+        assertEquals(0.0, october.totalPaid, 0.01)
+        assertEquals(0.175f, october.progress, 0.001f)
+        assertEquals(october, november)
     }
 
     @Test
-    fun `saldo card also counts a non credit card expense attached to it`() {
+    fun `saldo card with a cycle and nothing left to charge shows an empty bar`() {
         val saldo = card("saldo1", CreditCardType.SALDO)
+        val transactions = listOf(transaction("t1", 100.0, TransactionType.EXPENSE, true, "2026-10-15", creditCardId = "saldo1"))
+
+        val summary = useCase.execute(transactions, listOf(saldo), month, emptyMap(), emptyMap())["saldo1"]!!
+
+        assertEquals(0.0, summary.displayedSpent, 0.01)
+        assertEquals(0.0f, summary.progress, 0.001f)
+    }
+
+    @Test
+    fun `saldo card without cycle days keeps the month spending, non credit card expenses included`() {
+        val saldo = card("saldo1", CreditCardType.SALDO, closingDay = 0, paymentDay = 0)
         val transactions = listOf(
             transaction("t1", 80.0, TransactionType.EXPENSE, false, "2026-10-10", paymentMethodId = "saldo1"),
         )
@@ -135,7 +149,7 @@ class CalculateCreditCardSummariesUseCaseTest {
             transaction("t1", 100.0, TransactionType.EXPENSE, true, "2026-10-10", creditCardId = "saldo1"),
         )
 
-        val summary = useCase.execute(transactions, listOf(saldo), month, emptyMap())["saldo1"]!!
+        val summary = useCase.execute(transactions, listOf(saldo), month, emptyMap(), mapOf("saldo1" to 100.0))["saldo1"]!!
 
         assertEquals(100.0, summary.displayedSpent, 0.01)
         assertEquals(0.0f, summary.progress, 0.001f)

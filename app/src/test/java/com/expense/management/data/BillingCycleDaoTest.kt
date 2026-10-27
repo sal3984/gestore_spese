@@ -42,6 +42,10 @@ class BillingCycleDaoTest {
         db.close()
     }
 
+    private companion object {
+        const val TODAY = "2025-05-20"
+    }
+
     @Test
     fun cycleTotalsAreTheSumOfLinkedCardTransactions() = runBlocking {
         cycle("card1", "2025-05")
@@ -109,8 +113,18 @@ class BillingCycleDaoTest {
         tx("otherCard", 999.0, cycle = "card2:2025-06")
 
         // 300 - 120 + 200 - 20 + 100
-        assertEquals(460.0, dao.getUnsettledExposure("card1"), 0.001)
-        assertEquals(0.0, dao.getUnsettledExposure("cardWithoutCycles"), 0.001)
+        assertEquals(listOf(CardExposureRow("card1", 460.0), CardExposureRow("card2", 999.0)), dao.getUnsettledExposureByCard(TODAY).sortedBy { it.paymentMethodId })
+        assertEquals(null, dao.getUnsettledExposureByCard(TODAY).find { it.paymentMethodId == "cardWithoutCycles" })
+    }
+
+    @Test
+    fun exposureIgnoresPurchasesDatedAfterToday() = runBlocking {
+        cycle("card1", "2025-05", CycleStatus.OPEN)
+        tx("today", 100.0, cycle = "card1:2025-05", date = TODAY)
+        // Ricorrenza gia' generata per un mese futuro
+        tx("future", 50.0, cycle = "card1:2025-05", date = "2025-05-21")
+
+        assertEquals(listOf(CardExposureRow("card1", 100.0)), dao.getUnsettledExposureByCard(TODAY))
     }
 
     @Test
@@ -175,11 +189,12 @@ class BillingCycleDaoTest {
         cycle: String?,
         type: TransactionType = TransactionType.EXPENSE,
         isCreditCard: Boolean = true,
+        date: String = "2025-05-10",
     ) {
         db.transactionDao().insert(
             TransactionEntity(
                 id = id,
-                date = "2025-05-10",
+                date = date,
                 description = id,
                 amount = amount,
                 categoryId = "shopping",
