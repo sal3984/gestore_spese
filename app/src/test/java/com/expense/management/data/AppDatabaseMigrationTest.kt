@@ -89,6 +89,61 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
+    fun migration22To23_renumbersZeroBasedAmexInstallmentsAndTheirTransactions() {
+        helper.createDatabase(TEST_DB, 22).use { db ->
+            db.insertAmexPlanV22("plan1", installmentCount = 3)
+            db.insertTransactionV22("tx0", "Rata Amex 0/3", installmentNumber = 0)
+            db.insertTransactionV22("tx1", "Rata di aprile", installmentNumber = 1)
+            db.insertAmexScheduledPayment("p0", "plan1", 0, "2025-03-10", "PAID", "tx0")
+            db.insertAmexScheduledPayment("p1", "plan1", 1, "2025-04-10", "PAID", "tx1")
+            db.insertAmexScheduledPayment("p2", "plan1", 2, "2025-05-10", "PENDING", null)
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 23, true, AppDatabase.MIGRATION_22_23).use { db ->
+            assertEquals(listOf(1, 2, 3), db.scheduledRows("amex_pagoflex_scheduled_payments", "plan1").map { it.sequenceNumber })
+            assertEquals("Rata Amex 1/3" to 1, db.transactionLabel("tx0"))
+            // Descrizione modificata a mano: si corregge solo il numero di rata
+            assertEquals("Rata di aprile" to 2, db.transactionLabel("tx1"))
+        }
+    }
+
+    @Test
+    fun migration22To23_renumbersByDueDateAfterARecalculationAndIsIdempotent() {
+        helper.createDatabase(TEST_DB, 22).use { db ->
+            db.insertAmexPlanV22("plan1", installmentCount = 3)
+            // Il ricalcolo ha gia' rinumerato le pendenti a partire da paidCount + 1
+            db.insertAmexScheduledPayment("p0", "plan1", 0, "2025-03-10", "PAID", null)
+            db.insertAmexScheduledPayment("p1", "plan1", 2, "2025-04-10", "PENDING", null)
+            db.insertAmexScheduledPayment("p2", "plan1", 3, "2025-05-10", "PENDING", null)
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 23, true, AppDatabase.MIGRATION_22_23).use { db ->
+            assertEquals(listOf(1, 2, 3), db.scheduledRows("amex_pagoflex_scheduled_payments", "plan1").map { it.sequenceNumber })
+
+            AppDatabase.MIGRATION_22_23.migrate(db)
+
+            assertEquals(listOf(1, 2, 3), db.scheduledRows("amex_pagoflex_scheduled_payments", "plan1").map { it.sequenceNumber })
+        }
+    }
+
+    @Test
+    fun migration22To23_leavesHealthyPlansAndUnlinkedTransactionsUntouched() {
+        helper.createDatabase(TEST_DB, 22).use { db ->
+            db.insertAmexPlanV22("plan1", installmentCount = 2)
+            db.insertTransactionV22("tx1", "Rata Amex 1/2", installmentNumber = 1)
+            db.insertTransactionV22("txManual", "Rata Amex 0/3", installmentNumber = 0)
+            db.insertAmexScheduledPayment("p1", "plan1", 1, "2025-03-10", "PAID", "tx1")
+            db.insertAmexScheduledPayment("p2", "plan1", 2, "2025-04-10", "PENDING", null)
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 23, true, AppDatabase.MIGRATION_22_23).use { db ->
+            assertEquals(listOf(1, 2), db.scheduledRows("amex_pagoflex_scheduled_payments", "plan1").map { it.sequenceNumber })
+            assertEquals("Rata Amex 1/2" to 1, db.transactionLabel("tx1"))
+            assertEquals("Rata Amex 0/3" to 0, db.transactionLabel("txManual"))
+        }
+    }
+
+    @Test
     fun allMigrationsFromOldestExportedSchema_matchTheCurrentRoomSchema() {
         helper.createDatabase(TEST_DB, OLDEST_EXPORTED_VERSION).close()
 
@@ -135,6 +190,51 @@ class AppDatabaseMigrationTest {
         )
     }
 
+    private fun SupportSQLiteDatabase.insertAmexPlanV22(id: String, installmentCount: Int) {
+        insertPaymentMethod("amex_$id", "CREDIT_CARD_AMEX")
+        execSQL(
+            "INSERT INTO amex_statements (id, paymentMethodId, statementMonth, totalExpenses, totalPagoflex, " +
+                "revolvingBalance, paymentMode, paymentAmount, closingDate, paymentDueDate, isClosed) " +
+                "VALUES (?, ?, '2025-02', 300.0, 300.0, 0.0, 'SALDO', 300.0, '2025-02-28', '2025-03-10', 1)",
+            arrayOf("stmt_$id", "amex_$id"),
+        )
+        execSQL(
+            "INSERT INTO amex_pagoflex_plans (id, statementId, transactionId, totalAmount, installmentCount, " +
+                "installmentAmount, paidCount, startDate, planType) VALUES (?, ?, ?, 300.0, ?, 100.0, 0, '2025-03-10', 'FIXED_DURATION')",
+            arrayOf<Any>(id, "stmt_$id", "purchase_$id", installmentCount),
+        )
+    }
+
+    private fun SupportSQLiteDatabase.insertAmexScheduledPayment(
+        id: String,
+        planId: String,
+        sequenceNumber: Int,
+        dueDate: String,
+        status: String,
+        expenseTransactionId: String?,
+    ) {
+        execSQL(
+            "INSERT INTO amex_pagoflex_scheduled_payments (id, planId, sequenceNumber, dueDate, amount, status, " +
+                "expenseTransactionId) VALUES (?, ?, ?, ?, 100.0, ?, ?)",
+            arrayOf<Any?>(id, planId, sequenceNumber, dueDate, status, expenseTransactionId),
+        )
+    }
+
+    private fun SupportSQLiteDatabase.insertTransactionV22(id: String, description: String, installmentNumber: Int) {
+        execSQL(
+            "INSERT INTO transactions (id, date, description, amount, categoryId, type, isCreditCard, effectiveDate, " +
+                "originalAmount, originalCurrency, installmentNumber, recurrenceType) " +
+                "VALUES (?, '2025-03-10', ?, 100.0, 'credit_card_payment', 'EXPENSE', 0, '2025-03-10', 100.0, 'EUR', ?, 'NONE')",
+            arrayOf<Any>(id, description, installmentNumber),
+        )
+    }
+
+    private fun SupportSQLiteDatabase.transactionLabel(id: String): Pair<String, Int> =
+        query("SELECT description, installmentNumber FROM transactions WHERE id = ?", arrayOf(id)).use { cursor ->
+            cursor.moveToFirst()
+            cursor.getString(0) to cursor.getInt(1)
+        }
+
     private fun SupportSQLiteDatabase.scheduledRows(table: String, planId: String): List<ScheduledRow> {
         val hasSequence = table == "amex_pagoflex_scheduled_payments"
         val sequenceColumn = if (hasSequence) "sequenceNumber" else "NULL"
@@ -165,6 +265,6 @@ class AppDatabaseMigrationTest {
     private companion object {
         const val TEST_DB = "migration-test"
         const val OLDEST_EXPORTED_VERSION = 16
-        const val LATEST_VERSION = 22
+        const val LATEST_VERSION = 23
     }
 }

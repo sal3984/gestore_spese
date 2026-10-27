@@ -30,7 +30,7 @@ import java.util.UUID
         AmexPagoFlexPlanChangeEntity::class,
         AmexRevolvingStateEntity::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -506,6 +506,61 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Ripara le rate Amex numerate da 0 dalla vecchia MIGRATION_19_20 (build dal 6 al 21 giugno 2026).
+        // L'app non scrive mai sequenceNumber 0: un piano con MIN = 0 e' danneggiato, e su un DB sano
+        // la query non trova nulla. La numerazione si ricostruisce dall'ordine delle scadenze, perche'
+        // un ricalcolo successivo puo' aver gia' rinumerato le sole rate pendenti (es. 0, 2, 3).
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                data class DamagedRow(val id: String, val planId: String, val sequenceNumber: Int, val expenseTransactionId: String?)
+
+                val rows = mutableListOf<DamagedRow>()
+                db.query(
+                    "SELECT id, planId, sequenceNumber, expenseTransactionId FROM `amex_pagoflex_scheduled_payments` " +
+                        "WHERE planId IN (SELECT planId FROM `amex_pagoflex_scheduled_payments` GROUP BY planId HAVING MIN(sequenceNumber) = 0) " +
+                        "ORDER BY planId, dueDate, sequenceNumber",
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        rows += DamagedRow(
+                            id = cursor.getString(0),
+                            planId = cursor.getString(1),
+                            sequenceNumber = cursor.getInt(2),
+                            expenseTransactionId = if (cursor.isNull(3)) null else cursor.getString(3),
+                        )
+                    }
+                }
+
+                rows.groupBy { it.planId }.values.forEach { planRows ->
+                    planRows.forEachIndexed { index, row ->
+                        val newSequence = index + 1
+                        if (row.sequenceNumber == newSequence) return@forEachIndexed
+                        db.execSQL(
+                            "UPDATE `amex_pagoflex_scheduled_payments` SET sequenceNumber = ? WHERE id = ?",
+                            arrayOf<Any>(newSequence, row.id),
+                        )
+                        val transactionId = row.expenseTransactionId ?: return@forEachIndexed
+                        // La transazione collegata porta lo stesso numero: "Rata Amex N/M" e installmentNumber
+                        val oldPrefix = "Rata Amex ${row.sequenceNumber}/"
+                        db.execSQL(
+                            "UPDATE `transactions` SET installmentNumber = ?, " +
+                                "description = CASE WHEN substr(description, 1, ?) = ? " +
+                                "THEN ? || substr(description, ?) ELSE description END " +
+                                "WHERE id = ? AND installmentNumber = ?",
+                            arrayOf<Any>(
+                                newSequence,
+                                oldPrefix.length,
+                                oldPrefix,
+                                "Rata Amex $newSequence/",
+                                oldPrefix.length + 1,
+                                transactionId,
+                                row.sequenceNumber,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -545,7 +600,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         // Getter, non valore: le MIGRATION_* sono dichiarate in ordine sparso nel companion
         val ALL_MIGRATIONS: Array<Migration>
-            get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+            get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
 
         fun getDatabase(context: Context): AppDatabase =
             instance ?: synchronized(this) {
