@@ -40,6 +40,8 @@ class GetCardStatementUseCase(
             cardId = card.id,
             cardName = card.name,
             limit = card.limit,
+            closingDay = card.closingDay,
+            paymentDay = card.paymentDay,
             exposure = calculateCardExposure.execute(card.limit, unsettledExposure),
             linkedAccountName = linkedAccountName,
             upcomingCharges = statementCycles

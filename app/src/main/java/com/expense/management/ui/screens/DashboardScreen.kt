@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,6 +100,7 @@ import com.expense.management.domain.model.AmexDashboardProjection
 import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.DeleteType
@@ -156,6 +158,7 @@ fun DashboardScreen(
     currentAccountOutflowsForMonth: Double = 0.0,
     onEditAmexInstallment: (planId: String, strategy: AmexInstallmentStrategy) -> Unit = { _, _ -> },
     onNavigateToAmexHub: () -> Unit = {},
+    onOpenCardStatement: (cardId: String) -> Unit = {},
 ) {
     val today = YearMonth.now()
     val locale = ComposeLocale.current.platformLocale
@@ -570,6 +573,12 @@ fun DashboardScreen(
                                     },
                                     onPayInstallment = payAction,
                                     onSetupPlan = setupAction,
+                                    // Solo le carte a saldo con un ciclo configurato hanno un estratto
+                                    onClick = if (card.cardType == CreditCardType.SALDO && CardCycleRules.fromCardDays(card.closingDay, card.paymentDay) != null) {
+                                        { onOpenCardStatement(card.id) }
+                                    } else {
+                                        null
+                                    },
                                 )
                                 if (card.cardType == CreditCardType.INSTALLMENT && nextPlan != null) {
                                     val planScheduled = scheduledByPlan[nextPlan.id].orEmpty()
@@ -945,6 +954,7 @@ fun CreditCardItem(
     locale: Locale = Locale.getDefault(),
     onPayInstallment: (() -> Unit)? = null,
     onSetupPlan: (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     Card(
         colors = CardDefaults.cardColors(
@@ -952,7 +962,9 @@ fun CreditCardItem(
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

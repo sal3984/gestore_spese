@@ -11,6 +11,8 @@ data class CardStatement(
     val cardId: String,
     val cardName: String,
     val limit: Double,
+    val closingDay: Int,
+    val paymentDay: Int,
     val exposure: CardExposure,
     val linkedAccountName: String?,
     // CLOSED e PARTIALLY_PAID, dal primo addebito in scadenza

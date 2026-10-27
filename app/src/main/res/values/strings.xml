@@ -433,4 +433,24 @@
     <string name="amex_amount_hidden">%1$s *****</string>
     <string name="amex_all_installments">All installments</string>
     <string name="amex_next_installments">Upcoming installments</string>
+    <string name="card_statement_title">Card statement</string>
+    <string name="card_statement_cycle_days">Closes on day %1$d, charged on day %2$d</string>
+    <string name="card_statement_limit_used">Limit used</string>
+    <string name="card_statement_limit">Limit %1$s</string>
+    <string name="card_statement_to_charge">To be charged</string>
+    <string name="card_statement_available">Available</string>
+    <string name="card_statement_upcoming">Next charge</string>
+    <string name="card_statement_open">Current cycle</string>
+    <string name="card_statement_history">History</string>
+    <string name="card_statement_cycle_of">%1$s cycle</string>
+    <string name="card_statement_closed_charge">Closed on %1$s · automatic charge on %2$s</string>
+    <string name="card_statement_closed_charge_account">Closed on %1$s · automatic charge on %2$s to %3$s</string>
+    <string name="card_statement_open_charge">Closes on %1$s · charged on %2$s</string>
+    <string name="card_statement_charged_on">Charged on %1$s</string>
+    <string name="card_statement_before_update">before the update</string>
+    <string name="card_statement_scheduled">scheduled</string>
+    <string name="card_statement_mismatch">Purchases now total %1$s, the charge was %2$s</string>
+    <string name="card_statement_align">Align charge</string>
+    <string name="card_statement_no_cycles">No cycles yet. The first purchase with this card opens one.</string>
+    <string name="card_statement_no_purchases">No purchases in this cycle.</string>
 </resources>

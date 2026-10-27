@@ -433,4 +433,24 @@
     <string name="amex_amount_hidden">%1$s *****</string>
     <string name="amex_all_installments">Tutte le rate</string>
     <string name="amex_next_installments">Prossime rate</string>
+    <string name="card_statement_title">Estratto carta</string>
+    <string name="card_statement_cycle_days">Chiude il %1$d, addebito il %2$d</string>
+    <string name="card_statement_limit_used">Plafond usato</string>
+    <string name="card_statement_limit">Limite %1$s</string>
+    <string name="card_statement_to_charge">Da addebitare</string>
+    <string name="card_statement_available">Disponibile</string>
+    <string name="card_statement_upcoming">Prossimo addebito</string>
+    <string name="card_statement_open">Ciclo in corso</string>
+    <string name="card_statement_history">Storico</string>
+    <string name="card_statement_cycle_of">Ciclo di %1$s</string>
+    <string name="card_statement_closed_charge">Chiuso il %1$s · addebito automatico il %2$s</string>
+    <string name="card_statement_closed_charge_account">Chiuso il %1$s · addebito automatico il %2$s su %3$s</string>
+    <string name="card_statement_open_charge">Chiude il %1$s · addebito il %2$s</string>
+    <string name="card_statement_charged_on">Addebitato il %1$s</string>
+    <string name="card_statement_before_update">prima dell\'aggiornamento</string>
+    <string name="card_statement_scheduled">programmata</string>
+    <string name="card_statement_mismatch">Le spese ora sono %1$s, l\'addebito era %2$s</string>
+    <string name="card_statement_align">Allinea addebito</string>
+    <string name="card_statement_no_cycles">Ancora nessun ciclo. Il primo acquisto con questa carta ne apre uno.</string>
+    <string name="card_statement_no_purchases">Nessuna spesa in questo ciclo.</string>
 </resources>

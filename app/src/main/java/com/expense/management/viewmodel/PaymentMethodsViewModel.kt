@@ -19,12 +19,14 @@ import com.expense.management.data.toData
 import com.expense.management.data.toDomain
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.BnplProjection
+import com.expense.management.domain.model.CardStatement
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.domain.model.SatispayStatus
 import com.expense.management.domain.repository.PaymentMethodRepository
+import com.expense.management.domain.usecase.AlignSettlementUseCase
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
 import com.expense.management.domain.usecase.CalculateCreditCardSummariesUseCase
 import com.expense.management.domain.usecase.CalculateSatispayStatusUseCase
@@ -32,21 +34,27 @@ import com.expense.management.domain.usecase.CloseBillingCycleUseCase
 import com.expense.management.domain.usecase.DeleteTransactionUseCase
 import com.expense.management.domain.usecase.GenerateCreditCardPaymentUseCase
 import com.expense.management.domain.usecase.GetActiveCreditCardsUseCase
+import com.expense.management.domain.usecase.GetCardStatementUseCase
 import com.expense.management.domain.usecase.GetCategoriesUseCase
 import com.expense.management.domain.usecase.GetPaymentMethodsUseCase
 import com.expense.management.domain.usecase.GetTransactionsUseCase
 import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.domain.usecase.SettleBillingCycleUseCase
+import com.expense.management.utils.DateUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -70,6 +78,8 @@ class PaymentMethodsViewModel(
     private val calculateCreditCardSummariesUseCase: CalculateCreditCardSummariesUseCase = CalculateCreditCardSummariesUseCase(),
     private val closeBillingCycles: CloseBillingCycleUseCase = CloseBillingCycleUseCase(repository),
     private val settleBillingCycles: SettleBillingCycleUseCase = SettleBillingCycleUseCase(repository),
+    private val getCardStatementUseCase: GetCardStatementUseCase = GetCardStatementUseCase(),
+    private val alignSettlementUseCase: AlignSettlementUseCase = AlignSettlementUseCase(repository),
 ) : ViewModel() {
 
     companion object {
@@ -169,6 +179,45 @@ class PaymentMethodsViewModel(
         calculateCreditCardSummariesUseCase.execute(tx, cards, month, paidByCard, exposureByCard)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // ESTRATTO CARTA
+    private val statementCardId = MutableStateFlow<String?>(null)
+    private val today = DateUtils.currentDateFlow().shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cardStatement: StateFlow<CardStatement?> = statementCardId
+        .flatMapLatest { cardId -> if (cardId == null) flowOf(null) else cardStatementFlow(cardId) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private fun cardStatementFlow(cardId: String): Flow<CardStatement?> = combine(
+        combine(activeCreditCards, allPaymentMethods, ::Pair),
+        repository.billingCyclesForCard(cardId),
+        repository.cycleTransactionsForCard(cardId),
+        repository.settlementsForCard(cardId),
+        combine(repository.unsettledExposureByCard(today), today, ::Pair),
+    ) { (cards, methods), cycles, cycleTransactions, settlements, (exposureByCard, date) ->
+        val card = cards.find { it.id == cardId } ?: return@combine null
+        getCardStatementUseCase.execute(
+            card = card,
+            cycles = cycles,
+            cycleTransactions = cycleTransactions,
+            settlements = settlements,
+            unsettledExposure = exposureByCard[cardId] ?: 0.0,
+            linkedAccountName = methods.find { it.id == card.linkedPaymentMethodId }?.name,
+            today = date,
+        )
+    }
+
+    fun openCardStatement(cardId: String) {
+        statementCardId.value = cardId
+    }
+
+    fun alignSettlement(cycleId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            alignSettlementUseCase(cycleId)
+        }
+    }
 
     val bnplProjections: StateFlow<List<BnplProjection>> = combine(
         allTransactions,

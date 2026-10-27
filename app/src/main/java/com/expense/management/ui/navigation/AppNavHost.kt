@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -55,6 +56,7 @@ import com.expense.management.ui.screens.DataManagementScreen
 import com.expense.management.ui.screens.PaymentMethodSettingsScreen
 import com.expense.management.ui.screens.ReportScreen
 import com.expense.management.ui.screens.amex.AmexHubScreen
+import com.expense.management.ui.screens.card.CardStatementScreen
 import com.expense.management.ui.screens.category.CategoryScreen
 import com.expense.management.ui.screens.securityScreen
 import com.expense.management.ui.screens.settingsScreen
@@ -175,6 +177,7 @@ fun AppNavHost(
                 currentAccountOutflowsForMonth = currentAccountOutflowsForMonth,
                 onEditAmexInstallment = onEditAmexInstallment,
                 onNavigateToAmexHub = onNavigateToAmexHub,
+                onOpenCardStatement = { cardId -> navController.navigate("card_statement/$cardId") },
                 onPayRevolving = { card, amount, date ->
                     paymentMethodsViewModel.payCreditCardInstallment(card, amount, date)
                 },
@@ -303,6 +306,27 @@ fun AppNavHost(
                     val method = paymentMethodsViewModel.getPaymentMethodById(id)
                     if (method != null) paymentMethodsViewModel.getPaymentMethodDetails(method) else null
                 },
+            )
+        }
+
+        composable(
+            route = "card_statement/{paymentMethodId}",
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) },
+        ) { backStackEntry ->
+            val paymentMethodId = backStackEntry.arguments?.getString("paymentMethodId").orEmpty()
+            LaunchedEffect(paymentMethodId) {
+                paymentMethodsViewModel.openCardStatement(paymentMethodId)
+            }
+            val statement by paymentMethodsViewModel.cardStatement.collectAsStateWithLifecycle()
+            CardStatementScreen(
+                // Finche' il ViewModel non ha caricato questa carta mostra il caricamento, non un'altra carta
+                statement = statement?.takeIf { it.cardId == paymentMethodId },
+                currencySymbol = currentCurrency,
+                locale = LocalConfiguration.current.locales[0],
+                isAmountHidden = isAmountHidden,
+                onAlignSettlement = paymentMethodsViewModel::alignSettlement,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
