@@ -19,4 +19,6 @@ data class Transaction(
     val recurrenceType: RecurrenceType = RecurrenceType.NONE,
     val recurrenceEndDate: String? = null,
     val recurrenceLimit: Int? = null,
+    val billingCycleId: String? = null,
+    val sourceRef: String? = null,
 )

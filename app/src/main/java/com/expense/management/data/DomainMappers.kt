@@ -74,6 +74,8 @@ fun TransactionEntity.toDomain(): com.expense.management.domain.model.Transactio
     recurrenceType = recurrenceType.toDomain(),
     recurrenceEndDate = recurrenceEndDate,
     recurrenceLimit = recurrenceLimit,
+    billingCycleId = billingCycleId,
+    sourceRef = sourceRef,
 )
 
 fun com.expense.management.domain.model.Transaction.toData(): TransactionEntity = TransactionEntity(
@@ -95,6 +97,8 @@ fun com.expense.management.domain.model.Transaction.toData(): TransactionEntity 
     recurrenceType = recurrenceType.toData(),
     recurrenceEndDate = recurrenceEndDate,
     recurrenceLimit = recurrenceLimit,
+    billingCycleId = billingCycleId,
+    sourceRef = sourceRef,
 )
 
 fun PaymentMethodEntity.toDomain(): PaymentMethod = when (provider) {
