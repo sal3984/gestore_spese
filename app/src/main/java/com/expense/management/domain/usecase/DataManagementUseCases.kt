@@ -28,7 +28,9 @@ class RestoreDataUseCase(private val repository: ExpenseRepository) {
         repository.deleteAllTransactions()
         repository.deleteAllCategories()
         repository.deleteAllPaymentMethods()
-        repository.insertAllTransactions(backupData.transactions ?: emptyList())
+        // I cicli non sono nel backup e quelli presenti sono appena stati cancellati con i metodi
+        // di pagamento: un billingCycleId ripristinato violerebbe la foreign key
+        repository.insertAllTransactions(backupData.transactions.orEmpty().map { it.copy(billingCycleId = null) })
         repository.insertAllCategories(backupData.categories ?: emptyList())
 
         val paymentMethods = backupData.paymentMethods

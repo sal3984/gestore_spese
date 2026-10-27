@@ -1,12 +1,21 @@
 package com.expense.management.data
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 
 @Entity(
     tableName = "transactions",
+    foreignKeys = [
+        ForeignKey(
+            entity = BillingCycleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["billingCycleId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
     indices = [
         Index(value = ["effectiveDate"]),
         Index(value = ["categoryId"]),
@@ -15,6 +24,8 @@ import java.util.UUID
         Index(value = ["paymentMethodId"]),
         Index(value = ["description"]),
         Index(value = ["isCreditCard"]),
+        Index(value = ["billingCycleId"]),
+        Index(value = ["sourceRef"], unique = true),
     ],
 )
 data class TransactionEntity(
@@ -46,4 +57,8 @@ data class TransactionEntity(
     val recurrenceType: RecurrenceType = RecurrenceType.NONE,
     val recurrenceEndDate: String? = null,
     val recurrenceLimit: Int? = null,
+    // Ciclo di fatturazione della carta a cui appartiene l'acquisto
+    val billingCycleId: String? = null,
+    // Chiave di idempotenza delle transazioni generate (es. "cycle:<id>:settlement")
+    val sourceRef: String? = null,
 )

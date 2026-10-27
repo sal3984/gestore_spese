@@ -1,6 +1,7 @@
 package com.expense.management.data
 
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -8,9 +9,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
 
 /**
  * Test delle migration Room su JVM (Robolectric), con fixture sintetiche.
@@ -144,6 +147,90 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
+    fun migration23To24_assignsSaldoPurchasesToCyclesRecomputedFromThePurchaseDate() {
+        helper.createDatabase(TEST_DB, 23).use { db ->
+            db.insertCard("saldo1", "SALDO", closingDay = 20, paymentDay = 15)
+            db.insertTransactionV23("before", "2025-05-10", effectiveDate = "2025-06-15", paymentMethodId = "saldo1")
+            // Salvata con la regola vecchia: il giorno di chiusura andava al ciclo successivo
+            db.insertTransactionV23("onClosing", "2025-05-20", effectiveDate = "2025-07-15", paymentMethodId = "saldo1")
+            db.insertTransactionV23("after", "2025-05-21", effectiveDate = "2025-07-15", paymentMethodId = "saldo1")
+            db.insertTransactionV23("open", "2025-06-24", effectiveDate = "2025-08-15", paymentMethodId = "saldo1")
+            db.insertTransactionV23("legacy", "2025-05-12", effectiveDate = "2025-06-15", creditCardId = "saldo1")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 24, true, AppDatabase.migration23To24(today = LocalDate.of(2025, 6, 25))).use { db ->
+            assertEquals(
+                listOf(
+                    CycleRow("saldo1:2025-05", "saldo1", "2025-05", "2025-05-20", "2025-06-15", "PAID", "SALDO"),
+                    CycleRow("saldo1:2025-06", "saldo1", "2025-06", "2025-06-20", "2025-07-15", "CLOSED", "SALDO"),
+                    CycleRow("saldo1:2025-07", "saldo1", "2025-07", "2025-07-20", "2025-08-15", "OPEN", "SALDO"),
+                ),
+                db.cycleRows(),
+            )
+            assertEquals(
+                mapOf(
+                    "before" to "saldo1:2025-05",
+                    "onClosing" to "saldo1:2025-05",
+                    "after" to "saldo1:2025-06",
+                    "open" to "saldo1:2025-07",
+                    "legacy" to "saldo1:2025-05",
+                ),
+                db.cycleAssignments(),
+            )
+            // L'effectiveDate salvata non viene riscritta: la migration collega soltanto
+            assertEquals("2025-07-15", db.stringValue("SELECT effectiveDate FROM transactions WHERE id = 'onClosing'"))
+            assertEquals(0, db.intValue("SELECT COUNT(*) FROM pragma_foreign_key_check"))
+        }
+    }
+
+    @Test
+    fun migration23To24_leavesNonSaldoAndNonPurchaseTransactionsWithoutCycle() {
+        helper.createDatabase(TEST_DB, 23).use { db ->
+            db.insertCard("saldo1", "SALDO", closingDay = 20, paymentDay = 15)
+            db.insertCard("noDays", "SALDO", closingDay = 0, paymentDay = 0)
+            db.insertCard("revolving1", "REVOLVING", closingDay = 20, paymentDay = 15)
+            db.insertCard("amex1", "AMEX_HYBRID", closingDay = 20, paymentDay = 15)
+            db.insertPaymentMethod("bank1", "CASH")
+            db.insertTransactionV23("refund", "2025-05-10", type = "income", paymentMethodId = "saldo1")
+            db.insertTransactionV23("cash", "2025-05-10", isCreditCard = false, paymentMethodId = "bank1")
+            db.insertTransactionV23("noDaysCard", "2025-05-10", paymentMethodId = "noDays")
+            db.insertTransactionV23("revolving", "2025-05-10", paymentMethodId = "revolving1")
+            db.insertTransactionV23("amex", "2025-05-10", paymentMethodId = "amex1")
+            db.insertTransactionV23("badDate", "10/05/2025", paymentMethodId = "saldo1")
+            // paymentMethodId che non e' una carta: la carta si trova in creditCardId
+            db.insertTransactionV23("viaLegacyColumn", "2025-05-10", paymentMethodId = "bank1", creditCardId = "saldo1")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 24, true, AppDatabase.migration23To24(today = LocalDate.of(2025, 6, 25))).use { db ->
+            assertEquals(mapOf("viaLegacyColumn" to "saldo1:2025-05"), db.cycleAssignments())
+            assertEquals(listOf("saldo1:2025-05"), db.cycleRows().map { it.id })
+        }
+    }
+
+    @Test
+    fun migration23To24_sourceRefIsUniqueAndDeletingTheCardUnlinksItsTransactions() {
+        helper.createDatabase(TEST_DB, 23).use { db ->
+            db.insertCard("saldo1", "SALDO", closingDay = 20, paymentDay = 15)
+            db.insertTransactionV23("purchase", "2025-05-10", paymentMethodId = "saldo1")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 24, true, AppDatabase.migration23To24(today = LocalDate.of(2025, 6, 25))).use { db ->
+            db.execSQL("UPDATE transactions SET sourceRef = 'cycle:x:settlement' WHERE id = 'purchase'")
+            db.insertTransactionV23("other", "2025-05-11", isCreditCard = false)
+            assertThrows(SQLiteConstraintException::class.java) {
+                db.execSQL("UPDATE transactions SET sourceRef = 'cycle:x:settlement' WHERE id = 'other'")
+            }
+
+            db.execSQL("PRAGMA foreign_keys = ON")
+            db.execSQL("DELETE FROM payment_methods WHERE id = 'saldo1'")
+
+            assertEquals(0, db.intValue("SELECT COUNT(*) FROM billing_cycles"))
+            assertEquals(emptyMap<String, String>(), db.cycleAssignments())
+            assertEquals(2, db.intValue("SELECT COUNT(*) FROM transactions"))
+        }
+    }
+
+    @Test
     fun allMigrationsFromOldestExportedSchema_matchTheCurrentRoomSchema() {
         helper.createDatabase(TEST_DB, OLDEST_EXPORTED_VERSION).close()
 
@@ -235,6 +322,62 @@ class AppDatabaseMigrationTest {
             cursor.getString(0) to cursor.getInt(1)
         }
 
+    private data class CycleRow(
+        val id: String,
+        val paymentMethodId: String,
+        val cycleMonth: String,
+        val closingDate: String,
+        val dueDate: String,
+        val status: String,
+        val paymentMode: String,
+    )
+
+    private fun SupportSQLiteDatabase.insertCard(id: String, cardType: String, closingDay: Int, paymentDay: Int) {
+        insertPaymentMethod(id, "CREDIT_CARD_$cardType")
+        execSQL(
+            "INSERT INTO credit_card_details (paymentMethodId, cardType, `limit`, closingDay, paymentDay) VALUES (?, ?, 3000.0, ?, ?)",
+            arrayOf<Any>(id, cardType, closingDay, paymentDay),
+        )
+    }
+
+    private fun SupportSQLiteDatabase.insertTransactionV23(
+        id: String,
+        date: String,
+        effectiveDate: String = date,
+        type: String = "expense",
+        isCreditCard: Boolean = true,
+        paymentMethodId: String? = null,
+        creditCardId: String? = null,
+    ) {
+        execSQL(
+            "INSERT INTO transactions (id, date, description, amount, categoryId, type, isCreditCard, effectiveDate, " +
+                "originalAmount, originalCurrency, creditCardId, paymentMethodId, recurrenceType) " +
+                "VALUES (?, ?, ?, 50.0, 'shopping', ?, ?, ?, 50.0, 'EUR', ?, ?, 'NONE')",
+            arrayOf<Any?>(id, date, id, type, if (isCreditCard) 1 else 0, effectiveDate, creditCardId, paymentMethodId),
+        )
+    }
+
+    private fun SupportSQLiteDatabase.cycleRows(): List<CycleRow> =
+        query("SELECT id, paymentMethodId, cycleMonth, closingDate, dueDate, status, paymentMode FROM billing_cycles ORDER BY id").use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) {
+                    add(CycleRow(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3), cursor.getString(4), cursor.getString(5), cursor.getString(6)))
+                }
+            }
+        }
+
+    private fun SupportSQLiteDatabase.cycleAssignments(): Map<String, String> =
+        query("SELECT id, billingCycleId FROM transactions WHERE billingCycleId IS NOT NULL").use { cursor ->
+            buildMap {
+                while (cursor.moveToNext()) put(cursor.getString(0), cursor.getString(1))
+            }
+        }
+
+    private fun SupportSQLiteDatabase.stringValue(sql: String): String = query(sql).use { cursor ->
+        cursor.moveToFirst()
+        cursor.getString(0)
+    }
+
     private fun SupportSQLiteDatabase.scheduledRows(table: String, planId: String): List<ScheduledRow> {
         val hasSequence = table == "amex_pagoflex_scheduled_payments"
         val sequenceColumn = if (hasSequence) "sequenceNumber" else "NULL"
@@ -265,6 +408,6 @@ class AppDatabaseMigrationTest {
     private companion object {
         const val TEST_DB = "migration-test"
         const val OLDEST_EXPORTED_VERSION = 16
-        const val LATEST_VERSION = 23
+        const val LATEST_VERSION = 24
     }
 }

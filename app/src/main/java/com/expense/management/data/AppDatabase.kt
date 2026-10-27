@@ -8,6 +8,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.expense.management.domain.model.CardCycleRules
+import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.CyclePaymentMode
+import com.expense.management.domain.model.CycleStatus
+import com.expense.management.domain.usecase.CalculateBillingCycleUseCase
+import java.time.LocalDate
 import java.util.UUID
 
 @Database(
@@ -29,8 +35,9 @@ import java.util.UUID
         AmexPagoFlexScheduledPaymentEntity::class,
         AmexPagoFlexPlanChangeEntity::class,
         AmexRevolvingStateEntity::class,
+        BillingCycleEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -561,6 +568,100 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Cicli di fatturazione: crea billing_cycles, aggiunge a transactions il ciclo e la chiave
+        // di idempotenza, e assegna un ciclo agli acquisti gia' salvati con carte a SALDO.
+        // Il ciclo si ricalcola dalla data d'acquisto con la regola attuale (giorno di chiusura
+        // incluso), non dall'effectiveDate salvata con la regola precedente.
+        // Restano senza ciclo: Amex (lo migra la Fase 3 da amex_statements), REVOLVING e
+        // INSTALLMENT (semantica del saldo da definire), i movimenti income sulla carta
+        // (rimborsi e ripristini plafond non sono distinguibili) e le carte senza giorni.
+        fun migration23To24(today: LocalDate = LocalDate.now()): Migration = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `billing_cycles` (
+                        `id` TEXT NOT NULL,
+                        `paymentMethodId` TEXT NOT NULL,
+                        `cycleMonth` TEXT NOT NULL,
+                        `closingDate` TEXT NOT NULL,
+                        `dueDate` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `paymentMode` TEXT NOT NULL,
+                        `chosenAmount` REAL,
+                        `settlementTransactionId` TEXT,
+                        `carriedForward` REAL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`paymentMethodId`) REFERENCES `payment_methods`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_billing_cycles_paymentMethodId_cycleMonth` " +
+                        "ON `billing_cycles` (`paymentMethodId`, `cycleMonth`)",
+                )
+                db.execSQL(
+                    "ALTER TABLE `transactions` ADD COLUMN `billingCycleId` TEXT " +
+                        "REFERENCES `billing_cycles`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL",
+                )
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `sourceRef` TEXT")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_billingCycleId` ON `transactions` (`billingCycleId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_transactions_sourceRef` ON `transactions` (`sourceRef`)")
+                backfillSaldoBillingCycles(db, today)
+            }
+        }
+
+        private fun backfillSaldoBillingCycles(db: SupportSQLiteDatabase, today: LocalDate) {
+            val calculateCycle = CalculateBillingCycleUseCase()
+            val cycles = linkedMapOf<String, Array<Any>>()
+            val assignments = mutableListOf<Array<Any>>()
+            // La carta puo' stare in paymentMethodId (sistema nuovo) o in creditCardId (legacy)
+            db.query(
+                "SELECT t.id, t.date, " +
+                    "COALESCE(d1.paymentMethodId, d2.paymentMethodId), COALESCE(d1.cardType, d2.cardType), " +
+                    "COALESCE(d1.closingDay, d2.closingDay), COALESCE(d1.paymentDay, d2.paymentDay) " +
+                    "FROM `transactions` t " +
+                    "LEFT JOIN `credit_card_details` d1 ON d1.paymentMethodId = t.paymentMethodId " +
+                    "LEFT JOIN `credit_card_details` d2 ON d2.paymentMethodId = t.creditCardId " +
+                    "WHERE t.isCreditCard = 1 AND t.type = 'expense'",
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    if (cursor.isNull(2) || cursor.getString(3) != CreditCardType.SALDO.name) continue
+                    val rules = CardCycleRules.fromCardDays(cursor.getInt(4), cursor.getInt(5)) ?: continue
+                    val purchaseDate = runCatching { LocalDate.parse(cursor.getString(1)) }.getOrNull() ?: continue
+                    val paymentMethodId = cursor.getString(2)
+                    val dates = calculateCycle.execute(purchaseDate, rules)
+                    val cycleId = BillingCycleEntity.idFor(paymentMethodId, dates.cycleMonth.toString())
+                    // Prima di questa versione ogni acquisto a saldo usciva dal conto alla sua
+                    // effectiveDate: un ciclo con l'addebito passato e' gia' saldato
+                    val status = when {
+                        !today.isBefore(dates.dueDate) -> CycleStatus.PAID
+                        today.isAfter(dates.closingDate) -> CycleStatus.CLOSED
+                        else -> CycleStatus.OPEN
+                    }
+                    cycles.getOrPut(cycleId) {
+                        arrayOf(
+                            cycleId,
+                            paymentMethodId,
+                            dates.cycleMonth.toString(),
+                            dates.closingDate.toString(),
+                            dates.dueDate.toString(),
+                            status.name,
+                            CyclePaymentMode.SALDO.name,
+                        )
+                    }
+                    assignments += arrayOf(cycleId, cursor.getString(0))
+                }
+            }
+            cycles.values.forEach { cycle ->
+                db.execSQL(
+                    "INSERT INTO `billing_cycles` (`id`, `paymentMethodId`, `cycleMonth`, `closingDate`, `dueDate`, " +
+                        "`status`, `paymentMode`) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    cycle,
+                )
+            }
+            assignments.forEach { db.execSQL("UPDATE `transactions` SET `billingCycleId` = ? WHERE `id` = ?", it) }
+        }
+
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `categories` ADD COLUMN `imageUri` TEXT DEFAULT NULL")
@@ -600,7 +701,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         // Getter, non valore: le MIGRATION_* sono dichiarate in ordine sparso nel companion
         val ALL_MIGRATIONS: Array<Migration>
-            get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
+            get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, migration23To24())
 
         fun getDatabase(context: Context): AppDatabase =
             instance ?: synchronized(this) {
