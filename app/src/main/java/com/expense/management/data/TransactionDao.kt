@@ -32,6 +32,12 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
+    @Query("SELECT * FROM transactions WHERE billingCycleId IS NULL AND isCreditCard = 1 AND type = 'expense'")
+    suspend fun getCardExpensesWithoutCycle(): List<TransactionEntity>
+
+    @Query("UPDATE transactions SET billingCycleId = :cycleId WHERE id = :id")
+    suspend fun setBillingCycle(id: String, cycleId: String)
+
     @Query("SELECT * FROM transactions WHERE groupId = :groupId")
     suspend fun getByGroupId(groupId: String): List<TransactionEntity>
 

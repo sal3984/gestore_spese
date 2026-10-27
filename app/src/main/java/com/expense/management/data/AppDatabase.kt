@@ -11,8 +11,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardType
-import com.expense.management.domain.model.CyclePaymentMode
-import com.expense.management.domain.model.CycleStatus
 import com.expense.management.domain.usecase.CalculateBillingCycleUseCase
 import java.io.File
 import java.time.LocalDate
@@ -619,7 +617,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun backfillSaldoBillingCycles(db: SupportSQLiteDatabase, today: LocalDate) {
             val calculateCycle = CalculateBillingCycleUseCase()
-            val cycles = linkedMapOf<String, Array<Any>>()
+            val cycles = linkedMapOf<String, BillingCycleEntity>()
             val assignments = mutableListOf<Array<Any>>()
             // La carta puo' stare in paymentMethodId (sistema nuovo) o in creditCardId (legacy)
             db.query(
@@ -636,34 +634,16 @@ abstract class AppDatabase : RoomDatabase() {
                     val rules = CardCycleRules.fromCardDays(cursor.getInt(4), cursor.getInt(5)) ?: continue
                     val purchaseDate = runCatching { LocalDate.parse(cursor.getString(1)) }.getOrNull() ?: continue
                     val paymentMethodId = cursor.getString(2)
-                    val dates = calculateCycle.execute(purchaseDate, rules)
-                    val cycleId = BillingCycleEntity.idFor(paymentMethodId, dates.cycleMonth.toString())
-                    // Prima di questa versione ogni acquisto a saldo usciva dal conto alla sua
-                    // effectiveDate: un ciclo con l'addebito passato e' gia' saldato
-                    val status = when {
-                        !today.isBefore(dates.dueDate) -> CycleStatus.PAID
-                        today.isAfter(dates.closingDate) -> CycleStatus.CLOSED
-                        else -> CycleStatus.OPEN
-                    }
-                    cycles.getOrPut(cycleId) {
-                        arrayOf(
-                            cycleId,
-                            paymentMethodId,
-                            dates.cycleMonth.toString(),
-                            dates.closingDate.toString(),
-                            dates.dueDate.toString(),
-                            status.name,
-                            CyclePaymentMode.SALDO.name,
-                        )
-                    }
-                    assignments += arrayOf(cycleId, cursor.getString(0))
+                    val cycle = BillingCycleEntity.forPurchase(paymentMethodId, calculateCycle.execute(purchaseDate, rules), today)
+                    cycles.getOrPut(cycle.id) { cycle }
+                    assignments += arrayOf(cycle.id, cursor.getString(0))
                 }
             }
             cycles.values.forEach { cycle ->
                 db.execSQL(
                     "INSERT INTO `billing_cycles` (`id`, `paymentMethodId`, `cycleMonth`, `closingDate`, `dueDate`, " +
                         "`status`, `paymentMode`) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    cycle,
+                    arrayOf(cycle.id, cycle.paymentMethodId, cycle.cycleMonth, cycle.closingDate, cycle.dueDate, cycle.status, cycle.paymentMode),
                 )
             }
             assignments.forEach { db.execSQL("UPDATE `transactions` SET `billingCycleId` = ? WHERE `id` = ?", it) }

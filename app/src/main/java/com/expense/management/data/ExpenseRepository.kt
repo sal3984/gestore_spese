@@ -45,6 +45,12 @@ class ExpenseRepository(
 
     suspend fun getTransactionById(id: String): TransactionEntity? = transactionDao.getById(id)
 
+    suspend fun getCardExpensesWithoutCycle(): List<TransactionEntity> = transactionDao.getCardExpensesWithoutCycle()
+
+    suspend fun setTransactionBillingCycle(transactionId: String, cycleId: String) {
+        transactionDao.setBillingCycle(transactionId, cycleId)
+    }
+
     suspend fun insertAllTransactions(transactions: List<TransactionEntity>) {
         transactionDao.insertAll(transactions)
     }

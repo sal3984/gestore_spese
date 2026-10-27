@@ -23,13 +23,16 @@ class GetBackupDataUseCase(private val repository: ExpenseRepository) {
     )
 }
 
-class RestoreDataUseCase(private val repository: ExpenseRepository) {
+class RestoreDataUseCase(
+    private val repository: ExpenseRepository,
+    private val assignBillingCycle: AssignBillingCycleUseCase = AssignBillingCycleUseCase(repository),
+) {
     suspend operator fun invoke(backupData: BackupData) {
         repository.deleteAllTransactions()
         repository.deleteAllCategories()
         repository.deleteAllPaymentMethods()
         // I cicli non sono nel backup e quelli presenti sono appena stati cancellati con i metodi
-        // di pagamento: un billingCycleId ripristinato violerebbe la foreign key
+        // di pagamento: un billingCycleId ripristinato violerebbe la foreign key. Si riassegnano in fondo
         repository.insertAllTransactions(backupData.transactions.orEmpty().map { it.copy(billingCycleId = null) })
         repository.insertAllCategories(backupData.categories ?: emptyList())
 
@@ -60,6 +63,9 @@ class RestoreDataUseCase(private val repository: ExpenseRepository) {
         if (!legacyCards.isNullOrEmpty() && paymentMethods.isNullOrEmpty()) {
             migrateLegacyCreditCards(legacyCards)
         }
+
+        // Solo ora le carte esistono di nuovo: si possono ricalcolare i cicli
+        assignBillingCycle.assignMissing()
     }
 
     private suspend fun migrateLegacyCreditCards(legacyCards: List<CreditCardEntity>) {

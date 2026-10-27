@@ -3,7 +3,10 @@ package com.expense.management.domain.usecase
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 
-class SaveTransactionUseCase(private val repository: ExpenseRepository) {
+class SaveTransactionUseCase(
+    private val repository: ExpenseRepository,
+    private val assignBillingCycle: AssignBillingCycleUseCase = AssignBillingCycleUseCase(repository),
+) {
     suspend operator fun invoke(transaction: TransactionEntity) {
         val existingTransaction = repository.getTransactionById(transaction.id)
 
@@ -14,10 +17,10 @@ class SaveTransactionUseCase(private val repository: ExpenseRepository) {
                     transactionsInGroup.map { it.copy(categoryId = transaction.categoryId) },
                 )
             } else {
-                repository.insertTransaction(transaction)
+                repository.insertTransaction(assignBillingCycle(transaction))
             }
         } else {
-            repository.insertTransaction(transaction)
+            repository.insertTransaction(assignBillingCycle(transaction))
         }
     }
 }

@@ -4,6 +4,10 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.expense.management.domain.model.CyclePaymentMode
+import com.expense.management.domain.model.CycleStatus
+import com.expense.management.domain.usecase.CalculateBillingCycleUseCase
+import java.time.LocalDate
 
 /**
  * Ciclo di fatturazione di una carta. Nessun totale: il dovuto si ricava dalle transazioni
@@ -40,5 +44,27 @@ data class BillingCycleEntity(
 ) {
     companion object {
         fun idFor(paymentMethodId: String, cycleMonth: String): String = "$paymentMethodId:$cycleMonth"
+
+        /**
+         * Nuovo ciclo a saldo per un acquisto, con lo stato dato da oggi: addebito passato ->
+         * PAID (fino alla Fase 2 ogni acquisto esce dal conto alla sua effectiveDate),
+         * chiusura passata -> CLOSED, altrimenti OPEN. Usato dalla migration 23->24 e al salvataggio.
+         */
+        fun forPurchase(paymentMethodId: String, dates: CalculateBillingCycleUseCase.CycleDates, today: LocalDate): BillingCycleEntity {
+            val status = when {
+                !today.isBefore(dates.dueDate) -> CycleStatus.PAID
+                today.isAfter(dates.closingDate) -> CycleStatus.CLOSED
+                else -> CycleStatus.OPEN
+            }
+            return BillingCycleEntity(
+                id = idFor(paymentMethodId, dates.cycleMonth.toString()),
+                paymentMethodId = paymentMethodId,
+                cycleMonth = dates.cycleMonth.toString(),
+                closingDate = dates.closingDate.toString(),
+                dueDate = dates.dueDate.toString(),
+                status = status.name,
+                paymentMode = CyclePaymentMode.SALDO.name,
+            )
+        }
     }
 }
