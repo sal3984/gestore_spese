@@ -34,10 +34,17 @@ android {
     }
 
     testOptions {
+        unitTests.isIncludeAndroidResources = true
         unitTests.all {
             it.useJUnitPlatform()
+            // Robolectric su SDK 36 accede a jdk.internal.access (ApplicationSharedMemory)
+            it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
         }
     }
+
+    // Schemi Room esportati, letti da MigrationTestHelper nei test delle migration.
+    // Robolectric legge solo gli asset della variante testata: vanno nel debug, mai nel release.
+    sourceSets.getByName("debug").assets.directories.add("$projectDir/schemas")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
@@ -97,6 +104,13 @@ dependencies {
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.mockk)
+    // Test delle migration Room: JUnit 4 + Robolectric, eseguiti dal vintage engine
+    testImplementation(libs.junit)
+    testRuntimeOnly(libs.junit.vintage.engine)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
