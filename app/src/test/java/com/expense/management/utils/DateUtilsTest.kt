@@ -1,5 +1,8 @@
 package com.expense.management.utils
 
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -72,5 +75,16 @@ class DateUtilsTest {
         val card = DateUtils.CardDateInfo(closingDay = 15, paymentDay = 15)
 
         assertEquals("2024-05-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 10), card))
+    }
+
+    @Test
+    fun `current date flow emits again only when the day changes`() = runBlocking {
+        val days = ArrayDeque(listOf(27, 27, 27, 28, 28, 29).map { LocalDate.of(2026, 10, it) })
+        var last = days.first()
+        val clock = { (days.removeFirstOrNull() ?: last).also { last = it } }
+
+        val emitted = DateUtils.currentDateFlow(today = clock, checkEveryMillis = 1).take(3).toList()
+
+        assertEquals(listOf(27, 28, 29).map { LocalDate.of(2026, 10, it) }, emitted)
     }
 }

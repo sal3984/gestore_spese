@@ -2,7 +2,10 @@ package com.expense.management.data
 
 import androidx.room.Transaction
 import androidx.room.withTransaction
+import com.expense.management.utils.DateUtils
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
@@ -51,8 +54,9 @@ class ExpenseRepository(
 
     suspend fun getTransactionBySourceRef(sourceRef: String): TransactionEntity? = transactionDao.getBySourceRef(sourceRef)
 
-    suspend fun setTransactionBillingCycle(transactionId: String, cycleId: String) {
-        transactionDao.setBillingCycle(transactionId, cycleId)
+    /** Collega la transazione al ciclo e porta la sua data di addebito alla scadenza del ciclo. */
+    suspend fun setTransactionBillingCycle(transactionId: String, cycleId: String, dueDate: String) {
+        transactionDao.setBillingCycle(transactionId, cycleId, dueDate)
     }
 
     suspend fun insertAllTransactions(transactions: List<TransactionEntity>) {
@@ -445,9 +449,14 @@ class ExpenseRepository(
     suspend fun getUnsettledCardExposure(paymentMethodId: String, today: String = LocalDate.now().toString()): Double =
         billingCycleDao.getUnsettledExposureByCard(today).firstOrNull { it.paymentMethodId == paymentMethodId }?.exposure ?: 0.0
 
-    /** Esposizione non liquidata per carta; le carte senza cicli aperti non compaiono. */
-    fun unsettledExposureByCard(today: String = LocalDate.now().toString()): Flow<Map<String, Double>> =
-        billingCycleDao.getUnsettledExposureByCardFlow(today).map { rows -> rows.associate { it.paymentMethodId to it.exposure } }
+    /**
+     * Esposizione non liquidata per carta; le carte senza cicli aperti non compaiono.
+     * Si ricalcola anche quando cambia la data: gli acquisti di oggi entrano senza riavviare l'app.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun unsettledExposureByCard(dates: Flow<LocalDate> = DateUtils.currentDateFlow()): Flow<Map<String, Double>> =
+        dates.flatMapLatest { today -> billingCycleDao.getUnsettledExposureByCardFlow(today.toString()) }
+            .map { rows -> rows.associate { it.paymentMethodId to it.exposure } }
 
     suspend fun getBillingCyclesToClose(today: String): List<BillingCycleEntity> = billingCycleDao.getCyclesToClose(today)
 

@@ -9,7 +9,9 @@ import com.expense.management.domain.model.CreditCardType
 import java.time.LocalDate
 
 /**
- * Collega un acquisto al ciclo di fatturazione della sua carta, creando il ciclo se manca.
+ * Collega un acquisto al ciclo di fatturazione della sua carta, creando il ciclo se manca, e ne
+ * porta l'effectiveDate alla data di addebito del ciclo: la spesa cade nel mese in cui il conto
+ * paga il ciclo, anche per le rate salvate senza ritardo carta.
  * Stesse regole del backfill della migration 23->24: solo spese lato carta su carte a SALDO
  * con giorni configurati, ciclo ricalcolato dalla data d'acquisto. Ogni altra transazione
  * esce senza ciclo, anche se ne aveva uno (es. spesa spostata su un'altra carta).
@@ -23,7 +25,8 @@ class AssignBillingCycleUseCase(
     suspend operator fun invoke(transaction: TransactionEntity): TransactionEntity {
         val cycle = cycleFor(transaction)
         if (cycle != null) repository.insertBillingCycle(cycle)
-        return transaction.copy(billingCycleId = cycle?.id)
+        if (cycle == null) return transaction.copy(billingCycleId = null)
+        return transaction.copy(billingCycleId = cycle.id, effectiveDate = cycle.dueDate)
     }
 
     /** Collega gli acquisti rimasti senza ciclo, es. dopo un ripristino da backup. */
@@ -32,7 +35,7 @@ class AssignBillingCycleUseCase(
         for (transaction in repository.getCardExpensesWithoutCycle()) {
             val cycle = cycleFor(transaction) ?: continue
             repository.insertBillingCycle(cycle)
-            repository.setTransactionBillingCycle(transaction.id, cycle.id)
+            repository.setTransactionBillingCycle(transaction.id, cycle.id, cycle.dueDate)
             assigned++
         }
         return assigned

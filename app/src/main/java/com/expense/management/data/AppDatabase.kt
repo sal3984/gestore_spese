@@ -576,7 +576,8 @@ abstract class AppDatabase : RoomDatabase() {
         // Cicli di fatturazione: crea billing_cycles, aggiunge a transactions il ciclo e la chiave
         // di idempotenza, e assegna un ciclo agli acquisti gia' salvati con carte a SALDO.
         // Il ciclo si ricalcola dalla data d'acquisto con la regola attuale (giorno di chiusura
-        // incluso), non dall'effectiveDate salvata con la regola precedente.
+        // incluso), non dall'effectiveDate salvata con la regola precedente, e l'effectiveDate
+        // diventa la data di addebito del ciclo: spesa e addebito cadono nello stesso mese.
         // Restano senza ciclo: Amex (lo migra la Fase 3 da amex_statements), REVOLVING e
         // INSTALLMENT (semantica del saldo da definire), i movimenti income sulla carta
         // (rimborsi e ripristini plafond non sono distinguibili) e le carte senza giorni.
@@ -636,7 +637,7 @@ abstract class AppDatabase : RoomDatabase() {
                     val paymentMethodId = cursor.getString(2)
                     val cycle = BillingCycleEntity.forPurchase(paymentMethodId, calculateCycle.execute(purchaseDate, rules), today)
                     cycles.getOrPut(cycle.id) { cycle }
-                    assignments += arrayOf(cycle.id, cursor.getString(0))
+                    assignments += arrayOf(cycle.id, cycle.dueDate, cursor.getString(0))
                 }
             }
             cycles.values.forEach { cycle ->
@@ -646,7 +647,7 @@ abstract class AppDatabase : RoomDatabase() {
                     arrayOf(cycle.id, cycle.paymentMethodId, cycle.cycleMonth, cycle.closingDate, cycle.dueDate, cycle.status, cycle.paymentMode),
                 )
             }
-            assignments.forEach { db.execSQL("UPDATE `transactions` SET `billingCycleId` = ? WHERE `id` = ?", it) }
+            assignments.forEach { db.execSQL("UPDATE `transactions` SET `billingCycleId` = ?, `effectiveDate` = ? WHERE `id` = ?", it) }
         }
 
         val MIGRATION_8_9 = object : Migration(8, 9) {

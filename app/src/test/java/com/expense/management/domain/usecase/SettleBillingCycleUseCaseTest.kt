@@ -13,8 +13,17 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.data.isCycleSettlement
 import com.expense.management.domain.model.PaymentProvider
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -99,11 +108,33 @@ class SettleBillingCycleUseCaseTest {
         save(purchase("b", "2025-05-19", 50.25))
         repository.updateBillingCycleStatus("saldo1:2025-05", "CLOSED")
 
-        assertEquals(mapOf("saldo1" to 150.25), repository.unsettledExposureByCard("2025-06-15").first())
+        assertEquals(mapOf("saldo1" to 150.25), repository.unsettledExposureByCard(flowOf(LocalDate.of(2025, 6, 15))).first())
 
         settle()
 
-        assertEquals(emptyMap<String, Double>(), repository.unsettledExposureByCard("2025-06-15").first())
+        assertEquals(emptyMap<String, Double>(), repository.unsettledExposureByCard(flowOf(LocalDate.of(2025, 6, 15))).first())
+    }
+
+    @Test
+    fun theExposureFlowPicksUpTodaysPurchaseWhenTheDateChanges() = runBlocking {
+        today = LocalDate.of(2025, 6, 27)
+        save(purchase("a", "2025-06-27", 100.0))
+        save(purchase("b", "2025-06-28", 50.0))
+        val dates = MutableStateFlow(LocalDate.of(2025, 6, 27))
+        val firstValue = CompletableDeferred<Unit>()
+
+        val values = async {
+            repository.unsettledExposureByCard(dates)
+                .map { it["saldo1"] }
+                .onEach { firstValue.complete(Unit) }
+                .take(2)
+                .toList()
+        }
+        withTimeout(5_000) { firstValue.await() }
+        // Mezzanotte con l'app ancora aperta
+        dates.value = LocalDate.of(2025, 6, 28)
+
+        assertEquals(listOf(100.0, 150.0), withTimeout(5_000) { values.await() })
     }
 
     @Test

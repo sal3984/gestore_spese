@@ -177,8 +177,15 @@ class AppDatabaseMigrationTest {
                 ),
                 db.cycleAssignments(),
             )
-            // L'effectiveDate salvata non viene riscritta: la migration collega soltanto
-            assertEquals("2025-07-15", db.stringValue("SELECT effectiveDate FROM transactions WHERE id = 'onClosing'"))
+            // Salvata con la regola vecchia al 15/07: ora cade con l'addebito del suo ciclo
+            assertEquals("2025-06-15", db.stringValue("SELECT effectiveDate FROM transactions WHERE id = 'onClosing'"))
+            assertEquals(
+                0,
+                db.intValue(
+                    "SELECT COUNT(*) FROM transactions t JOIN billing_cycles c ON t.billingCycleId = c.id " +
+                        "WHERE t.effectiveDate != c.dueDate",
+                ),
+            )
             assertEquals(0, db.intValue("SELECT COUNT(*) FROM pragma_foreign_key_check"))
         }
     }

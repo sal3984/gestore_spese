@@ -57,6 +57,22 @@ class AssignBillingCycleUseCaseTest {
         val cycle = requireNotNull(repository.getBillingCycleById("saldo1:2025-05"))
         assertEquals(listOf("2025-05", "2025-05-20", "2025-06-15", "PAID"), listOf(cycle.cycleMonth, cycle.closingDate, cycle.dueDate, cycle.status))
         assertEquals("saldo1:2025-05", repository.getTransactionById("a")?.billingCycleId)
+        assertEquals("2025-06-15", repository.getTransactionById("a")?.effectiveDate)
+    }
+
+    @Test
+    fun anInstallmentSavedWithoutCardDelayIsChargedWithItsCycle() = runBlocking {
+        // Rata salvata con applyCcDelayToInstallments spento: effectiveDate = data della rata
+        save(purchase("rata", "2025-06-10", 40.0).copy(effectiveDate = "2025-06-10", installmentNumber = 1, totalInstallments = 3))
+
+        assertEquals("2025-07-15", repository.getTransactionById("rata")?.effectiveDate)
+    }
+
+    @Test
+    fun aPurchaseLeftWithoutCycleKeepsItsEffectiveDate() = runBlocking {
+        save(purchase("revolving", "2025-06-10", 100.0, card = "revolving1").copy(effectiveDate = "2025-07-01"))
+
+        assertEquals("2025-07-01", repository.getTransactionById("revolving")?.effectiveDate)
     }
 
     @Test
@@ -127,6 +143,7 @@ class AssignBillingCycleUseCaseTest {
 
         assertEquals("saldo1:2025-06", repository.getTransactionById("a")?.billingCycleId)
         assertEquals("saldo1:2025-07", repository.getTransactionById("b")?.billingCycleId)
+        assertEquals("2025-08-15", repository.getTransactionById("b")?.effectiveDate)
         assertEquals(0, assign.assignMissing())
     }
 
