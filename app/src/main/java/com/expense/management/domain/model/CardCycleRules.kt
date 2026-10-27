@@ -26,13 +26,14 @@ data class CardCycleRules(
          * Regole dai due giorni salvati oggi sulla carta, con la stessa logica di
          * DateUtils.calculateEffectiveDate: addebito nel mese della chiusura se il giorno
          * di addebito non la precede, altrimenti nel mese dopo.
-         * Null se la carta non ha un ciclo configurato (giorni a 0).
+         * Null se la carta non ha un ciclo configurato (giorni a 0). La UI non limita i giorni:
+         * oltre il 31 valgono fine mese, ma il mese di addebito si decide sui valori salvati.
          */
         fun fromCardDays(closingDay: Int, paymentDay: Int): CardCycleRules? {
-            if (closingDay !in DAY_RANGE || paymentDay !in DAY_RANGE) return null
+            if (closingDay < DAY_RANGE.first || paymentDay < DAY_RANGE.first) return null
             return CardCycleRules(
-                closingDay = closingDay,
-                dueDay = paymentDay,
+                closingDay = closingDay.coerceAtMost(DAY_RANGE.last),
+                dueDay = paymentDay.coerceAtMost(DAY_RANGE.last),
                 dueMonthOffset = if (paymentDay >= closingDay) 0 else 1,
             )
         }

@@ -1,7 +1,8 @@
 package com.expense.management.utils
 
+import com.expense.management.domain.model.CardCycleRules
+import com.expense.management.domain.usecase.CalculateBillingCycleUseCase
 import java.time.LocalDate
-import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 object DateUtils {
@@ -11,41 +12,15 @@ object DateUtils {
         val paymentDay: Int,
     )
 
+    private val calculateBillingCycle = CalculateBillingCycleUseCase()
+
+    /**
+     * Data di addebito di un acquisto con carta: la data di addebito del suo ciclo.
+     * Senza ciclo configurato (giorni a 0) l'addebito e' immediato.
+     */
     fun calculateEffectiveDate(transactionDate: LocalDate, card: CardDateInfo): String {
-        if (card.closingDay <= 0 || card.paymentDay <= 0) {
-            return transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        }
-
-        val closingDay = card.closingDay
-        val paymentDay = card.paymentDay
-        val transactionYearMonth = YearMonth.from(transactionDate)
-        val effectiveClosing = closingDay.coerceAtMost(transactionYearMonth.lengthOfMonth())
-
-        val closingMonth = if (transactionDate.dayOfMonth >= effectiveClosing) {
-            transactionYearMonth.plusMonths(1)
-        } else {
-            transactionYearMonth
-        }
-
-        val paymentMonth = if (paymentDay >= closingDay) {
-            closingMonth
-        } else {
-            closingMonth.plusMonths(1)
-        }
-
-        var finalPaymentDate = getValidDateForDay(paymentMonth, paymentDay)
-
-        if (!finalPaymentDate.isAfter(transactionDate)) {
-            val adjustedMonth = paymentMonth.plusMonths(1)
-            finalPaymentDate = getValidDateForDay(adjustedMonth, paymentDay)
-        }
-
-        return finalPaymentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-    }
-
-    private fun getValidDateForDay(yearMonth: YearMonth, day: Int): LocalDate {
-        val lastDayOfMonth = yearMonth.lengthOfMonth()
-        val validDay = if (day > lastDayOfMonth) lastDayOfMonth else day
-        return yearMonth.atDay(validDay)
+        val rules = CardCycleRules.fromCardDays(card.closingDay, card.paymentDay)
+            ?: return transactionDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        return calculateBillingCycle.execute(transactionDate, rules).dueDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
     }
 }

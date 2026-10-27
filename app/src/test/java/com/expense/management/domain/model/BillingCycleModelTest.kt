@@ -28,14 +28,27 @@ class BillingCycleModelTest {
         }
 
         @ParameterizedTest(name = "chiusura {0}, addebito {1} -> nessun ciclo")
-        @CsvSource("0, 15", "15, 0", "32, 5", "5, 32", "-1, 10")
+        @CsvSource("0, 15", "15, 0", "-1, 10")
         fun `fromCardDays returns null for a card without a cycle`(closingDay: Int, paymentDay: Int) {
             assertNull(CardCycleRules.fromCardDays(closingDay, paymentDay))
         }
 
+        @ParameterizedTest(name = "chiusura {0}, addebito {1} -> {2}, {3}, offset {4}")
+        @CsvSource("35, 31, 31, 31, 1", "5, 40, 5, 31, 0", "40, 35, 31, 31, 1")
+        fun `fromCardDays reads days past 31 as month end, deciding the month on the stored values`(
+            closingDay: Int,
+            paymentDay: Int,
+            expectedClosing: Int,
+            expectedDue: Int,
+            expectedOffset: Int,
+        ) {
+            assertEquals(CardCycleRules(expectedClosing, expectedDue, expectedOffset), CardCycleRules.fromCardDays(closingDay, paymentDay))
+        }
+
         @Test
-        fun `fromCardDays agrees with DateUtils on every pair of days`() {
-            // Acquisto il 1 gennaio, prima di ogni chiusura dal 2 al 31: il ciclo e' gennaio
+        fun `fromCardDays puts the due date in the expected month for every pair of days`() {
+            // Acquisto il 1 gennaio, prima di ogni chiusura dal 2 al 31: il ciclo e' gennaio.
+            // Il mese di addebito deve restare quello del DateUtils originale (paymentDay >= closingDay)
             val purchase = LocalDate.of(2025, 1, 1)
             for (closingDay in 2..31) {
                 for (paymentDay in 2..31) {

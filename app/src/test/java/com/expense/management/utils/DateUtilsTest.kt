@@ -43,11 +43,12 @@ class DateUtilsTest {
     }
 
     @Test
-    fun `purchase on the closing day falls into the next cycle`() {
+    fun `purchase on the closing day falls into the cycle that closes`() {
         val card = DateUtils.CardDateInfo(closingDay = 20, paymentDay = 15)
 
         assertEquals("2024-06-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 19), card))
-        assertEquals("2024-07-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 20), card))
+        assertEquals("2024-06-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 20), card))
+        assertEquals("2024-07-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 5, 21), card))
     }
 
     @Test
@@ -55,7 +56,8 @@ class DateUtilsTest {
         val card = DateUtils.CardDateInfo(closingDay = 31, paymentDay = 15)
 
         assertEquals("2024-03-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 2, 28), card))
-        assertEquals("2024-04-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 2, 29), card))
+        assertEquals("2024-03-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 2, 29), card))
+        assertEquals("2024-04-15", DateUtils.calculateEffectiveDate(LocalDate.of(2024, 3, 1), card))
     }
 
     @Test
