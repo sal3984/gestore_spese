@@ -458,6 +458,15 @@ class ExpenseRepository(
         dates.flatMapLatest { today -> billingCycleDao.getUnsettledExposureByCardFlow(today.toString()) }
             .map { rows -> rows.associate { it.paymentMethodId to it.exposure } }
 
+    fun billingCyclesForCard(paymentMethodId: String): Flow<List<BillingCycleEntity>> =
+        billingCycleDao.getCyclesForCardFlow(paymentMethodId)
+
+    fun cycleTransactionsForCard(paymentMethodId: String): Flow<List<TransactionEntity>> =
+        billingCycleDao.getCycleTransactionsForCardFlow(paymentMethodId)
+
+    fun settlementsForCard(paymentMethodId: String): Flow<List<TransactionEntity>> =
+        billingCycleDao.getSettlementsForCardFlow(paymentMethodId)
+
     suspend fun getBillingCyclesToClose(today: String): List<BillingCycleEntity> = billingCycleDao.getCyclesToClose(today)
 
     suspend fun getBillingCyclesToSettle(today: String): List<BillingCycleEntity> = billingCycleDao.getCyclesToSettle(today)

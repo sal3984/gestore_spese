@@ -84,6 +84,23 @@ interface BillingCycleDao {
     )
     suspend fun getUnsettledCyclesWithTotals(paymentMethodId: String): List<BillingCycleWithTotals>
 
+    @Query("SELECT * FROM billing_cycles WHERE paymentMethodId = :paymentMethodId ORDER BY cycleMonth DESC")
+    fun getCyclesForCardFlow(paymentMethodId: String): Flow<List<BillingCycleEntity>>
+
+    /** Acquisti e accrediti collegati ai cicli della carta. */
+    @Query(
+        "SELECT t.* FROM transactions t JOIN billing_cycles c ON t.billingCycleId = c.id " +
+            "WHERE c.paymentMethodId = :paymentMethodId AND t.isCreditCard = 1",
+    )
+    fun getCycleTransactionsForCardFlow(paymentMethodId: String): Flow<List<TransactionEntity>>
+
+    /** Addebiti sul conto che hanno saldato i cicli della carta. */
+    @Query(
+        "SELECT s.* FROM transactions s JOIN billing_cycles c ON s.id = c.settlementTransactionId " +
+            "WHERE c.paymentMethodId = :paymentMethodId",
+    )
+    fun getSettlementsForCardFlow(paymentMethodId: String): Flow<List<TransactionEntity>>
+
     @Query(UNSETTLED_EXPOSURE_BY_CARD)
     fun getUnsettledExposureByCardFlow(today: String): Flow<List<CardExposureRow>>
 
