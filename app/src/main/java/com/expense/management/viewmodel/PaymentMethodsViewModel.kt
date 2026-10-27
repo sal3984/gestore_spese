@@ -174,9 +174,9 @@ class PaymentMethodsViewModel(
         activeCreditCards,
         _currentDashboardMonth,
         amexPaidByCard,
-        repository.unsettledExposureByCard(),
-    ) { tx, cards, month, paidByCard, exposureByCard ->
-        calculateCreditCardSummariesUseCase.execute(tx, cards, month, paidByCard, exposureByCard)
+        combine(repository.unsettledExposureByCard(), repository.unsettledCycleCharges(), ::Pair),
+    ) { tx, cards, month, paidByCard, (exposureByCard, charges) ->
+        calculateCreditCardSummariesUseCase.execute(tx, cards, month, paidByCard, exposureByCard, charges)
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 

@@ -4,10 +4,13 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.CycleCharge
 import com.expense.management.domain.model.PaymentProvider
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 import java.time.YearMonth
 
 @DisplayName("CalculateCreditCardSummariesUseCase")
@@ -153,5 +156,43 @@ class CalculateCreditCardSummariesUseCaseTest {
 
         assertEquals(100.0, summary.displayedSpent, 0.01)
         assertEquals(0.0f, summary.progress, 0.001f)
+    }
+
+    @Test
+    fun `saldo card with a cycle shows the first non empty charge and what is still available`() {
+        val saldo = card("saldo1", CreditCardType.SALDO, limit = 2000.0)
+        val charges = listOf(
+            CycleCharge("saldo1", LocalDate.of(2026, 12, 15), 125.0),
+            CycleCharge("saldo1", LocalDate.of(2026, 11, 15), 150.0),
+            // Ciclo con sole ricorrenze future: niente da addebitare
+            CycleCharge("saldo1", LocalDate.of(2026, 10, 15), 0.0),
+            CycleCharge("other", LocalDate.of(2026, 10, 1), 999.0),
+        )
+
+        val summary = useCase.execute(emptyList(), listOf(saldo), month, emptyMap(), mapOf("saldo1" to 275.0), charges)["saldo1"]!!
+
+        assertEquals(CycleCharge("saldo1", LocalDate.of(2026, 11, 15), 150.0), summary.nextCharge)
+        assertEquals(1725.0, summary.availableCredit!!, 0.01)
+    }
+
+    @Test
+    fun `saldo card with a cycle and nothing to charge has no next charge but a full limit`() {
+        val saldo = card("saldo1", CreditCardType.SALDO, limit = 2000.0)
+
+        val summary = useCase.execute(emptyList(), listOf(saldo), month, emptyMap(), emptyMap(), emptyList())["saldo1"]!!
+
+        assertNull(summary.nextCharge)
+        assertEquals(2000.0, summary.availableCredit!!, 0.01)
+    }
+
+    @Test
+    fun `cards without cycles keep the old card layout`() {
+        val legacy = card("saldo1", CreditCardType.SALDO, closingDay = 0, paymentDay = 0)
+        val revolving = card("rev1", CreditCardType.REVOLVING)
+
+        val summaries = useCase.execute(emptyList(), listOf(legacy, revolving), month, emptyMap(), emptyMap(), emptyList())
+
+        assertNull(summaries["saldo1"]!!.availableCredit)
+        assertNull(summaries["rev1"]!!.availableCredit)
     }
 }

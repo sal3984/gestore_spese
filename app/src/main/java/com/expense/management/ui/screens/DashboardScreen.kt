@@ -103,6 +103,7 @@ import com.expense.management.domain.model.BnplProjection
 import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.CycleCharge
 import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.PaymentProvider
 import com.expense.management.ui.model.TransactionToDelete
@@ -579,6 +580,8 @@ fun DashboardScreen(
                                     } else {
                                         null
                                     },
+                                    availableCredit = summary?.availableCredit,
+                                    nextCharge = summary?.nextCharge,
                                 )
                                 if (card.cardType == CreditCardType.INSTALLMENT && nextPlan != null) {
                                     val planScheduled = scheduledByPlan[nextPlan.id].orEmpty()
@@ -955,7 +958,12 @@ fun CreditCardItem(
     onPayInstallment: (() -> Unit)? = null,
     onSetupPlan: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    availableCredit: Double? = null,
+    nextCharge: CycleCharge? = null,
 ) {
+    val formatAmount = { amount: Double ->
+        if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", amount)}"
+    }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
@@ -1039,23 +1047,42 @@ fun CreditCardItem(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                val remainingLabel = if (type == CreditCardType.REVOLVING || type == CreditCardType.AMEX_HYBRID) {
-                    stringResource(R.string.revolving_remaining_label)
-                } else {
-                    stringResource(R.string.spent_label)
+            if (availableCredit != null) {
+                // Carta a saldo con ciclo: prossimo addebito sul conto e plafond ancora disponibile
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        text = nextCharge?.let {
+                            stringResource(R.string.card_next_charge, it.dueDate.format(DateTimeFormatter.ofPattern("dd/MM")), formatAmount(it.amount))
+                        } ?: stringResource(R.string.card_no_next_charge),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        stringResource(R.string.card_available, formatAmount(availableCredit)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Text(
-                    text = if (isAmountHidden) "$remainingLabel $currencySymbol *****" else "$remainingLabel $currencySymbol ${String.format(locale, "%.2f", spent)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(locale, "%.2f", limit)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val remainingLabel = if (type == CreditCardType.REVOLVING || type == CreditCardType.AMEX_HYBRID) {
+                        stringResource(R.string.revolving_remaining_label)
+                    } else {
+                        stringResource(R.string.spent_label)
+                    }
+                    Text(
+                        text = if (isAmountHidden) "$remainingLabel $currencySymbol *****" else "$remainingLabel $currencySymbol ${String.format(locale, "%.2f", spent)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        "${stringResource(R.string.limit_label)} $currencySymbol ${String.format(locale, "%.2f", limit)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (onPayInstallment != null || onSetupPlan != null) {
                 Spacer(modifier = Modifier.height(12.dp))

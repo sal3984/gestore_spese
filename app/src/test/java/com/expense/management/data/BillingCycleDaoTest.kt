@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.expense.management.domain.model.BillingCycle
 import com.expense.management.domain.model.CycleStatus
 import com.expense.management.domain.model.PaymentProvider
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -125,6 +126,24 @@ class BillingCycleDaoTest {
         tx("future", 50.0, cycle = "card1:2025-05", date = "2025-05-21")
 
         assertEquals(listOf(CardExposureRow("card1", 100.0)), dao.getUnsettledExposureByCard(TODAY))
+    }
+
+    @Test
+    fun unsettledCycleTotalsSkipPaidCyclesAndFuturePurchases() = runBlocking {
+        cycle("card1", "2025-04", CycleStatus.PAID)
+        cycle("card1", "2025-05", CycleStatus.OPEN)
+        cycle("card1", "2025-06", CycleStatus.OPEN)
+        tx("paid", 500.0, cycle = "card1:2025-04")
+        tx("today", 100.0, cycle = "card1:2025-05", date = TODAY)
+        tx("refund", 20.0, cycle = "card1:2025-05", type = TransactionType.INCOME)
+        tx("future", 50.0, cycle = "card1:2025-06", date = "2025-06-01")
+
+        val totals = dao.getUnsettledCycleTotalsFlow(TODAY).first().sortedBy { it.dueDate }
+
+        assertEquals(
+            listOf(UnsettledCycleTotalRow("card1", "2025-06-15", 80.0), UnsettledCycleTotalRow("card1", "2025-07-15", 0.0)),
+            totals,
+        )
     }
 
     @Test

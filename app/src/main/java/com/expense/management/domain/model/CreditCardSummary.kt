@@ -10,4 +10,7 @@ data class CreditCardSummary(
     val totalPaid: Double,
     val totalRepaid: Double = 0.0,
     val progress: Float,
+    // Solo carte a saldo con ciclo: plafond disponibile e prossimo addebito (null se nessuno)
+    val availableCredit: Double? = null,
+    val nextCharge: CycleCharge? = null,
 )

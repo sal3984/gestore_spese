@@ -2,6 +2,7 @@ package com.expense.management.data
 
 import androidx.room.Transaction
 import androidx.room.withTransaction
+import com.expense.management.domain.model.CycleCharge
 import com.expense.management.utils.DateUtils
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -457,6 +458,17 @@ class ExpenseRepository(
     fun unsettledExposureByCard(dates: Flow<LocalDate> = DateUtils.currentDateFlow()): Flow<Map<String, Double>> =
         dates.flatMapLatest { today -> billingCycleDao.getUnsettledExposureByCardFlow(today.toString()) }
             .map { rows -> rows.associate { it.paymentMethodId to it.exposure } }
+
+    /** Cicli non saldati di tutte le carte con il loro totale ad oggi, per il prossimo addebito. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun unsettledCycleCharges(dates: Flow<LocalDate> = DateUtils.currentDateFlow()): Flow<List<CycleCharge>> =
+        dates.flatMapLatest { today -> billingCycleDao.getUnsettledCycleTotalsFlow(today.toString()) }
+            .map { rows ->
+                rows.mapNotNull { row ->
+                    val dueDate = runCatching { LocalDate.parse(row.dueDate) }.getOrNull() ?: return@mapNotNull null
+                    CycleCharge(row.paymentMethodId, dueDate, row.amount)
+                }
+            }
 
     fun billingCyclesForCard(paymentMethodId: String): Flow<List<BillingCycleEntity>> =
         billingCycleDao.getCyclesForCardFlow(paymentMethodId)

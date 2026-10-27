@@ -453,4 +453,7 @@
     <string name="card_statement_align">Allinea addebito</string>
     <string name="card_statement_no_cycles">Ancora nessun ciclo. Il primo acquisto con questa carta ne apre uno.</string>
     <string name="card_statement_no_purchases">Nessuna spesa in questo ciclo.</string>
+    <string name="card_next_charge">Da addebitare il %1$s: %2$s</string>
+    <string name="card_no_next_charge">Nessun addebito in arrivo</string>
+    <string name="card_available">Disponibile %1$s</string>
 </resources>

@@ -6,6 +6,7 @@ import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardSummary
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.CycleCharge
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -19,6 +20,7 @@ class CalculateCreditCardSummariesUseCase(
         targetMonth: YearMonth,
         amexPaidByCard: Map<String, Double>,
         unsettledExposureByCard: Map<String, Double> = emptyMap(),
+        unsettledCharges: List<CycleCharge> = emptyList(),
     ): Map<String, CreditCardSummary> = cards.associate { card ->
         card.id to when (card.cardType) {
             CreditCardType.REVOLVING,
@@ -26,7 +28,7 @@ class CalculateCreditCardSummariesUseCase(
             -> revolvingSummary(card, transactions)
             CreditCardType.AMEX_HYBRID -> amexSummary(card, transactions, amexPaidByCard[card.id] ?: 0.0)
             CreditCardType.SALDO -> if (CardCycleRules.fromCardDays(card.closingDay, card.paymentDay) != null) {
-                saldoCycleSummary(card, unsettledExposureByCard[card.id] ?: 0.0)
+                saldoCycleSummary(card, unsettledExposureByCard[card.id] ?: 0.0, unsettledCharges)
             } else {
                 saldoSummary(card, transactions, targetMonth)
             }
@@ -86,8 +88,13 @@ class CalculateCreditCardSummariesUseCase(
      * Carta a saldo con ciclo: barra e importo sono l'esposizione non liquidata (spese dei cicli
      * non ancora addebitati), non la spesa del mese visualizzato. Non dipende dal mese.
      */
-    private fun saldoCycleSummary(card: ActiveCreditCard, unsettledExposure: Double): CreditCardSummary {
+    private fun saldoCycleSummary(card: ActiveCreditCard, unsettledExposure: Double, unsettledCharges: List<CycleCharge>): CreditCardSummary {
         val exposure = calculateCardExposure.execute(card.limit, unsettledExposure)
+        // Il primo ciclo non saldato che ha qualcosa da addebitare: un ciclo vuoto o con sole
+        // ricorrenze future non e' un addebito in arrivo
+        val nextCharge = unsettledCharges
+            .filter { it.cardId == card.id && it.amount > 0.0 }
+            .minByOrNull { it.dueDate }
         return CreditCardSummary(
             cardId = card.id,
             name = card.name,
@@ -97,6 +104,8 @@ class CalculateCreditCardSummariesUseCase(
             totalUtilized = exposure.exposure,
             totalPaid = 0.0,
             progress = exposure.utilization,
+            availableCredit = exposure.available,
+            nextCharge = nextCharge,
         )
     }
 

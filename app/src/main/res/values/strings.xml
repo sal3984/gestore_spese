@@ -453,4 +453,7 @@
     <string name="card_statement_align">Align charge</string>
     <string name="card_statement_no_cycles">No cycles yet. The first purchase with this card opens one.</string>
     <string name="card_statement_no_purchases">No purchases in this cycle.</string>
+    <string name="card_next_charge">To be charged on %1$s: %2$s</string>
+    <string name="card_no_next_charge">No upcoming charge</string>
+    <string name="card_available">Available %1$s</string>
 </resources>

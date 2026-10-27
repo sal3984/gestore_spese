@@ -34,6 +34,13 @@ private const val UNSETTLED_EXPOSURE_BY_CARD =
         "WHERE c.status != 'PAID' " +
         "GROUP BY c.paymentMethodId"
 
+/** Totale di un ciclo non saldato: spese meno accrediti con data fino a oggi. */
+data class UnsettledCycleTotalRow(
+    val paymentMethodId: String,
+    val dueDate: String,
+    val amount: Double,
+)
+
 data class BillingCycleWithTotals(
     @Embedded val cycle: BillingCycleEntity,
     val purchases: Double,
@@ -100,6 +107,16 @@ interface BillingCycleDao {
             "WHERE c.paymentMethodId = :paymentMethodId",
     )
     fun getSettlementsForCardFlow(paymentMethodId: String): Flow<List<TransactionEntity>>
+
+    @Query(
+        "SELECT c.paymentMethodId AS paymentMethodId, c.dueDate AS dueDate, " +
+            "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount WHEN t.type = 'income' THEN -t.amount ELSE 0 END), 0) AS amount " +
+            "FROM billing_cycles c " +
+            "LEFT JOIN transactions t ON t.billingCycleId = c.id AND t.isCreditCard = 1 AND t.date <= :today " +
+            "WHERE c.status != 'PAID' " +
+            "GROUP BY c.id",
+    )
+    fun getUnsettledCycleTotalsFlow(today: String): Flow<List<UnsettledCycleTotalRow>>
 
     @Query(UNSETTLED_EXPOSURE_BY_CARD)
     fun getUnsettledExposureByCardFlow(today: String): Flow<List<CardExposureRow>>
