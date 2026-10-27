@@ -2,6 +2,7 @@ package com.expense.management.data
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.database.sqlite.SQLiteDatabase
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -13,8 +14,12 @@ import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.CyclePaymentMode
 import com.expense.management.domain.model.CycleStatus
 import com.expense.management.domain.usecase.CalculateBillingCycleUseCase
+import java.io.File
 import java.time.LocalDate
 import java.util.UUID
+
+internal const val DATABASE_NAME = "spese_db_v6"
+internal const val DATABASE_VERSION = 24
 
 @Database(
     entities = [
@@ -37,7 +42,7 @@ import java.util.UUID
         AmexRevolvingStateEntity::class,
         BillingCycleEntity::class,
     ],
-    version = 24,
+    version = DATABASE_VERSION,
     exportSchema = true,
 )
 @TypeConverters(TransactionTypeConverter::class)
@@ -703,13 +708,39 @@ abstract class AppDatabase : RoomDatabase() {
         val ALL_MIGRATIONS: Array<Migration>
             get() = arrayOf(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, migration23To24())
 
+        /**
+         * Copia il file del DB prima che Room lo migri, come spese_db_v6.pre-v<versione>.bak.
+         * Protegge da una migration che riesce ma scrive dati sbagliati, e in debug dal
+         * fallbackToDestructiveMigration: una migration che lancia fa gia' rollback da sola.
+         * Resta solo la copia piu' recente. Un errore qui non deve impedire l'avvio.
+         */
+        internal fun backupBeforeMigration(context: Context, name: String = DATABASE_NAME, targetVersion: Int = DATABASE_VERSION) {
+            runCatching {
+                val file = context.getDatabasePath(name)
+                if (!file.exists()) return
+                val version = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+                    // Porta nel file principale le scritture rimaste nel WAL, poi copia un file solo
+                    db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
+                    db.version
+                }
+                if (version >= targetVersion) return
+                val backup = File(file.parentFile, "$name.pre-v$targetVersion.bak")
+                if (backup.exists()) return
+                file.copyTo(backup)
+                file.parentFile
+                    ?.listFiles { old -> old.name.startsWith("$name.pre-v") && old.name.endsWith(".bak") && old != backup }
+                    ?.forEach { it.delete() }
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase =
             instance ?: synchronized(this) {
+                backupBeforeMigration(context.applicationContext)
                 val builder = Room
                     .databaseBuilder(
                         context.applicationContext,
                         AppDatabase::class.java,
-                        "spese_db_v6",
+                        DATABASE_NAME,
                     )
                     .addMigrations(*ALL_MIGRATIONS)
                 if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
