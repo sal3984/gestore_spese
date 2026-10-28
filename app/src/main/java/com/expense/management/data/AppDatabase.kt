@@ -574,13 +574,13 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         // Cicli di fatturazione: crea billing_cycles, aggiunge a transactions il ciclo e la chiave
-        // di idempotenza, e assegna un ciclo agli acquisti gia' salvati con carte a SALDO.
+        // di idempotenza, e assegna un ciclo ad acquisti e rimborsi gia' salvati con carte a SALDO.
         // Il ciclo si ricalcola dalla data d'acquisto con la regola attuale (giorno di chiusura
         // incluso), non dall'effectiveDate salvata con la regola precedente, e l'effectiveDate
         // diventa la data di addebito del ciclo: spesa e addebito cadono nello stesso mese.
         // Restano senza ciclo: Amex (lo migra la Fase 3 da amex_statements), REVOLVING e
-        // INSTALLMENT (semantica del saldo da definire), i movimenti income sulla carta
-        // (rimborsi e ripristini plafond non sono distinguibili) e le carte senza giorni.
+        // INSTALLMENT (semantica del saldo da definire), le entrate generate dall'app
+        // (BillingCycleEntity.belongsInCycle) e le carte senza giorni.
         fun migration23To24(today: LocalDate = LocalDate.now()): Migration = object : Migration(23, 24) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -624,14 +624,15 @@ abstract class AppDatabase : RoomDatabase() {
             db.query(
                 "SELECT t.id, t.date, " +
                     "COALESCE(d1.paymentMethodId, d2.paymentMethodId), COALESCE(d1.cardType, d2.cardType), " +
-                    "COALESCE(d1.closingDay, d2.closingDay), COALESCE(d1.paymentDay, d2.paymentDay) " +
+                    "COALESCE(d1.closingDay, d2.closingDay), COALESCE(d1.paymentDay, d2.paymentDay), t.type, t.categoryId " +
                     "FROM `transactions` t " +
                     "LEFT JOIN `credit_card_details` d1 ON d1.paymentMethodId = t.paymentMethodId " +
                     "LEFT JOIN `credit_card_details` d2 ON d2.paymentMethodId = t.creditCardId " +
-                    "WHERE t.isCreditCard = 1 AND t.type = 'expense'",
+                    "WHERE t.isCreditCard = 1",
             ).use { cursor ->
                 while (cursor.moveToNext()) {
                     if (cursor.isNull(2) || cursor.getString(3) != CreditCardType.SALDO.name) continue
+                    if (!BillingCycleEntity.belongsInCycle(cursor.getString(0), cursor.getString(6) == "expense", cursor.getString(7))) continue
                     val rules = CardCycleRules.fromCardDays(cursor.getInt(4), cursor.getInt(5)) ?: continue
                     val purchaseDate = runCatching { LocalDate.parse(cursor.getString(1)) }.getOrNull() ?: continue
                     val paymentMethodId = cursor.getString(2)

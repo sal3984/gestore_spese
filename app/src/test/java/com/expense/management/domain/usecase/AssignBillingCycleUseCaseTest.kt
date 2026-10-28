@@ -110,14 +110,33 @@ class AssignBillingCycleUseCaseTest {
 
     @Test
     fun onlySaldoCardPurchasesGetACycle() = runBlocking {
-        save(purchase("refund", "2025-06-10", 20.0, type = TransactionType.INCOME))
         save(purchase("revolving", "2025-06-10", 100.0, card = "revolving1"))
         save(purchase("noDays", "2025-06-10", 100.0, card = "noDays"))
         save(purchase("cash", "2025-06-10", 100.0, card = "bank1", isCreditCard = false))
 
-        listOf("refund", "revolving", "noDays", "cash").forEach { assertNull(it, repository.getTransactionById(it)?.billingCycleId) }
+        listOf("revolving", "noDays", "cash").forEach { assertNull(it, repository.getTransactionById(it)?.billingCycleId) }
         assertEquals(emptyList<Any>(), repository.getUnsettledBillingCycles("revolving1"))
-        assertEquals(0, repository.getCardExpensesWithoutCycle().count { it.paymentMethodId == "saldo1" })
+        assertEquals(0, repository.getCardTransactionsWithoutCycle().count { it.paymentMethodId == "saldo1" })
+    }
+
+    @Test
+    fun aRefundOnTheCardJoinsItsCycleAndLowersTheCharge() = runBlocking {
+        save(purchase("a", "2025-06-02", 100.0))
+        save(purchase("refund", "2025-06-10", 30.0, type = TransactionType.INCOME))
+
+        assertEquals("saldo1:2025-06", repository.getTransactionById("refund")?.billingCycleId)
+        assertEquals("2025-07-15", repository.getTransactionById("refund")?.effectiveDate)
+        assertEquals(CycleTotals(100.0, 30.0, 2), repository.getBillingCycleTotals("saldo1:2025-06"))
+        assertEquals(70.0, repository.getUnsettledCardExposure("saldo1", today = "2025-06-25"), 0.001)
+    }
+
+    @Test
+    fun creditsGeneratedByTheAppStayOutOfTheCycle() = runBlocking {
+        save(purchase("pay_restore", "2025-06-10", 50.0, type = TransactionType.INCOME))
+        save(purchase("tx_mirror", "2025-06-10", 50.0, type = TransactionType.INCOME))
+        save(purchase("adjustment", "2025-06-10", 50.0, type = TransactionType.INCOME).copy(categoryId = "credit_card_adjustment"))
+
+        listOf("pay_restore", "tx_mirror", "adjustment").forEach { assertNull(it, repository.getTransactionById(it)?.billingCycleId) }
     }
 
     @Test

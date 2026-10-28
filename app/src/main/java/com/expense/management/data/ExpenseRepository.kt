@@ -51,7 +51,7 @@ class ExpenseRepository(
 
     suspend fun getTransactionById(id: String): TransactionEntity? = transactionDao.getById(id)
 
-    suspend fun getCardExpensesWithoutCycle(): List<TransactionEntity> = transactionDao.getCardExpensesWithoutCycle()
+    suspend fun getCardTransactionsWithoutCycle(): List<TransactionEntity> = transactionDao.getCardTransactionsWithoutCycle()
 
     suspend fun getTransactionBySourceRef(sourceRef: String): TransactionEntity? = transactionDao.getBySourceRef(sourceRef)
 

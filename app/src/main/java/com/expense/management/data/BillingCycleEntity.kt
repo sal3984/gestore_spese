@@ -45,6 +45,17 @@ data class BillingCycleEntity(
     companion object {
         fun idFor(paymentMethodId: String, cycleMonth: String): String = "$paymentMethodId:$cycleMonth"
 
+        /**
+         * Cosa entra in un ciclo, tra le transazioni lato carta: tutte le spese e le entrate che sono
+         * rimborsi. Le entrate generate dall'app non lo sono: ripristini plafond (id "_restore"),
+         * righe speculari ("_mirror") e accrediti di sistema (categoria credit_card_adjustment).
+         */
+        fun belongsInCycle(transactionId: String, isExpense: Boolean, categoryId: String): Boolean =
+            isExpense ||
+                (!transactionId.endsWith("_restore") && !transactionId.endsWith("_mirror") && categoryId != APP_CREDIT_CATEGORY)
+
+        private const val APP_CREDIT_CATEGORY = "credit_card_adjustment"
+
         /** sourceRef dell'unico addebito sul conto che salda il ciclo. */
         fun settlementRef(cycleId: String): String = "$SETTLEMENT_PREFIX$cycleId$SETTLEMENT_SUFFIX"
 

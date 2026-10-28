@@ -191,14 +191,17 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
-    fun migration23To24_leavesNonSaldoAndNonPurchaseTransactionsWithoutCycle() {
+    fun migration23To24_linksRefundsButLeavesNonSaldoAndAppCreditsWithoutCycle() {
         helper.createDatabase(TEST_DB, 23).use { db ->
             db.insertCard("saldo1", "SALDO", closingDay = 20, paymentDay = 15)
             db.insertCard("noDays", "SALDO", closingDay = 0, paymentDay = 0)
             db.insertCard("revolving1", "REVOLVING", closingDay = 20, paymentDay = 15)
             db.insertCard("amex1", "AMEX_HYBRID", closingDay = 20, paymentDay = 15)
             db.insertPaymentMethod("bank1", "CASH")
-            db.insertTransactionV23("refund", "2025-05-10", type = "income", paymentMethodId = "saldo1")
+            db.insertTransactionV23("refund", "2025-05-11", type = "income", paymentMethodId = "saldo1")
+            db.insertTransactionV23("pay_restore", "2025-05-10", type = "income", paymentMethodId = "saldo1")
+            db.insertTransactionV23("tx_mirror", "2025-05-10", type = "income", paymentMethodId = "saldo1")
+            db.insertTransactionV23("adjustment", "2025-05-10", type = "income", paymentMethodId = "saldo1", categoryId = "credit_card_adjustment")
             db.insertTransactionV23("cash", "2025-05-10", isCreditCard = false, paymentMethodId = "bank1")
             db.insertTransactionV23("noDaysCard", "2025-05-10", paymentMethodId = "noDays")
             db.insertTransactionV23("revolving", "2025-05-10", paymentMethodId = "revolving1")
@@ -209,7 +212,7 @@ class AppDatabaseMigrationTest {
         }
 
         helper.runMigrationsAndValidate(TEST_DB, 24, true, AppDatabase.migration23To24(today = LocalDate.of(2025, 6, 25))).use { db ->
-            assertEquals(mapOf("viaLegacyColumn" to "saldo1:2025-05"), db.cycleAssignments())
+            assertEquals(mapOf("refund" to "saldo1:2025-05", "viaLegacyColumn" to "saldo1:2025-05"), db.cycleAssignments())
             assertEquals(listOf("saldo1:2025-05"), db.cycleRows().map { it.id })
         }
     }
@@ -355,12 +358,13 @@ class AppDatabaseMigrationTest {
         isCreditCard: Boolean = true,
         paymentMethodId: String? = null,
         creditCardId: String? = null,
+        categoryId: String = "shopping",
     ) {
         execSQL(
             "INSERT INTO transactions (id, date, description, amount, categoryId, type, isCreditCard, effectiveDate, " +
                 "originalAmount, originalCurrency, creditCardId, paymentMethodId, recurrenceType) " +
-                "VALUES (?, ?, ?, 50.0, 'shopping', ?, ?, ?, 50.0, 'EUR', ?, ?, 'NONE')",
-            arrayOf<Any?>(id, date, id, type, if (isCreditCard) 1 else 0, effectiveDate, creditCardId, paymentMethodId),
+                "VALUES (?, ?, ?, 50.0, ?, ?, ?, ?, 50.0, 'EUR', ?, ?, 'NONE')",
+            arrayOf<Any?>(id, date, id, categoryId, type, if (isCreditCard) 1 else 0, effectiveDate, creditCardId, paymentMethodId),
         )
     }
 
