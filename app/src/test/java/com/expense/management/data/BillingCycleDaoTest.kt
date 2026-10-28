@@ -119,6 +119,31 @@ class BillingCycleDaoTest {
     }
 
     @Test
+    fun aPurchaseAddedAfterTheChargeCountsOnlyForTheUnchargedPart() = runBlocking {
+        cycle("card1", "2025-04", CycleStatus.PAID, settlementTransactionId = "charge")
+        tx("charge", 150.0, cycle = null, isCreditCard = false)
+        tx("a", 150.0, cycle = "card1:2025-04")
+        tx("late", 30.0, cycle = "card1:2025-04")
+
+        assertEquals(listOf(CardExposureRow("card1", 30.0)), dao.getUnsettledExposureByCard(TODAY))
+    }
+
+    @Test
+    fun anOverchargeOrAPreUpdateCycleAddsNothing() = runBlocking {
+        // Addebito di 150 su spese ora di 100: l'eccesso non abbassa il ciclo aperto della stessa carta
+        cycle("card2", "2025-03", CycleStatus.PAID, settlementTransactionId = "charge")
+        tx("charge", 150.0, cycle = null, isCreditCard = false)
+        tx("deletedLater", 100.0, cycle = "card2:2025-03")
+        // Ciclo segnato pagato dalla migration: nessun addebito da confrontare
+        cycle("card1", "2025-04", CycleStatus.PAID)
+        tx("preUpdate", 80.0, cycle = "card1:2025-04")
+        cycle("card2", "2025-05", CycleStatus.OPEN)
+        tx("open", 40.0, cycle = "card2:2025-05")
+
+        assertEquals(listOf(CardExposureRow("card2", 40.0)), dao.getUnsettledExposureByCard(TODAY))
+    }
+
+    @Test
     fun exposureIgnoresPurchasesDatedAfterToday() = runBlocking {
         cycle("card1", "2025-05", CycleStatus.OPEN)
         tx("today", 100.0, cycle = "card1:2025-05", date = TODAY)

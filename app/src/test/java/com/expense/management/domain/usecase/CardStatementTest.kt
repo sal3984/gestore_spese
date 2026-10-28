@@ -101,7 +101,10 @@ class CardStatementTest {
         settleOn(LocalDate.of(2026, 11, 15))
         save(purchase("dimenticata", "2026-10-10", 30.0))
 
-        val flagged = statement().history.single()
+        val beforeAlign = statement()
+        // La spesa non addebitata conta subito in "Da addebitare" e nel plafond
+        assertEquals(30.0, beforeAlign.exposure.exposure, 0.001)
+        val flagged = beforeAlign.history.single()
         assertEquals(150.0, flagged.settledAmount!!, 0.001)
         assertEquals(180.0, flagged.total, 0.001)
         assertTrue(flagged.settlementMismatch)
@@ -109,6 +112,7 @@ class CardStatementTest {
 
         assertEquals(AlignSettlementUseCase.Result.Aligned(150.0, 180.0), AlignSettlementUseCase(repository)("visa1:2026-10"))
 
+        assertEquals(0.0, statement().exposure.exposure, 0.001)
         val aligned = statement().history.single()
         assertEquals(180.0, aligned.settledAmount!!, 0.001)
         assertFalse(aligned.settlementMismatch)

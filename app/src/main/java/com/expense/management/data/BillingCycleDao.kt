@@ -20,19 +20,26 @@ data class CardExposureRow(
 )
 
 /**
- * Esposizione per carta: spese meno accrediti dei cicli non saldati, meno quanto gia' versato
- * con l'addebito di un ciclo pagato in parte. Solo acquisti con data fino a oggi: le
- * ricorrenze future gia' generate non occupano il plafond.
+ * Esposizione per carta: per ogni ciclo, spese meno accrediti con data fino a oggi (le
+ * ricorrenze future gia' generate non occupano il plafond), meno quanto gia' addebitato.
+ * Cicli non saldati: contano per intero. Cicli PAID con addebito: conta solo la parte di spese
+ * non ancora addebitata (spesa aggiunta dopo l'addebito), mai un addebito in eccesso.
+ * Cicli PAID senza addebito (saldati prima dell'aggiornamento o a zero): non contano.
+ * Compaiono solo le carte con almeno un ciclo che conta.
  */
 private const val UNSETTLED_EXPOSURE_BY_CARD =
-    "SELECT c.paymentMethodId AS paymentMethodId, " +
+    "SELECT paymentMethodId, " +
+        "SUM(CASE WHEN status != 'PAID' THEN owed WHEN settlementId IS NOT NULL AND owed > 0.005 THEN owed ELSE 0 END) AS exposure " +
+        "FROM (" +
+        "SELECT c.paymentMethodId AS paymentMethodId, c.status AS status, c.settlementTransactionId AS settlementId, " +
         "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount WHEN t.type = 'income' THEN -t.amount ELSE 0 END), 0) - " +
-        "COALESCE((SELECT SUM(s.amount) FROM billing_cycles c2 JOIN transactions s ON s.id = c2.settlementTransactionId " +
-        "WHERE c2.paymentMethodId = c.paymentMethodId AND c2.status != 'PAID'), 0) AS exposure " +
+        "COALESCE((SELECT s.amount FROM transactions s WHERE s.id = c.settlementTransactionId), 0) AS owed " +
         "FROM billing_cycles c " +
         "LEFT JOIN transactions t ON t.billingCycleId = c.id AND t.isCreditCard = 1 AND t.date <= :today " +
-        "WHERE c.status != 'PAID' " +
-        "GROUP BY c.paymentMethodId"
+        "GROUP BY c.id" +
+        ") " +
+        "GROUP BY paymentMethodId " +
+        "HAVING SUM(CASE WHEN status != 'PAID' OR (settlementId IS NOT NULL AND owed > 0.005) THEN 1 ELSE 0 END) > 0"
 
 /** Totale di un ciclo non saldato: spese meno accrediti con data fino a oggi. */
 data class UnsettledCycleTotalRow(
