@@ -19,3 +19,13 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Backup JSON (Gson in BackupUtils): i nomi dei campi sono le chiavi del file di backup.
+# Rinominarli renderebbe illeggibili i backup gia' fatti.
+-keep class com.expense.management.data.BackupData { <init>(...); <fields>; }
+-keep class com.expense.management.data.*Entity { <init>(...); <fields>; }
+-keepclassmembers enum com.expense.management.data.** { *; }
+
+# Stack trace leggibili nei crash report
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

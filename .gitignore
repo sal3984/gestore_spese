@@ -20,3 +20,7 @@ local.properties
 /.idea/*
 /.tasks/
 /.opencode/
+# Firma del release: mai nel repo
+keystore.properties
+*.jks
+*.keystore
