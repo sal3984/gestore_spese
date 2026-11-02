@@ -184,7 +184,7 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
 
     val isBottomBarVisible = currentRoute in bottomNavRoutes
     val isTopBarVisible = currentRoute?.let { route ->
-        !route.startsWith("add_transaction") && !route.startsWith("add_credit_card_transaction") && !route.startsWith("card_statement")
+        !route.startsWith("add_transaction") && !route.startsWith("add_credit_card_transaction") && !route.startsWith("card_statement") && route != "amex_hub"
     } ?: true
 
     BiometricGate(
