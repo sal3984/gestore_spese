@@ -22,12 +22,16 @@ data class CardCycleRules(
         private val DAY_RANGE = 1..31
         private const val MAX_DUE_MONTH_OFFSET = 2
 
+        /** Giorno di chiusura o di addebito scritto dall'utente: valido solo se intero da 1 a 31. */
+        fun parseCardDay(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it in DAY_RANGE }
+
         /**
          * Regole dai due giorni salvati oggi sulla carta, con la stessa logica di
          * DateUtils.calculateEffectiveDate: addebito nel mese della chiusura se il giorno
          * di addebito non la precede, altrimenti nel mese dopo.
-         * Null se la carta non ha un ciclo configurato (giorni a 0). La UI non limita i giorni:
-         * oltre il 31 valgono fine mese, ma il mese di addebito si decide sui valori salvati.
+         * Null se la carta non ha un ciclo configurato (giorni a 0). Le carte salvate prima della
+         * validazione possono avere giorni oltre il 31: valgono fine mese, ma il mese di addebito
+         * si decide sui valori salvati.
          */
         fun fromCardDays(closingDay: Int, paymentDay: Int): CardCycleRules? {
             if (closingDay < DAY_RANGE.first || paymentDay < DAY_RANGE.first) return null

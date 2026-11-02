@@ -287,6 +287,7 @@
     <string name="card_type_label">Card Type</string>
     <string name="closing_day">Closing Day</string>
     <string name="payment_day">Debit Day</string>
+    <string name="card_day_error">Enter a day from 1 to 31</string>
     <string name="delete_card_title">Delete Card</string>
     <string name="delete_card_message">Are you sure you want to delete the card \"%1$s\"?</string>
     <string name="select_credit_card">Select Credit Card</string>

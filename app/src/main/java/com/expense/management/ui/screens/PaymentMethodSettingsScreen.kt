@@ -59,6 +59,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
 import com.expense.management.data.PaymentMethodEntity
+import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.PaymentMethodDetails
 import com.expense.management.domain.model.PaymentProvider
@@ -230,6 +231,10 @@ private fun AddPaymentMethodDialog(
         selectedProvider == PaymentProvider.CREDIT_CARD_INSTALLMENT ||
         selectedProvider == PaymentProvider.CREDIT_CARD_AMEX
     val isDebitCard = selectedProvider == PaymentProvider.DEBIT_CARD
+    // Vuoti valgono i default (fine mese, addebito il 15); scritti devono essere un giorno valido
+    val closingDayError = !isLastDayOfMonth && closingDayText.isNotBlank() && CardCycleRules.parseCardDay(closingDayText) == null
+    val paymentDayError = paymentDayText.isNotBlank() && CardCycleRules.parseCardDay(paymentDayText) == null
+    val canAdd = name.isNotBlank() && (!isCreditCard || (!closingDayError && !paymentDayError))
 
     val eligibleCheckingAccounts = remember(allPaymentMethods) {
         allPaymentMethods.filter {
@@ -297,24 +302,22 @@ private fun AddPaymentMethodDialog(
                         Text(stringResource(R.string.end_of_month), style = MaterialTheme.typography.bodySmall)
                     }
                     if (!isLastDayOfMonth) {
-                        OutlinedTextField(
+                        CardDayField(
                             value = closingDayText,
                             onValueChange = {
                                 closingDayText = it
                                 if (it.isNotEmpty()) isLastDayOfMonth = false
                             },
-                            label = { Text(stringResource(R.string.closing_day)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
+                            label = stringResource(R.string.closing_day),
+                            isError = closingDayError,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-                    OutlinedTextField(
+                    CardDayField(
                         value = paymentDayText,
                         onValueChange = { paymentDayText = it },
-                        label = { Text(stringResource(R.string.payment_day)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
+                        label = stringResource(R.string.payment_day),
+                        isError = paymentDayError,
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(stringResource(R.string.debit_account), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
@@ -384,9 +387,9 @@ private fun AddPaymentMethodDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (name.isNotBlank()) {
-                        val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: 31)
-                        val paymentDay = paymentDayText.toIntOrNull() ?: 15
+                    if (canAdd) {
+                        val closingDay = if (isLastDayOfMonth) 31 else (CardCycleRules.parseCardDay(closingDayText) ?: 31)
+                        val paymentDay = CardCycleRules.parseCardDay(paymentDayText) ?: 15
                         onConfirm(
                             selectedProvider,
                             name,
@@ -401,7 +404,7 @@ private fun AddPaymentMethodDialog(
                         )
                     }
                 },
-                enabled = name.isNotBlank(),
+                enabled = canAdd,
             ) { Text(stringResource(R.string.add)) }
         },
         dismissButton = {
@@ -469,6 +472,9 @@ private fun EditPaymentMethodDialog(
             var selectedCheckingAccountId by remember(details) {
                 mutableStateOf(details?.linkedPaymentMethodId)
             }
+            val closingDay = if (isLastDayOfMonth) 31 else CardCycleRules.parseCardDay(closingDayText)
+            val paymentDay = CardCycleRules.parseCardDay(paymentDayText)
+            val limit = limitText.toDoubleOrNull()
 
             AlertDialog(
                 onDismissRequest = onDismiss,
@@ -492,19 +498,23 @@ private fun EditPaymentMethodDialog(
                             Text(stringResource(R.string.end_of_month), style = MaterialTheme.typography.bodySmall)
                         }
                         if (!isLastDayOfMonth) {
-                            OutlinedTextField(
+                            CardDayField(
                                 value = closingDayText,
                                 onValueChange = {
                                     closingDayText = it
                                     if (it.isNotEmpty()) isLastDayOfMonth = false
                                 },
-                                label = { Text(stringResource(R.string.closing_day)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.fillMaxWidth(),
+                                label = stringResource(R.string.closing_day),
+                                isError = closingDayText.isNotBlank() && closingDay == null,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        OutlinedTextField(value = paymentDayText, onValueChange = { paymentDayText = it }, label = { Text(stringResource(R.string.payment_day)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                        CardDayField(
+                            value = paymentDayText,
+                            onValueChange = { paymentDayText = it },
+                            label = stringResource(R.string.payment_day),
+                            isError = paymentDayText.isNotBlank() && paymentDay == null,
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(stringResource(R.string.debit_account), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                         val selectedCheckingAccountName = eligibleCheckingAccounts.find { it.id == selectedCheckingAccountId }?.name ?: stringResource(R.string.none_cash)
@@ -547,12 +557,14 @@ private fun EditPaymentMethodDialog(
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        val limit = limitText.toDoubleOrNull() ?: return@TextButton
-                        val closingDay = if (isLastDayOfMonth) 31 else (closingDayText.toIntOrNull() ?: return@TextButton)
-                        val paymentDay = paymentDayText.toIntOrNull() ?: return@TextButton
-                        onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay, selectedCheckingAccountId))
-                    }) { Text(stringResource(R.string.save)) }
+                    TextButton(
+                        onClick = {
+                            if (limit != null && closingDay != null && paymentDay != null) {
+                                onSave(name, PaymentMethodDetails.CreditCard(name, cardType, limit, closingDay, paymentDay, selectedCheckingAccountId))
+                            }
+                        },
+                        enabled = limit != null && closingDay != null && paymentDay != null,
+                    ) { Text(stringResource(R.string.save)) }
                 },
                 dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
             )
@@ -792,4 +804,27 @@ private fun providerIcon(provider: PaymentProvider): ImageVector {
         PaymentProvider.PAYPAL -> Icons.Default.Payment
         PaymentProvider.KLARNA -> Icons.Default.ShoppingCart
     }
+}
+
+@Composable
+private fun CardDayField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    isError: Boolean,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        isError = isError,
+        supportingText = if (isError) {
+            { Text(stringResource(R.string.card_day_error)) }
+        } else {
+            null
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

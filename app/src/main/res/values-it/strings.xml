@@ -274,6 +274,7 @@
     <string name="card_type_label">Tipo di Carta</string>
     <string name="closing_day">Giorno Chiusura</string>
     <string name="payment_day">Giorno Addebito</string>
+    <string name="card_day_error">Inserisci un giorno da 1 a 31</string>
     <string name="delete_card_title">Elimina Carta</string>
     <string name="delete_card_message">Sei sicuro di voler eliminare la carta \"%1$s\"?</string>
     <string name="select_credit_card">Seleziona Carta di Credito</string>

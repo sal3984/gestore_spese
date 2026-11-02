@@ -27,6 +27,12 @@ class BillingCycleModelTest {
             assertEquals(CardCycleRules(closingDay, paymentDay, offset), CardCycleRules.fromCardDays(closingDay, paymentDay))
         }
 
+        @ParameterizedTest(name = "giorno scritto \"{0}\" -> {1}")
+        @CsvSource("1, 1", "31, 31", "' 15 ', 15", "0, ", "32, ", "35, ", "-1, ", "'', ", "abc, ", "1.5, ")
+        fun `parseCardDay accepts only whole days from 1 to 31`(text: String?, expected: Int?) {
+            assertEquals(expected, CardCycleRules.parseCardDay(text.orEmpty()))
+        }
+
         @ParameterizedTest(name = "chiusura {0}, addebito {1} -> nessun ciclo")
         @CsvSource("0, 15", "15, 0", "-1, 10")
         fun `fromCardDays returns null for a card without a cycle`(closingDay: Int, paymentDay: Int) {
