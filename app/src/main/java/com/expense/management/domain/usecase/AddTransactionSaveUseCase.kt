@@ -5,7 +5,6 @@ import com.expense.management.data.RecurrenceType
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
-import com.expense.management.domain.model.CardCycleRules
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.ui.screens.AddTransactionUiState
 import com.expense.management.utils.DateUtils
@@ -253,7 +252,7 @@ class AddTransactionSaveUseCase {
 
             if (uiState.isCreditCard) {
                 when (uiState.type) {
-                    TransactionType.INCOME -> if (!selectedCard.settlesThroughCycles()) {
+                    TransactionType.INCOME -> if (selectedCard?.settlesThroughCycles != true) {
                         val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
                             ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
                             ?: "other"
@@ -359,7 +358,7 @@ class AddTransactionSaveUseCase {
 
             if (uiState.isCreditCard) {
                 when (uiState.type) {
-                    TransactionType.INCOME -> if (!selectedCard.settlesThroughCycles()) {
+                    TransactionType.INCOME -> if (selectedCard?.settlesThroughCycles != true) {
                         val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
                             ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
                             ?: "other"
@@ -455,7 +454,7 @@ class AddTransactionSaveUseCase {
 
         if (uiState.isCreditCard && !uiState.isInstallment) {
             when (uiState.type) {
-                TransactionType.INCOME -> if (!selectedCard.settlesThroughCycles()) {
+                TransactionType.INCOME -> if (selectedCard?.settlesThroughCycles != true) {
                     val expenseCategoryId = availableCategories.find { it.id == "credit_card_payment" }?.id
                         ?: availableCategories.firstOrNull { it.type == TransactionType.EXPENSE }?.id
                         ?: "other"
@@ -527,11 +526,4 @@ class AddTransactionSaveUseCase {
         )
         return result
     }
-
-    /**
-     * Carta a saldo con ciclo: e' l'addebito del ciclo a muovere il conto, e un'entrata sulla carta
-     * (rimborso) lo riduce. La riga speculare in uscita sul conto la annullerebbe, quindi non si crea.
-     */
-    private fun ActiveCreditCard?.settlesThroughCycles(): Boolean =
-        this != null && cardType == CreditCardType.SALDO && CardCycleRules.fromCardDays(closingDay, paymentDay) != null
 }

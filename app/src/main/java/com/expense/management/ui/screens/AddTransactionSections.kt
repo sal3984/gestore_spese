@@ -686,8 +686,9 @@ fun InstallmentSection(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                val cardSettlesThroughCycles = activeCreditCards.find { it.id == uiState.creditCardId }?.settlesThroughCycles == true
                 if (!isEditing || (isEditing && uiState.isCreditCard)) {
-                    AnimatedVisibility(visible = uiState.isCreditCard) {
+                    AnimatedVisibility(visible = uiState.isCreditCard && !cardSettlesThroughCycles) {
                         Column {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
