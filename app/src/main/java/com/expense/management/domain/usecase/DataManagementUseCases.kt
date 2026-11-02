@@ -1,10 +1,13 @@
 package com.expense.management.domain.usecase
 
 import com.expense.management.data.BackupData
+import com.expense.management.data.BillingCycleEntity
 import com.expense.management.data.CreditCardDetailEntity
 import com.expense.management.data.CreditCardEntity
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.PaymentMethodEntity
+import com.expense.management.data.TransactionEntity
+import com.expense.management.data.isCycleSettlement
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.PaymentProvider
 
@@ -66,6 +69,21 @@ class RestoreDataUseCase(
 
         // Solo ora le carte esistono di nuovo: si possono ricalcolare i cicli
         assignBillingCycle.assignMissing()
+        relinkSettlements(backupData.transactions.orEmpty())
+    }
+
+    /**
+     * Gli addebiti dei cicli gia' liquidati tornano dal backup con il loro sourceRef, ma i cicli sono
+     * ricreati senza: senza ricollegarli lo storico li perde e le spese aggiunte dopo non contano.
+     * Un addebito il cui ciclo non esiste piu' resta una semplice uscita sul conto.
+     */
+    private suspend fun relinkSettlements(transactions: List<TransactionEntity>) {
+        transactions.filter { it.isCycleSettlement }.forEach { settlement ->
+            val cycleId = BillingCycleEntity.cycleIdOfSettlement(settlement.sourceRef) ?: return@forEach
+            if (repository.getBillingCycleById(cycleId) != null) {
+                repository.markBillingCycleSettled(cycleId, settlement.id)
+            }
+        }
     }
 
     private suspend fun migrateLegacyCreditCards(legacyCards: List<CreditCardEntity>) {

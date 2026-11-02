@@ -166,6 +166,40 @@ class AssignBillingCycleUseCaseTest {
         assertEquals(0, assign.assignMissing())
     }
 
+    @Test
+    fun restoringABackupRelinksTheChargeOfASettledCycle() = runBlocking {
+        // Acquisto salvato a ciclo chiuso, addebito creato alla scadenza del 15/06
+        SaveTransactionUseCase(repository, AssignBillingCycleUseCase(repository, today = { LocalDate.of(2025, 5, 25) }))(purchase("a", "2025-05-10", 100.0))
+        SettleBillingCycleUseCase(repository, today = { LocalDate.of(2025, 6, 25) })()
+        val settlementId = requireNotNull(repository.getTransactionBySourceRef("cycle:saldo1:2025-05:settlement")).id
+
+        RestoreDataUseCase(repository, assign)(GetBackupDataUseCase(repository)())
+
+        val cycle = requireNotNull(repository.getBillingCycleById("saldo1:2025-05"))
+        assertEquals(listOf("PAID", settlementId), listOf(cycle.status, cycle.settlementTransactionId))
+        // Una spesa dimenticata su quel ciclo torna a contare finche' l'addebito non e' allineato
+        save(purchase("late", "2025-05-15", 30.0))
+        assertEquals(30.0, repository.getUnsettledCardExposure("saldo1", today = "2025-06-25"), 0.001)
+    }
+
+    @Test
+    fun aRestoredChargeWhoseCycleIsGoneStaysAPlainAccountExpense() = runBlocking {
+        val orphan = purchase("charge", "2025-06-15", 80.0, card = "bank1", isCreditCard = false)
+            .copy(categoryId = "credit_card_payment", sourceRef = "cycle:saldo1:2025-05:settlement")
+        val backup = BackupData(
+            transactions = listOf(orphan),
+            categories = emptyList(),
+            creditCard = null,
+            paymentMethods = listOf(PaymentMethodEntity(id = "saldo1", name = "saldo1", provider = PaymentProvider.CREDIT_CARD_SALDO)),
+            creditCardDetails = listOf(CreditCardDetailEntity(paymentMethodId = "saldo1", cardType = "SALDO", limit = 3000.0, closingDay = 20, paymentDay = 15)),
+        )
+
+        RestoreDataUseCase(repository, assign)(backup)
+
+        assertNull(repository.getBillingCycleById("saldo1:2025-05"))
+        assertEquals(80.0, repository.getTransactionById("charge")?.amount)
+    }
+
     private suspend fun card(id: String, cardType: String, closingDay: Int, paymentDay: Int) {
         repository.insertPaymentMethod(PaymentMethodEntity(id = id, name = id, provider = PaymentProvider.CREDIT_CARD_SALDO))
         repository.insertCreditCardDetail(

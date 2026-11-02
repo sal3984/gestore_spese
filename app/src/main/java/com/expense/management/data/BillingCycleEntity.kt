@@ -65,6 +65,10 @@ data class BillingCycleEntity(
         internal fun isSettlementRef(sourceRef: String?): Boolean =
             sourceRef != null && sourceRef.startsWith(SETTLEMENT_PREFIX) && sourceRef.endsWith(SETTLEMENT_SUFFIX)
 
+        /** Id del ciclo che un addebito ha liquidato, letto dal suo sourceRef. */
+        fun cycleIdOfSettlement(sourceRef: String?): String? =
+            sourceRef?.takeIf { isSettlementRef(it) }?.removePrefix(SETTLEMENT_PREFIX)?.removeSuffix(SETTLEMENT_SUFFIX)?.ifEmpty { null }
+
         /**
          * Nuovo ciclo a saldo per un acquisto, con lo stato dato da oggi: addebito passato ->
          * PAID (fino alla Fase 2 ogni acquisto esce dal conto alla sua effectiveDate),
