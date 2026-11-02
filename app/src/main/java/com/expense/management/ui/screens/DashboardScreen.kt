@@ -339,6 +339,11 @@ fun DashboardScreen(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                         )
+                        val balanceDescription = if (isAmountHidden) {
+                            stringResource(R.string.dashboard_account_balance_hidden_desc)
+                        } else {
+                            stringResource(R.string.dashboard_account_balance_desc, "$currencySymbol ${String.format(locale, "%.2f", netBalance)}")
+                        }
                         Text(
                             text = if (isAmountHidden) "$currencySymbol *****" else "$currencySymbol ${String.format(locale, "%.2f", netBalance)}",
                             style = MaterialTheme.typography.displayMedium,
@@ -346,7 +351,7 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.semantics {
                                 liveRegion = LiveRegionMode.Polite
-                                contentDescription = "Saldo mensile $currencySymbol ${if (isAmountHidden) "nascosto" else String.format(locale, "%.2f", netBalance)}"
+                                contentDescription = balanceDescription
                             },
                         )
                     }

@@ -4,6 +4,8 @@
     <string name="previous_month">Previous Month</string>
     <string name="next_month">Next Month</string>
     <string name="dashboard_account_balance">Current account</string>
+    <string name="dashboard_account_balance_desc">Current account balance %1$s</string>
+    <string name="dashboard_account_balance_hidden_desc">Current account balance hidden</string>
     <string name="dashboard_month_transactions">This month\'s transactions</string>
     <string name="balance">Balance</string>
     <string name="income">Income</string>

@@ -4,6 +4,8 @@
     <string name="previous_month">Mese Precedente</string>
     <string name="next_month">Mese Successivo</string>
     <string name="dashboard_account_balance">Conto corrente</string>
+    <string name="dashboard_account_balance_desc">Saldo del conto corrente %1$s</string>
+    <string name="dashboard_account_balance_hidden_desc">Saldo del conto corrente nascosto</string>
     <string name="dashboard_month_transactions">Movimenti del mese</string>
     <string name="balance">Saldo</string>
     <string name="income">Entrate</string>
