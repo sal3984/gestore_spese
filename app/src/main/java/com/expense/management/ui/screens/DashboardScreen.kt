@@ -335,7 +335,7 @@ fun DashboardScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            stringResource(R.string.monthly_balance),
+                            stringResource(R.string.dashboard_account_balance),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
                         )
@@ -852,6 +852,15 @@ fun DashboardScreen(
                     }
                 }
             } else {
+                item {
+                    Text(
+                        text = stringResource(R.string.dashboard_month_transactions),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                    )
+                }
                 groupedTransactions.forEach { (dateString, transactionsOnDate) ->
                     val dailyTotal = transactionsOnDate.sumOf { t ->
                         if (t.type == TransactionType.INCOME) t.amount else -t.amount
