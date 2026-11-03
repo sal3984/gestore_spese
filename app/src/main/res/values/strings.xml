@@ -162,6 +162,8 @@
     <string name="cat_gift">Gift</string>
     <string name="cat_refund">Refund</string>
     <string name="cat_investment">Investments</string>
+    <string name="cat_credit_card_payment">Card charge</string>
+    <string name="cat_credit_card_adjustment">Card credit</string>
     <string name="data_management_subtitle">Manage your data, backups and exports</string>
 
     <string name="export_data_title">Export Data</string>

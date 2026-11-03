@@ -5,16 +5,20 @@ import com.expense.management.data.toData
 import com.expense.management.data.toDomain
 import com.expense.management.domain.model.CATEGORIES
 import com.expense.management.domain.model.Category
+import com.expense.management.domain.model.DefaultCategoryNames
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class GetCategoriesUseCase(private val repository: ExpenseRepository) {
+class GetCategoriesUseCase(
+    private val repository: ExpenseRepository,
+    private val names: DefaultCategoryNames = DefaultCategoryNames.Default,
+) {
     operator fun invoke(): Flow<List<Category>> = repository.allCategoriesFlow.map { dbCategories ->
         val dbIds = dbCategories.map { it.id }.toSet()
         val missingDefaults = CATEGORIES.filter { it.id !in dbIds }.map {
             Category(
                 id = it.id,
-                label = it.label,
+                label = it.labelIn(names),
                 icon = it.icon,
                 type = it.type,
                 isCustom = false,
@@ -25,14 +29,17 @@ class GetCategoriesUseCase(private val repository: ExpenseRepository) {
     }
 }
 
-class InitializeCategoriesUseCase(private val repository: ExpenseRepository) {
+class InitializeCategoriesUseCase(
+    private val repository: ExpenseRepository,
+    private val names: DefaultCategoryNames = DefaultCategoryNames.Default,
+) {
     suspend operator fun invoke() {
         val existingCategories = repository.getAllCategories()
         val existingIds = existingCategories.map { it.id }.toSet()
         val categoriesToAdd = CATEGORIES.filter { it.id !in existingIds }.map {
             com.expense.management.data.CategoryEntity(
                 id = it.id,
-                label = it.label,
+                label = it.labelIn(names),
                 icon = it.icon,
                 type = it.type.toData(),
                 isCustom = false,

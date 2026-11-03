@@ -24,6 +24,7 @@ import com.expense.management.domain.model.CATEGORIES
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.CurrentAccountCashFlow
 import com.expense.management.domain.model.DashboardWidget
+import com.expense.management.domain.model.DefaultCategoryNames
 import com.expense.management.domain.model.DeleteType
 import com.expense.management.domain.model.ReceiptScanResult
 import com.expense.management.domain.model.ReportData
@@ -79,6 +80,7 @@ class ExpenseViewModel(
     private val calculateAmexCurrentAccountOutflowUseCase: CalculateAmexCurrentAccountOutflowUseCase,
     private val calculateCurrentAccountCashFlowUseCase: CalculateCurrentAccountCashFlowUseCase,
     private val calculateAmexStatementUseCase: CalculateAmexStatementUseCase,
+    private val defaultCategoryNames: DefaultCategoryNames = DefaultCategoryNames.Default,
 ) : ViewModel() {
 
     companion object {
@@ -578,7 +580,7 @@ class ExpenseViewModel(
     suspend fun getExpensesForExport(): List<TransactionEntity> =
         repository.getAllTransactionsList().filter { it.type == TransactionType.EXPENSE && !it.isCycleSettlement }
 
-    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id, it.label, it.icon, it.type.toData()) }
+    suspend fun getAllCategoryForExport(): List<CategoryEntity> = repository.getAllCategories() + CATEGORIES.map { CategoryEntity(it.id, it.labelIn(defaultCategoryNames), it.icon, it.type.toData()) }
 
     fun updateCategory(category: CategoryEntity) {
         viewModelScope.launch(Dispatchers.IO) {

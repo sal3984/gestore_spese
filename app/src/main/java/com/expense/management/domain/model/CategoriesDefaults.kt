@@ -5,7 +5,23 @@ data class DefaultCategory(
     val label: String,
     val icon: String,
     val type: TransactionType,
-)
+) {
+    /** Nome nella lingua del telefono, o quello storico se non tradotto. */
+    fun labelIn(names: DefaultCategoryNames): String = names.nameOf(id) ?: label
+}
+
+/**
+ * Nomi delle categorie predefinite nella lingua del telefono: si usano quando la categoria viene
+ * creata, poi restano quelli salvati (chi ha gia' l'app tiene i suoi).
+ */
+fun interface DefaultCategoryNames {
+    fun nameOf(categoryId: String): String?
+
+    companion object {
+        /** Nomi storici in italiano: ripiego per i test. */
+        val Default = DefaultCategoryNames { null }
+    }
+}
 
 val CATEGORIES =
     listOf(

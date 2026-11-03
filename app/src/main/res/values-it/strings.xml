@@ -146,6 +146,8 @@
     <string name="cat_gift">Regalo</string>
     <string name="cat_refund">Rimborso</string>
     <string name="cat_investment">Investimenti</string>
+    <string name="cat_credit_card_payment">Addebito Carta</string>
+    <string name="cat_credit_card_adjustment">Credito Carta</string>
     <string name="error_category_already_exists">Categoria già presente</string>
 
     <string name="unlock">Sblocca</string>

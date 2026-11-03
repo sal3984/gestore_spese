@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.expense.management.R
+import com.expense.management.data.AndroidDefaultCategoryNames
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
@@ -288,24 +289,8 @@ fun TransactionItem(
 }
 
 @Composable
-fun getLocalizedCategoryLabel(category: CategoryEntity): String {
-    return when (category.id) {
-        "food" -> stringResource(R.string.cat_food)
-        "transport" -> stringResource(R.string.cat_transport)
-        "housing" -> stringResource(R.string.cat_housing)
-        "entertainment" -> stringResource(R.string.cat_entertainment)
-        "bills" -> stringResource(R.string.cat_bills)
-        "health" -> stringResource(R.string.cat_health)
-        "shopping" -> stringResource(R.string.cat_shopping)
-        "other" -> stringResource(R.string.cat_other)
-        "salary" -> stringResource(R.string.cat_salary)
-        "bonifico" -> stringResource(R.string.cat_bonifico)
-        "gift" -> stringResource(R.string.cat_gift)
-        "refund" -> stringResource(R.string.cat_refund)
-        "investment" -> stringResource(R.string.cat_investment)
-        else -> category.label
-    }
-}
+fun getLocalizedCategoryLabel(category: CategoryEntity): String =
+    AndroidDefaultCategoryNames.NAMES[category.id]?.let { stringResource(it) } ?: category.label
 
 // --- Helpers ---
 

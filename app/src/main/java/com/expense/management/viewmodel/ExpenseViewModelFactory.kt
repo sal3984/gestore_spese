@@ -3,6 +3,7 @@ package com.expense.management.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.expense.management.data.AndroidDefaultCategoryNames
 import com.expense.management.data.AndroidTransactionLabels
 import com.expense.management.data.AppDatabase
 import com.expense.management.data.ExpenseRepository
@@ -36,6 +37,7 @@ class ExpenseViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val labels = AndroidTransactionLabels(context)
+        val categoryNames = AndroidDefaultCategoryNames(context)
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
             val repository = sharedRepository ?: run {
                 val db = AppDatabase.getDatabase(context)
@@ -60,10 +62,10 @@ class ExpenseViewModelFactory(
                 currencyUtils = currencyUtils,
                 prefs = prefs,
                 getTransactionsUseCase = GetTransactionsUseCase(repository),
-                getCategoriesUseCase = GetCategoriesUseCase(repository),
+                getCategoriesUseCase = GetCategoriesUseCase(repository, categoryNames),
                 saveTransactionUseCase = SaveTransactionUseCase(repository),
                 deleteTransactionUseCase = DeleteTransactionUseCase(repository),
-                initializeCategoriesUseCase = InitializeCategoriesUseCase(repository),
+                initializeCategoriesUseCase = InitializeCategoriesUseCase(repository, categoryNames),
                 getActiveCreditCardsUseCase = GetActiveCreditCardsUseCase(expensePaymentMethodRepo),
                 getBackupDataUseCase = GetBackupDataUseCase(repository),
                 restoreDataUseCase = RestoreDataUseCase(repository),
@@ -74,6 +76,7 @@ class ExpenseViewModelFactory(
                 calculateAmexCurrentAccountOutflowUseCase = CalculateAmexCurrentAccountOutflowUseCase(),
                 calculateCurrentAccountCashFlowUseCase = CalculateCurrentAccountCashFlowUseCase(),
                 calculateAmexStatementUseCase = CalculateAmexStatementUseCase(),
+                defaultCategoryNames = categoryNames,
             ) as T
         }
         if (modelClass.isAssignableFrom(PaymentMethodsViewModel::class.java)) {
@@ -98,7 +101,7 @@ class ExpenseViewModelFactory(
                 getPaymentMethodsUseCase = GetPaymentMethodsUseCase(paymentMethodRepo),
                 managePaymentMethodUseCase = ManagePaymentMethodUseCase(paymentMethodRepo),
                 getActiveCreditCardsUseCase = GetActiveCreditCardsUseCase(paymentMethodRepo),
-                getCategoriesUseCase = GetCategoriesUseCase(repository),
+                getCategoriesUseCase = GetCategoriesUseCase(repository, categoryNames),
                 getTransactionsUseCase = GetTransactionsUseCase(repository),
                 saveTransactionUseCase = SaveTransactionUseCase(repository),
                 deleteTransactionUseCase = DeleteTransactionUseCase(repository),
