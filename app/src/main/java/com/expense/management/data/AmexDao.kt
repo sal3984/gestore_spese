@@ -12,6 +12,9 @@ interface AmexDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStatement(statement: AmexStatementEntity)
 
+    @Query("SELECT * FROM amex_statements")
+    suspend fun getAllStatements(): List<AmexStatementEntity>
+
     @Query("SELECT * FROM amex_statements WHERE paymentMethodId = :paymentMethodId AND statementMonth = :month LIMIT 1")
     suspend fun getStatementByMonth(paymentMethodId: String, month: String): AmexStatementEntity?
 
@@ -138,6 +141,9 @@ interface AmexDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAmexPlanChange(change: AmexPagoFlexPlanChangeEntity)
+
+    @Query("SELECT * FROM amex_pagoflex_plan_changes")
+    suspend fun getAllPlanChanges(): List<AmexPagoFlexPlanChangeEntity>
 
     @Query("SELECT * FROM amex_pagoflex_plan_changes WHERE planId = :planId ORDER BY changedAt DESC")
     suspend fun getPlanChanges(planId: String): List<AmexPagoFlexPlanChangeEntity>

@@ -24,6 +24,7 @@
 # Rinominarli renderebbe illeggibili i backup gia' fatti.
 -keep class com.expense.management.data.BackupData { <init>(...); <fields>; }
 -keep class com.expense.management.data.*Entity { <init>(...); <fields>; }
+-keep class com.expense.management.data.CurrencyRate { <init>(...); <fields>; }
 -keepclassmembers enum com.expense.management.data.** { *; }
 
 # Stack trace leggibili nei crash report

@@ -4,6 +4,7 @@ import com.expense.management.data.BackupData
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
@@ -19,6 +20,7 @@ class RestoreDataUseCaseTest {
     @Test
     fun `restored transactions lose their billing cycle but keep their source ref`() = runBlocking {
         val repository = mockk<ExpenseRepository>(relaxed = true)
+        coEvery { repository.withTransaction<Unit>(any()) } coAnswers { firstArg<suspend () -> Unit>().invoke() }
         val transaction = TransactionEntity(
             id = "tx1",
             date = "2025-05-10",

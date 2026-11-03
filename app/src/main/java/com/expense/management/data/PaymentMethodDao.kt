@@ -139,6 +139,9 @@ interface PaymentMethodDao {
     @Query("SELECT * FROM installment_scheduled_payments ORDER BY dueDate ASC")
     fun getAllScheduledPaymentsFlow(): Flow<List<InstallmentScheduledPaymentEntity>>
 
+    @Query("SELECT * FROM installment_scheduled_payments")
+    suspend fun getAllScheduledPaymentsList(): List<InstallmentScheduledPaymentEntity>
+
     @Query("SELECT * FROM installment_scheduled_payments WHERE planId = :planId AND status = 'PENDING' ORDER BY dueDate ASC LIMIT 1")
     suspend fun getNextPendingScheduledPayment(planId: String): InstallmentScheduledPaymentEntity?
 

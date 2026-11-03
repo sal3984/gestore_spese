@@ -61,6 +61,9 @@ interface BillingCycleDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCycle(cycle: BillingCycleEntity): Long
 
+    @Query("SELECT * FROM billing_cycles")
+    suspend fun getAllCycles(): List<BillingCycleEntity>
+
     @Query("SELECT * FROM billing_cycles WHERE id = :cycleId LIMIT 1")
     suspend fun getCycleById(cycleId: String): BillingCycleEntity?
 

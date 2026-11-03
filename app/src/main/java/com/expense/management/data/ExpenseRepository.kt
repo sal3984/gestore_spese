@@ -440,6 +440,18 @@ class ExpenseRepository(
     /** False se il ciclo esisteva gia': la riga esistente non viene toccata. */
     suspend fun insertBillingCycle(cycle: BillingCycleEntity): Boolean = billingCycleDao.insertCycle(cycle) != -1L
 
+    // Backup completo: letture dell'intera tabella e scritture del ripristino
+    suspend fun getAllBillingCycles(): List<BillingCycleEntity> = billingCycleDao.getAllCycles()
+
+    suspend fun getAllAmexStatements(): List<AmexStatementEntity> = amexDao.getAllStatements()
+
+    suspend fun getAllAmexPlanChanges(): List<AmexPagoFlexPlanChangeEntity> = amexDao.getAllPlanChanges()
+
+    suspend fun getAllInstallmentScheduledPayments(): List<InstallmentScheduledPaymentEntity> =
+        paymentMethodDao.getAllScheduledPaymentsList()
+
+    suspend fun insertCurrencyRates(rates: List<CurrencyRate>) = currencyDao.insertRates(rates)
+
     suspend fun getBillingCycleById(cycleId: String): BillingCycleEntity? = billingCycleDao.getCycleById(cycleId)
 
     suspend fun getBillingCycleTotals(cycleId: String): CycleTotals = billingCycleDao.getCycleTotals(cycleId)
