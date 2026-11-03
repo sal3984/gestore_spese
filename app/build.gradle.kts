@@ -45,6 +45,13 @@ android {
         }
     }
 
+    // Lingue dell'app: inglese di base (values/) e italiano. Le altre lingue delle librerie restano fuori
+    // dall'APK, e su Android 13+ la lingua si puo' scegliere per la sola app dalle impostazioni di sistema
+    androidResources {
+        generateLocaleConfig = true
+        localeFilters += listOf("en", "it")
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
