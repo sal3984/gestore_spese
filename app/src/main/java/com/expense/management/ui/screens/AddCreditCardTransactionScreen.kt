@@ -768,9 +768,9 @@ fun CreditCardPaymentFields(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("PagoFlex", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.pagoflex_title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                     Text(
-                        "Rateizza questa transazione in più mesi",
+                        stringResource(R.string.pagoflex_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -782,7 +782,7 @@ fun CreditCardPaymentFields(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Numero rate", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.plan_installments_count), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     var countText by remember(uiState.pagoFlexInstallments) { mutableStateOf(uiState.pagoFlexInstallments.toString()) }
                     OutlinedTextField(
                         value = countText,

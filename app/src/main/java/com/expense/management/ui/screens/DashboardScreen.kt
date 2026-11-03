@@ -76,6 +76,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -491,7 +492,7 @@ fun DashboardScreen(
                                     )
                                     bnplProjections.forEach { proj ->
                                         Text(
-                                            text = "${proj.methodName}: ${proj.installments.size} rate",
+                                            text = pluralStringResource(R.plurals.bnpl_projection_installments, proj.installments.size, proj.methodName, proj.installments.size),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
                                         )
@@ -573,7 +574,7 @@ fun DashboardScreen(
                                     locale = locale,
                                     totalRepaid = summary?.totalRepaid ?: 0.0,
                                     installmentInfo = if (card.cardType == CreditCardType.INSTALLMENT && totalPlans > 0) {
-                                        "$totalPaidInstallments/$totalInstallments rate pagate"
+                                        stringResource(R.string.installments_paid_progress, totalPaidInstallments, totalInstallments)
                                     } else {
                                         null
                                     },
@@ -608,12 +609,12 @@ fun DashboardScreen(
                                                 Spacer(Modifier.width(8.dp))
                                                 Column(Modifier.weight(1f)) {
                                                     Text(
-                                                        "Nuovi acquisti rilevati",
+                                                        stringResource(R.string.plan_new_purchases_title),
                                                         style = MaterialTheme.typography.labelMedium,
                                                         color = MaterialTheme.colorScheme.onErrorContainer,
                                                     )
                                                     Text(
-                                                        "Aggiorna il piano per includere l'importo totale.",
+                                                        stringResource(R.string.plan_new_purchases_message),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
                                                     )
@@ -623,7 +624,7 @@ fun DashboardScreen(
                                                         editPlanCard = card
                                                         editPlan = nextPlan
                                                     },
-                                                ) { Text("Aggiorna") }
+                                                ) { Text(stringResource(R.string.update_action)) }
                                             }
                                         }
                                     }
@@ -634,7 +635,7 @@ fun DashboardScreen(
                                         ) {
                                             Column(Modifier.padding(12.dp)) {
                                                 Text(
-                                                    "Rate future",
+                                                    stringResource(R.string.upcoming_installments),
                                                     style = MaterialTheme.typography.labelLarge,
                                                     fontWeight = FontWeight.Bold,
                                                 )
@@ -676,6 +677,7 @@ fun DashboardScreen(
                                 ) {
                                     repeat(pagerState.pageCount) { iteration ->
                                         val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                        val pageDescription = stringResource(R.string.pager_page_desc, iteration + 1, pagerState.pageCount)
                                         Box(
                                             modifier = Modifier
                                                 .padding(2.dp)
@@ -683,7 +685,7 @@ fun DashboardScreen(
                                                 .background(color)
                                                 .size(8.dp)
                                                 .semantics {
-                                                    contentDescription = "Pagina ${iteration + 1} di ${pagerState.pageCount}"
+                                                    contentDescription = pageDescription
                                                 },
                                         )
                                     }
@@ -1002,7 +1004,7 @@ fun CreditCardItem(
                         Text(
                             when (type) {
                                 CreditCardType.INSTALLMENT -> if (installmentInfo != null) installmentInfo else stringResource(R.string.installment_plan)
-                                CreditCardType.AMEX_HYBRID -> "Amex Hybrid"
+                                CreditCardType.AMEX_HYBRID -> stringResource(R.string.amex_hybrid_label)
                                 else -> stringResource(R.string.installment_plan)
                             },
                             style = MaterialTheme.typography.labelSmall,
@@ -1050,13 +1052,14 @@ fun CreditCardItem(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            val limitUsedDescription = stringResource(R.string.limit_used_desc, (progress * 100).toInt())
             LinearProgressIndicator(
                 progress = { progress.coerceAtMost(1f) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .semantics { contentDescription = "Utilizzato ${(progress * 100).toInt()}% del plafond" },
+                    .semantics { contentDescription = limitUsedDescription },
                 color = if (progress > 0.8f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
@@ -1196,15 +1199,15 @@ private fun CreditCardPaymentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isRevolving) "Paga Rata ${card.name}" else "Paga Estratto Conto ${card.name}") },
+        title = { Text(stringResource(if (isRevolving) R.string.pay_installment_title else R.string.pay_statement_title, card.name)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Plafond: $currencySymbol ${String.format(locale, "%.2f", card.limit)}",
+                    stringResource(R.string.card_limit_value, "$currencySymbol ${String.format(locale, "%.2f", card.limit)}"),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    "Residuo: $currencySymbol ${if (isAmountHidden) "*****" else String.format(locale, "%.2f", outstanding)}",
+                    stringResource(R.string.card_outstanding_value, "$currencySymbol ${if (isAmountHidden) "*****" else String.format(locale, "%.2f", outstanding)}"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -1212,7 +1215,7 @@ private fun CreditCardPaymentDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Importo rata") },
+                    label = { Text(stringResource(R.string.installment_amount_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -1221,11 +1224,11 @@ private fun CreditCardPaymentDialog(
                     value = dateText,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Data pagamento") },
+                    label = { Text(stringResource(R.string.payment_date)) },
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, "Seleziona data")
+                            Icon(Icons.Default.DateRange, stringResource(R.string.select_date_desc))
                         }
                     },
                 )
@@ -1241,10 +1244,10 @@ private fun CreditCardPaymentDialog(
                                     dateText = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
                                 }
                                 showDatePicker = false
-                            }) { Text("OK") }
+                            }) { Text(stringResource(R.string.ok)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showDatePicker = false }) { Text("Annulla") }
+                            TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) }
                         },
                     ) {
                         DatePicker(state = datePickerState)
@@ -1264,10 +1267,10 @@ private fun CreditCardPaymentDialog(
                     onConfirm(amount, date)
                 },
                 enabled = amountText.toDoubleOrNull() != null && amountText.toDoubleOrNull()!! > 0,
-            ) { Text("Paga") }
+            ) { Text(stringResource(R.string.pay_action)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -1291,29 +1294,29 @@ private fun CreditCardInstallmentPaymentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Paga Rata ${card.name}") },
+        title = { Text(stringResource(R.string.pay_installment_title, card.name)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Piano rateale — $paidCount/$totalPayments rate pagate",
+                    stringResource(R.string.installment_plan_progress, paidCount, totalPayments),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Importo rata: $currencySymbol ${String.format(locale, "%.2f", installmentAmount)}",
+                    stringResource(R.string.installment_amount_value, "$currencySymbol ${String.format(locale, "%.2f", installmentAmount)}"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Rate rimanenti: $remainingPayments",
+                    stringResource(R.string.remaining_installments_value, remainingPayments),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "Il plafond verrà ripristinato di $currencySymbol ${String.format(locale, "%.2f", installmentAmount)}.",
+                    stringResource(R.string.limit_restore_notice, "$currencySymbol ${String.format(locale, "%.2f", installmentAmount)}"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1322,11 +1325,11 @@ private fun CreditCardInstallmentPaymentDialog(
                     value = dateText,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Data pagamento") },
+                    label = { Text(stringResource(R.string.payment_date)) },
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, "Seleziona data")
+                            Icon(Icons.Default.DateRange, stringResource(R.string.select_date_desc))
                         }
                     },
                 )
@@ -1342,10 +1345,10 @@ private fun CreditCardInstallmentPaymentDialog(
                                     dateText = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
                                 }
                                 showDatePicker = false
-                            }) { Text("OK") }
+                            }) { Text(stringResource(R.string.ok)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showDatePicker = false }) { Text("Annulla") }
+                            TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) }
                         },
                     ) {
                         DatePicker(state = datePickerState)
@@ -1363,10 +1366,10 @@ private fun CreditCardInstallmentPaymentDialog(
                     }
                     onConfirm(date)
                 },
-            ) { Text("Paga") }
+            ) { Text(stringResource(R.string.pay_action)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }
@@ -1440,14 +1443,14 @@ private fun InstallmentPlanSetupDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existingPlan != null) "Modifica piano — ${card.name}" else "Nuovo piano — ${card.name}") },
+        title = { Text(stringResource(if (existingPlan != null) R.string.plan_edit_title else R.string.plan_new_title, card.name)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Totale da rateizzare:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.plan_total_to_split), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
-                    label = { Text("Importo totale") },
+                    label = { Text(stringResource(R.string.plan_total_amount)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -1457,13 +1460,13 @@ private fun InstallmentPlanSetupDialog(
                     FilterChip(
                         selected = calcMode == "count",
                         onClick = { calcMode = "count" },
-                        label = { Text("N° rate") },
+                        label = { Text(stringResource(R.string.plan_mode_count)) },
                     )
                     Spacer(Modifier.width(8.dp))
                     FilterChip(
                         selected = calcMode == "amount",
                         onClick = { calcMode = "amount" },
-                        label = { Text("Importo rata") },
+                        label = { Text(stringResource(R.string.installment_amount_label)) },
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -1471,7 +1474,7 @@ private fun InstallmentPlanSetupDialog(
                     OutlinedTextField(
                         value = countText,
                         onValueChange = { countText = it.filter { c -> c.isDigit() } },
-                        label = { Text("Numero rate") },
+                        label = { Text(stringResource(R.string.plan_installments_count)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -1479,13 +1482,13 @@ private fun InstallmentPlanSetupDialog(
                     if (count > 0) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Importo rata: $currencySymbol ${String.format(locale, "%.2f", perInstallment)}",
+                            stringResource(R.string.installment_amount_value, "$currencySymbol ${String.format(locale, "%.2f", perInstallment)}"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (lastInstallment != perInstallment) {
                             Text(
-                                "Ultima rata: $currencySymbol ${String.format(locale, "%.2f", lastInstallment)}",
+                                stringResource(R.string.last_installment_value, "$currencySymbol ${String.format(locale, "%.2f", lastInstallment)}"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1495,7 +1498,7 @@ private fun InstallmentPlanSetupDialog(
                     OutlinedTextField(
                         value = perInstallmentText,
                         onValueChange = { perInstallmentText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
-                        label = { Text("Importo per rata") },
+                        label = { Text(stringResource(R.string.plan_amount_per_installment)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -1503,13 +1506,13 @@ private fun InstallmentPlanSetupDialog(
                     if (perInstallment > 0) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Rate: $calculatedCount",
+                            stringResource(R.string.plan_calculated_count, calculatedCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (lastInstallment != perInstallment) {
                             Text(
-                                "Ultima rata: $currencySymbol ${String.format(locale, "%.2f", lastInstallment)}",
+                                stringResource(R.string.last_installment_value, "$currencySymbol ${String.format(locale, "%.2f", lastInstallment)}"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1521,11 +1524,11 @@ private fun InstallmentPlanSetupDialog(
                     value = startDateText,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Data prima rata") },
+                    label = { Text(stringResource(R.string.first_installment_date)) },
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.DateRange, "Seleziona data")
+                            Icon(Icons.Default.DateRange, stringResource(R.string.select_date_desc))
                         }
                     },
                 )
@@ -1546,10 +1549,10 @@ private fun InstallmentPlanSetupDialog(
                                     startDateText = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                                 }
                                 showDatePicker = false
-                            }) { Text("OK") }
+                            }) { Text(stringResource(R.string.ok)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showDatePicker = false }) { Text("Annulla") }
+                            TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) }
                         },
                     ) {
                         DatePicker(state = dpState)
@@ -1558,7 +1561,7 @@ private fun InstallmentPlanSetupDialog(
                 if (existingPlan != null && existingPlan.paidCount > 0) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "${existingPlan.paidCount} rate già pagate — verranno preservate.",
+                        pluralStringResource(R.plurals.plan_paid_preserved, existingPlan.paidCount, existingPlan.paidCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary,
                     )
@@ -1582,10 +1585,10 @@ private fun InstallmentPlanSetupDialog(
                     )
                     onDismiss()
                 },
-            ) { Text("Salva piano") }
+            ) { Text(stringResource(R.string.save_plan)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
 }

@@ -133,7 +133,8 @@ fun DisplaySettingsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column {
-                EXPORT_COLUMN_MAP.entries.forEachIndexed { index, (key, displayName) ->
+                EXPORT_COLUMN_MAP.entries.forEachIndexed { index, (key, labelRes) ->
+                    val displayName = stringResource(labelRes)
                     ListItem(
                         headlineContent = {
                             Text(displayName, style = MaterialTheme.typography.bodyLarge)

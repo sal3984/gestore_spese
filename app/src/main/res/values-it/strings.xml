@@ -460,4 +460,59 @@
     <string name="card_next_charge">Da addebitare il %1$s: %2$s</string>
     <string name="card_no_next_charge">Nessun addebito in arrivo</string>
     <string name="card_available">Disponibile %1$s</string>
+
+    <!-- Localizzazione C3a -->
+    <string name="installments_paid_progress">%1$d/%2$d rate pagate</string>
+    <string name="plan_new_purchases_title">Nuovi acquisti rilevati</string>
+    <string name="plan_new_purchases_message">Aggiorna il piano per includere l\'importo totale.</string>
+    <string name="update_action">Aggiorna</string>
+    <string name="upcoming_installments">Rate future</string>
+    <string name="pager_page_desc">Pagina %1$d di %2$d</string>
+    <string name="limit_used_desc">Utilizzato %1$d%% del plafond</string>
+    <string name="pay_installment_title">Paga rata %1$s</string>
+    <string name="pay_statement_title">Paga estratto conto %1$s</string>
+    <string name="card_limit_value">Plafond: %1$s</string>
+    <string name="card_outstanding_value">Residuo: %1$s</string>
+    <string name="payment_date">Data pagamento</string>
+    <string name="pay_action">Paga</string>
+    <string name="installment_plan_progress">Piano rateale: %1$d/%2$d rate pagate</string>
+    <string name="installment_amount_value">Importo rata: %1$s</string>
+    <string name="remaining_installments_value">Rate rimanenti: %1$d</string>
+    <string name="limit_restore_notice">Il plafond verrà ripristinato di %1$s.</string>
+    <string name="plan_edit_title">Modifica piano: %1$s</string>
+    <string name="plan_new_title">Nuovo piano: %1$s</string>
+    <string name="plan_total_to_split">Totale da rateizzare:</string>
+    <string name="plan_total_amount">Importo totale</string>
+    <string name="plan_mode_count">N° rate</string>
+    <string name="plan_installments_count">Numero rate</string>
+    <string name="plan_amount_per_installment">Importo per rata</string>
+    <string name="last_installment_value">Ultima rata: %1$s</string>
+    <string name="plan_calculated_count">Rate: %1$d</string>
+    <string name="save_plan">Salva piano</string>
+    <string name="pagoflex_subtitle">Rateizza questa transazione in più mesi</string>
+    <string name="amex_installment_per_month">≈ %1$s %2$s/mese</string>
+    <string name="csv_col_date">Data</string>
+    <string name="csv_col_description">Descrizione</string>
+    <string name="csv_col_amount_converted">Importo (Convertito)</string>
+    <string name="csv_col_original_amount">Importo Originale</string>
+    <string name="csv_col_original_currency">Valuta Originale</string>
+    <string name="csv_col_category">Categoria</string>
+    <string name="csv_col_type">Tipo</string>
+    <string name="csv_col_credit_card">Carta di Credito</string>
+    <string name="csv_col_charge_date">Data Addebito</string>
+    <plurals name="bnpl_projection_installments">
+        <item quantity="one">%1$s: %2$d rata</item>
+        <item quantity="many">%1$s: %2$d rate</item>
+        <item quantity="other">%1$s: %2$d rate</item>
+    </plurals>
+    <plurals name="plan_paid_preserved">
+        <item quantity="one">%1$d rata già pagata verrà preservata.</item>
+        <item quantity="many">%1$d rate già pagate verranno preservate.</item>
+        <item quantity="other">%1$d rate già pagate verranno preservate.</item>
+    </plurals>
+    <plurals name="amex_installment_months">
+        <item quantity="one">≈ %1$d mese</item>
+        <item quantity="many">≈ %1$d mesi</item>
+        <item quantity="other">≈ %1$d mesi</item>
+    </plurals>
 </resources>

@@ -52,17 +52,18 @@ import com.expense.management.ui.screens.settings.ThemeSettingsScreen
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.AppTheme
 
-val EXPORT_COLUMN_MAP = mapOf(
-    "ID" to "ID",
-    "Data" to "Data",
-    "Descrizione" to "Descrizione",
-    "ImportoConvertito" to "Importo (Convertito)",
-    "ImportoOriginale" to "Importo Originale",
-    "ValutaOriginale" to "Valuta Originale",
-    "Categoria" to "Categoria",
-    "Tipo" to "Tipo",
-    "CartaDiCredito" to "Carta di Credito",
-    "DataAddebito" to "Data Addebito",
+/** Colonne esportabili in CSV: chiave salvata nelle preferenze -> nome mostrato. */
+val EXPORT_COLUMN_MAP: Map<String, Int> = mapOf(
+    "ID" to R.string.csv_col_id,
+    "Data" to R.string.csv_col_date,
+    "Descrizione" to R.string.csv_col_description,
+    "ImportoConvertito" to R.string.csv_col_amount_converted,
+    "ImportoOriginale" to R.string.csv_col_original_amount,
+    "ValutaOriginale" to R.string.csv_col_original_currency,
+    "Categoria" to R.string.csv_col_category,
+    "Tipo" to R.string.csv_col_type,
+    "CartaDiCredito" to R.string.csv_col_credit_card,
+    "DataAddebito" to R.string.csv_col_charge_date,
 )
 
 private enum class SettingsSection {

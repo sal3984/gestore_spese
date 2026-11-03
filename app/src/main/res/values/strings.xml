@@ -460,4 +460,59 @@
     <string name="card_next_charge">To be charged on %1$s: %2$s</string>
     <string name="card_no_next_charge">No upcoming charge</string>
     <string name="card_available">Available %1$s</string>
+
+    <!-- Localizzazione C3a -->
+    <string name="installments_paid_progress">%1$d/%2$d installments paid</string>
+    <string name="plan_new_purchases_title">New purchases detected</string>
+    <string name="plan_new_purchases_message">Update the plan to include the full amount.</string>
+    <string name="update_action">Update</string>
+    <string name="upcoming_installments">Upcoming installments</string>
+    <string name="pager_page_desc">Page %1$d of %2$d</string>
+    <string name="limit_used_desc">%1$d%% of the limit used</string>
+    <string name="pay_installment_title">Pay installment %1$s</string>
+    <string name="pay_statement_title">Pay statement %1$s</string>
+    <string name="card_limit_value">Limit: %1$s</string>
+    <string name="card_outstanding_value">Outstanding: %1$s</string>
+    <string name="payment_date">Payment date</string>
+    <string name="pay_action">Pay</string>
+    <string name="installment_plan_progress">Installment plan: %1$d/%2$d installments paid</string>
+    <string name="installment_amount_value">Installment amount: %1$s</string>
+    <string name="remaining_installments_value">Remaining installments: %1$d</string>
+    <string name="limit_restore_notice">The limit will be restored by %1$s.</string>
+    <string name="plan_edit_title">Edit plan: %1$s</string>
+    <string name="plan_new_title">New plan: %1$s</string>
+    <string name="plan_total_to_split">Total to split:</string>
+    <string name="plan_total_amount">Total amount</string>
+    <string name="plan_mode_count">No. of installments</string>
+    <string name="plan_installments_count">Number of installments</string>
+    <string name="plan_amount_per_installment">Amount per installment</string>
+    <string name="last_installment_value">Last installment: %1$s</string>
+    <string name="plan_calculated_count">Installments: %1$d</string>
+    <string name="save_plan">Save plan</string>
+    <string name="pagoflex_subtitle">Split this transaction over several months</string>
+    <string name="amex_installment_per_month">≈ %1$s %2$s/month</string>
+    <string name="csv_col_date">Date</string>
+    <string name="csv_col_description">Description</string>
+    <string name="csv_col_amount_converted">Amount (converted)</string>
+    <string name="csv_col_original_amount">Original amount</string>
+    <string name="csv_col_original_currency">Original currency</string>
+    <string name="csv_col_category">Category</string>
+    <string name="csv_col_type">Type</string>
+    <string name="csv_col_credit_card">Credit card</string>
+    <string name="csv_col_charge_date">Charge date</string>
+    <plurals name="bnpl_projection_installments">
+        <item quantity="one">%1$s: %2$d installment</item>
+        <item quantity="other">%1$s: %2$d installments</item>
+    </plurals>
+    <plurals name="plan_paid_preserved">
+        <item quantity="one">%1$d installment already paid will be kept.</item>
+        <item quantity="other">%1$d installments already paid will be kept.</item>
+    </plurals>
+    <plurals name="amex_installment_months">
+        <item quantity="one">≈ %1$d month</item>
+        <item quantity="other">≈ %1$d months</item>
+    </plurals>
+    <string name="pagoflex_title" translatable="false">PagoFlex</string>
+    <string name="csv_col_id" translatable="false">ID</string>
+    <string name="amex_hybrid_label" translatable="false">Amex Hybrid</string>
 </resources>

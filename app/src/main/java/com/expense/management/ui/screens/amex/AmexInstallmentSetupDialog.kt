@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,12 +60,12 @@ fun AmexInstallmentSetupDialog(
         Mode.FIXED_AMOUNT -> {
             parsedAmount?.takeIf { it > 0 }?.let {
                 val months = ceil(totalAmount / it).toInt()
-                "≈ $months mesi"
+                pluralStringResource(R.plurals.amex_installment_months, months, months)
             } ?: ""
         }
         Mode.FIXED_DURATION -> {
             parsedDuration?.takeIf { it > 0 }?.let {
-                "≈ ${(totalAmount / it).roundTo2()} $currencySymbol/mese"
+                stringResource(R.string.amex_installment_per_month, (totalAmount / it).roundTo2().toString(), currencySymbol)
             } ?: ""
         }
     }
