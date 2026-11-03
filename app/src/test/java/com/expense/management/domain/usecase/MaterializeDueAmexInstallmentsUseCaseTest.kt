@@ -133,4 +133,15 @@ class MaterializeDueAmexInstallmentsUseCaseTest {
 
         coVerify(exactly = 1) { repository.updateAmexPagoFlexPaidCount("plan1", any()) }
     }
+
+    @Test
+    fun `the installment is described with the labels it receives`() {
+        coEvery { repository.getPendingAmexScheduledPaymentsDueBy(any()) } returns listOf(pendingPayment("p1", 2, "2026-09-15"))
+        val inserted = slot<TransactionEntity>()
+
+        runBlocking { MaterializeDueAmexInstallmentsUseCase(repository, FakeTransactionLabels)(LocalDate.parse("2026-10-20")) }
+
+        coVerify { repository.insertTransaction(capture(inserted)) }
+        assertEquals("amex:2/${plan.installmentCount}", inserted.captured.description)
+    }
 }

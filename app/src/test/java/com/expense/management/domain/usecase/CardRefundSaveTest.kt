@@ -65,4 +65,29 @@ class CardRefundSaveTest {
         assertEquals(listOf("mirror", "refund"), saveRefund(card(closingDay = 0, paymentDay = 0)))
         assertEquals(listOf("mirror", "refund"), saveRefund(card(closingDay = 20, paymentDay = 15, type = CreditCardType.REVOLVING)))
     }
+
+    @Test
+    fun `the account mirror is described with the labels it receives`() {
+        val result = AddTransactionSaveUseCase(FakeTransactionLabels)(
+            uiState = AddTransactionUiState(
+                amountText = "30",
+                description = "Reso",
+                selectedCategory = "shopping",
+                type = TransactionType.INCOME,
+                isCreditCard = true,
+                creditCardId = "visa1",
+                recurrenceType = RecurrenceType.NONE,
+                dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                ignoreDateWarning = true,
+            ),
+            transactionToEdit = null,
+            availableCategories = categories,
+            activeCreditCards = listOf(card(closingDay = 0, paymentDay = 0)),
+            dateFormat = "dd/MM/yyyy",
+            locale = Locale.ITALY,
+        )
+        require(result is AddTransactionSaveResult.Ready)
+
+        assertEquals("[Visa] Reso (future)", result.transactions.single { it.id.endsWith("_mirror") }.description)
+    }
 }

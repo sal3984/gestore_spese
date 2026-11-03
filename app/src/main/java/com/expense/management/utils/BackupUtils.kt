@@ -31,17 +31,18 @@ object BackupUtils {
         }
     }
 
-    val EXPORT_COLUMN_DISPLAY_NAMES = mapOf(
-        "ID" to "ID",
-        "Data" to "Data",
-        "Descrizione" to "Descrizione",
-        "ImportoConvertito" to "Importo (Convertito)",
-        "ImportoOriginale" to "Importo Originale",
-        "ValutaOriginale" to "Valuta Originale",
-        "Categoria" to "Categoria",
-        "Tipo" to "Tipo",
-        "CartaDiCredito" to "Carta di Credito",
-        "DataAddebito" to "Data Addebito",
+    /** Colonne esportabili in CSV, in ordine: chiave salvata nelle preferenze -> nome della colonna. */
+    val EXPORT_COLUMN_LABELS: Map<String, Int> = mapOf(
+        "ID" to R.string.csv_col_id,
+        "Data" to R.string.csv_col_date,
+        "Descrizione" to R.string.csv_col_description,
+        "ImportoConvertito" to R.string.csv_col_amount_converted,
+        "ImportoOriginale" to R.string.csv_col_original_amount,
+        "ValutaOriginale" to R.string.csv_col_original_currency,
+        "Categoria" to R.string.csv_col_category,
+        "Tipo" to R.string.csv_col_type,
+        "CartaDiCredito" to R.string.csv_col_credit_card,
+        "DataAddebito" to R.string.csv_col_charge_date,
     )
 
     fun performCsvExport(
@@ -60,10 +61,17 @@ object BackupUtils {
 
                 val category = viewModel.getAllCategoryForExport()
 
-                val headerColumns = selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) }
-                    .map { EXPORT_COLUMN_DISPLAY_NAMES[it] ?: it }
-                    .map { if (it == "Importo (Convertito)") "Importo ($currencySymbol - Convertito)" else it }
+                val orderedColumns = selectedColumns.sortedBy { EXPORT_COLUMN_LABELS.keys.indexOf(it) }
+                val headerColumns = orderedColumns
+                    .map { key ->
+                        when (key) {
+                            "ImportoConvertito" -> context.getString(R.string.csv_col_amount_converted_currency, currencySymbol)
+                            else -> EXPORT_COLUMN_LABELS[key]?.let { context.getString(it) } ?: key
+                        }
+                    }
                     .map { escapeCsvField(it) }
+                val yes = context.getString(R.string.csv_yes)
+                val no = context.getString(R.string.csv_no)
                 val csvHeader = headerColumns.joinToString(",") + "\n"
 
                 val csvContent = StringBuilder(csvHeader)
@@ -82,7 +90,7 @@ object BackupUtils {
                         }
 
                     val row = mutableListOf<String>()
-                    selectedColumns.sortedBy { EXPORT_COLUMN_DISPLAY_NAMES.keys.indexOf(it) }.forEach { columnKey ->
+                    orderedColumns.forEach { columnKey ->
                         when (columnKey) {
                             "ID" -> row.add(escapeCsvField(t.id))
                             "Data" -> row.add(escapeCsvField(dateStr))
@@ -97,7 +105,7 @@ object BackupUtils {
                                 escapeCsvField(category.firstOrNull { it.id == t.categoryId }?.label ?: t.categoryId),
                             )
                             "Tipo" -> row.add(t.type.name)
-                            "CartaDiCredito" -> row.add(if (t.isCreditCard) "Sì" else "No")
+                            "CartaDiCredito" -> row.add(if (t.isCreditCard) yes else no)
                             "DataAddebito" -> row.add(escapeCsvField(effectiveDateStr))
                         }
                     }

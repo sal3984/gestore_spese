@@ -295,4 +295,18 @@ class PayAmexStatementUseCaseTest {
         assertEquals(listOf(50.0, 50.0), result.paymentTransactions.map { it.amount })
         assertEquals(100.0, result.paymentTransactions.sumOf { it.amount }, 0.01)
     }
+
+    @Test
+    fun `descriptions come from the labels it receives`() {
+        val result = PayAmexStatementUseCase(FakeTransactionLabels).execute(
+            statement = statement,
+            amount = 1200.0,
+            paymentDate = "2024-07-15",
+            plans = emptyList(),
+            scheduledPayments = emptyList(),
+        )
+
+        assertEquals("amexPay:2024-06", result.paymentTransactions.single().description)
+        assertEquals("amexRefund:2024-06", result.incomeTransaction?.description)
+    }
 }

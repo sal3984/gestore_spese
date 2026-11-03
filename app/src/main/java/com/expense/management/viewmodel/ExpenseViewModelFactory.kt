@@ -3,6 +3,7 @@ package com.expense.management.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.expense.management.data.AndroidTransactionLabels
 import com.expense.management.data.AppDatabase
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.PaymentMethodRepositoryAdapter
@@ -25,6 +26,7 @@ import com.expense.management.domain.usecase.ManagePaymentMethodUseCase
 import com.expense.management.domain.usecase.RestoreDataUseCase
 import com.expense.management.domain.usecase.SaveTransactionUseCase
 import com.expense.management.domain.usecase.ScanReceiptUseCase
+import com.expense.management.domain.usecase.SettleBillingCycleUseCase
 import com.expense.management.utils.CurrencyUtils
 
 class ExpenseViewModelFactory(
@@ -33,6 +35,7 @@ class ExpenseViewModelFactory(
     private val sharedCurrencyUtils: CurrencyUtils? = null,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val labels = AndroidTransactionLabels(context)
         if (modelClass.isAssignableFrom(ExpenseViewModel::class.java)) {
             val repository = sharedRepository ?: run {
                 val db = AppDatabase.getDatabase(context)
@@ -67,7 +70,7 @@ class ExpenseViewModelFactory(
                 getFrequentCategoriesUseCase = GetFrequentCategoriesUseCase(repository),
                 calculateReportUseCase = CalculateReportUseCase(),
                 scanReceiptUseCase = ScanReceiptUseCase(),
-                generateCreditCardPaymentUseCase = GenerateCreditCardPaymentUseCase(),
+                generateCreditCardPaymentUseCase = GenerateCreditCardPaymentUseCase(labels),
                 calculateAmexCurrentAccountOutflowUseCase = CalculateAmexCurrentAccountOutflowUseCase(),
                 calculateCurrentAccountCashFlowUseCase = CalculateCurrentAccountCashFlowUseCase(),
                 calculateAmexStatementUseCase = CalculateAmexStatementUseCase(),
@@ -101,7 +104,8 @@ class ExpenseViewModelFactory(
                 deleteTransactionUseCase = DeleteTransactionUseCase(repository),
                 calculateBnplProjectionsUseCase = CalculateBnplProjectionsUseCase(),
                 calculateSatispayStatusUseCase = CalculateSatispayStatusUseCase(repository),
-                generateCreditCardPaymentUseCase = GenerateCreditCardPaymentUseCase(),
+                generateCreditCardPaymentUseCase = GenerateCreditCardPaymentUseCase(labels),
+                settleBillingCycles = SettleBillingCycleUseCase(repository, labels = labels),
             ) as T
         }
         if (modelClass.isAssignableFrom(AmexViewModel::class.java)) {
@@ -121,6 +125,7 @@ class ExpenseViewModelFactory(
             return AmexViewModel(
                 repository = repository,
                 prefs = prefs,
+                labels = labels,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

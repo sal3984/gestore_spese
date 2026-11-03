@@ -51,20 +51,10 @@ import com.expense.management.ui.screens.settings.PaymentSettingsScreen
 import com.expense.management.ui.screens.settings.ThemeSettingsScreen
 import com.expense.management.ui.theme.AppStyle
 import com.expense.management.ui.theme.AppTheme
+import com.expense.management.utils.BackupUtils
 
 /** Colonne esportabili in CSV: chiave salvata nelle preferenze -> nome mostrato. */
-val EXPORT_COLUMN_MAP: Map<String, Int> = mapOf(
-    "ID" to R.string.csv_col_id,
-    "Data" to R.string.csv_col_date,
-    "Descrizione" to R.string.csv_col_description,
-    "ImportoConvertito" to R.string.csv_col_amount_converted,
-    "ImportoOriginale" to R.string.csv_col_original_amount,
-    "ValutaOriginale" to R.string.csv_col_original_currency,
-    "Categoria" to R.string.csv_col_category,
-    "Tipo" to R.string.csv_col_type,
-    "CartaDiCredito" to R.string.csv_col_credit_card,
-    "DataAddebito" to R.string.csv_col_charge_date,
-)
+val EXPORT_COLUMN_MAP: Map<String, Int> = BackupUtils.EXPORT_COLUMN_LABELS
 
 private enum class SettingsSection {
     GENERAL,

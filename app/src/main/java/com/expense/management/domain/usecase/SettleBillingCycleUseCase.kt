@@ -5,6 +5,7 @@ import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.CycleDueBreakdown
+import com.expense.management.domain.model.TransactionLabels
 import java.time.LocalDate
 import java.util.UUID
 
@@ -15,6 +16,7 @@ import java.util.UUID
  */
 class SettleBillingCycleUseCase(
     private val repository: ExpenseRepository,
+    private val labels: TransactionLabels = TransactionLabels.Default,
     private val today: () -> LocalDate = { LocalDate.now() },
 ) {
     suspend operator fun invoke(): Int {
@@ -40,7 +42,7 @@ class SettleBillingCycleUseCase(
         val settlement = TransactionEntity(
             id = UUID.randomUUID().toString(),
             date = cycle.dueDate,
-            description = "Addebito $cardName".trim(),
+            description = labels.cardCharge(cardName),
             amount = amount,
             categoryId = SETTLEMENT_CATEGORY,
             type = TransactionType.EXPENSE,

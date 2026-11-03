@@ -3,11 +3,15 @@ package com.expense.management.domain.usecase
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.TransactionLabels
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class MaterializeDueAmexInstallmentsUseCase(private val repository: ExpenseRepository) {
+class MaterializeDueAmexInstallmentsUseCase(
+    private val repository: ExpenseRepository,
+    private val labels: TransactionLabels = TransactionLabels.Default,
+) {
 
     suspend operator fun invoke(today: LocalDate = LocalDate.now()): Int {
         val payments = repository.getPendingAmexScheduledPaymentsDueBy(
@@ -27,7 +31,7 @@ class MaterializeDueAmexInstallmentsUseCase(private val repository: ExpenseRepos
             val transaction = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = payment.dueDate,
-                description = "Rata Amex ${payment.sequenceNumber}/${plan.installmentCount}",
+                description = labels.amexInstallment(payment.sequenceNumber, plan.installmentCount),
                 amount = payment.amount,
                 categoryId = "credit_card_payment",
                 type = TransactionType.EXPENSE,

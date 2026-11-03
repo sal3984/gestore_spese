@@ -20,6 +20,7 @@ import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexPaymentMode
 import com.expense.management.domain.model.AmexStatementSummary
 import com.expense.management.domain.model.PaymentProvider
+import com.expense.management.domain.model.TransactionLabels
 import com.expense.management.domain.usecase.ApplyAmexPlanRecalculationUseCase
 import com.expense.management.domain.usecase.AutoPayAmexStatementsUseCase
 import com.expense.management.domain.usecase.CalculateAmexDashboardProjectionsUseCase
@@ -88,8 +89,9 @@ sealed interface AmexUiEvent {
 class AmexViewModel(
     private val repository: ExpenseRepository,
     private val prefs: SharedPreferences?,
+    private val labels: TransactionLabels = TransactionLabels.Default,
     private val getHubDataUseCase: GetAmexHubDataUseCase = GetAmexHubDataUseCase(),
-    private val materializeDueInstallments: MaterializeDueAmexInstallmentsUseCase = MaterializeDueAmexInstallmentsUseCase(repository),
+    private val materializeDueInstallments: MaterializeDueAmexInstallmentsUseCase = MaterializeDueAmexInstallmentsUseCase(repository, labels),
 ) : ViewModel() {
 
     companion object {
@@ -398,7 +400,7 @@ class AmexViewModel(
                 val scheduledPayments = statementPlans.flatMap { repository.getAmexScheduledPaymentsForPlan(it.id) }
                 val detail = repository.getCreditCardDetail(statement.paymentMethodId)
                 val linkedId = detail?.linkedPaymentMethodId
-                val result = PayAmexStatementUseCase().execute(statement, amount, paymentDate, statementPlans, scheduledPayments, linkedId)
+                val result = PayAmexStatementUseCase(labels).execute(statement, amount, paymentDate, statementPlans, scheduledPayments, linkedId)
                 applyStatementPayment(statement.id, result, statementPlans)
                 _events.send(AmexUiEvent.PaymentCompleted(statement.id, amount))
             } finally {
@@ -468,7 +470,7 @@ class AmexViewModel(
             val tx = TransactionEntity(
                 id = java.util.UUID.randomUUID().toString(),
                 date = payment.dueDate,
-                description = "Rata Amex ${payment.sequenceNumber}/${plan.installmentCount}",
+                description = labels.amexInstallment(payment.sequenceNumber, plan.installmentCount),
                 amount = paidAmount,
                 categoryId = "credit_card_payment",
                 type = TransactionType.EXPENSE,
@@ -516,7 +518,7 @@ class AmexViewModel(
             }
             val detail = repository.getCreditCardDetail(due.statement.paymentMethodId)
             val linkedId = detail?.linkedPaymentMethodId
-            val result = PayAmexStatementUseCase().execute(due.statement, due.paymentAmount, today, statementPlans, scheduledPayments, linkedId)
+            val result = PayAmexStatementUseCase(labels).execute(due.statement, due.paymentAmount, today, statementPlans, scheduledPayments, linkedId)
             applyStatementPayment(due.statement.id, result, statementPlans)
             paidCount++
         }

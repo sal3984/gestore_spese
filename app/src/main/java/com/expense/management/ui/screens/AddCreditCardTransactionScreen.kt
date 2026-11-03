@@ -49,12 +49,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.expense.management.R
+import com.expense.management.data.AndroidTransactionLabels
 import com.expense.management.data.CategoryEntity
 import com.expense.management.data.PaymentMethodEntity
 import com.expense.management.data.RecurrenceType
@@ -180,7 +182,8 @@ fun AddCreditCardTransactionScreen(
     val okLabel = stringResource(R.string.ok)
     val errorNoCardSelected = stringResource(R.string.no_credit_card_selected)
 
-    val saveUseCase = remember { AddTransactionSaveUseCase() }
+    val context = LocalContext.current
+    val saveUseCase = remember { AddTransactionSaveUseCase(AndroidTransactionLabels(context)) }
 
     fun trySave() {
         val selectedCard = activeCreditCards.find { it.id == uiState.creditCardId }

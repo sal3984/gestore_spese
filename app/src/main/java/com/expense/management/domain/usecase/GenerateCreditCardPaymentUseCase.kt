@@ -3,11 +3,12 @@ package com.expense.management.domain.usecase
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
+import com.expense.management.domain.model.TransactionLabels
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class GenerateCreditCardPaymentUseCase {
+class GenerateCreditCardPaymentUseCase(private val labels: TransactionLabels = TransactionLabels.Default) {
 
     fun execute(
         card: ActiveCreditCard,
@@ -25,14 +26,12 @@ class GenerateCreditCardPaymentUseCase {
             ?: "other"
         val isInstallment = card.cardType == com.expense.management.domain.model.CreditCardType.REVOLVING ||
             card.cardType == com.expense.management.domain.model.CreditCardType.INSTALLMENT
-        val paymentLabel = if (isInstallment) "Rata" else "Addebito"
-        val restorationLabel = "Ripristino plafond"
 
         val baseId = UUID.randomUUID().toString()
         val bankDebit = TransactionEntity(
             id = baseId,
             date = dateStr,
-            description = "$paymentLabel ${card.name}",
+            description = if (isInstallment) labels.cardInstallment(card.name) else labels.cardCharge(card.name),
             amount = paymentAmount,
             categoryId = expenseCategoryId,
             type = TransactionType.EXPENSE,
@@ -48,7 +47,7 @@ class GenerateCreditCardPaymentUseCase {
         val creditRestoration = TransactionEntity(
             id = "${baseId}_restore",
             date = dateStr,
-            description = "[${card.name}] $restorationLabel",
+            description = labels.limitRestore(card.name),
             amount = paymentAmount,
             categoryId = incomeCategoryId,
             type = TransactionType.INCOME,

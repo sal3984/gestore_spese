@@ -515,4 +515,17 @@
         <item quantity="many">≈ %1$d mesi</item>
         <item quantity="other">≈ %1$d mesi</item>
     </plurals>
+
+    <!-- Descrizioni generate e CSV (C3b) -->
+    <string name="tx_card_charge">Addebito %1$s</string>
+    <string name="tx_card_installment">Rata %1$s</string>
+    <string name="tx_limit_restore">[%1$s] Ripristino plafond</string>
+    <string name="tx_amex_installment">Rata Amex %1$d/%2$s</string>
+    <string name="tx_amex_statement_payment">Pagamento Amex %1$s</string>
+    <string name="tx_amex_statement_refund">Rimborso Amex %1$s</string>
+    <string name="tx_unnamed_card">Carta di credito</string>
+    <string name="tx_future_payment">(Pagamento futuro)</string>
+    <string name="csv_col_amount_converted_currency">Importo (%1$s - Convertito)</string>
+    <string name="csv_yes">Sì</string>
+    <string name="csv_no">No</string>
 </resources>

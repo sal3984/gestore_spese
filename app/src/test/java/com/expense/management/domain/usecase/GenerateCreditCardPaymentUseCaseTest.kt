@@ -130,4 +130,24 @@ class GenerateCreditCardPaymentUseCaseTest {
         assertNotNull(result.first().groupId)
         assertEquals(result.first().groupId, result[1].groupId)
     }
+
+    @Test
+    fun `descriptions come from the labels it receives`() {
+        fun card(type: CreditCardType) = ActiveCreditCard(
+            id = "card_1",
+            name = "Visa Gold",
+            provider = PaymentProvider.CREDIT_CARD_SALDO,
+            cardType = type,
+            limit = 5000.0,
+            closingDay = 15,
+            paymentDay = 25,
+        )
+        val localized = GenerateCreditCardPaymentUseCase(FakeTransactionLabels)
+
+        assertEquals(
+            listOf("charge:Visa Gold", "restore:Visa Gold"),
+            localized.execute(card(CreditCardType.SALDO), 100.0, paymentDate, categories).map { it.description },
+        )
+        assertEquals("installment:Visa Gold", localized.execute(card(CreditCardType.REVOLVING), 100.0, paymentDate, categories).first().description)
+    }
 }

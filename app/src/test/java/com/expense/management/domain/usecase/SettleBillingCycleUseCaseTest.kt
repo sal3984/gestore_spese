@@ -234,4 +234,15 @@ class SettleBillingCycleUseCaseTest {
         originalCurrency = "EUR",
         paymentMethodId = card,
     )
+
+    @Test
+    fun theChargeIsDescribedWithTheLabelsItReceives() = runBlocking {
+        save(purchase("a", "2025-05-02", 100.0))
+        repository.updateBillingCycleStatus("saldo1:2025-05", "CLOSED")
+
+        SettleBillingCycleUseCase(repository, today = { today }, labels = FakeTransactionLabels)()
+
+        val cycle = requireNotNull(repository.getBillingCycleById("saldo1:2025-05"))
+        assertEquals("charge:Visa", repository.getTransactionById(requireNotNull(cycle.settlementTransactionId))?.description)
+    }
 }

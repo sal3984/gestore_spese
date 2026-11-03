@@ -515,4 +515,17 @@
     <string name="pagoflex_title" translatable="false">PagoFlex</string>
     <string name="csv_col_id" translatable="false">ID</string>
     <string name="amex_hybrid_label" translatable="false">Amex Hybrid</string>
+
+    <!-- Descrizioni generate e CSV (C3b) -->
+    <string name="tx_card_charge">Charge %1$s</string>
+    <string name="tx_card_installment">Installment %1$s</string>
+    <string name="tx_limit_restore">[%1$s] Limit restored</string>
+    <string name="tx_amex_installment">Amex installment %1$d/%2$s</string>
+    <string name="tx_amex_statement_payment">Amex payment %1$s</string>
+    <string name="tx_amex_statement_refund">Amex refund %1$s</string>
+    <string name="tx_unnamed_card">Credit card</string>
+    <string name="tx_future_payment">(Future payment)</string>
+    <string name="csv_col_amount_converted_currency">Amount (%1$s, converted)</string>
+    <string name="csv_yes">Yes</string>
+    <string name="csv_no">No</string>
 </resources>

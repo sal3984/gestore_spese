@@ -5,9 +5,10 @@ import com.expense.management.data.AmexPagoFlexScheduledPaymentEntity
 import com.expense.management.data.AmexStatementEntity
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.TransactionLabels
 import java.util.UUID
 
-class PayAmexStatementUseCase {
+class PayAmexStatementUseCase(private val labels: TransactionLabels = TransactionLabels.Default) {
 
     fun execute(
         statement: AmexStatementEntity,
@@ -22,7 +23,7 @@ class PayAmexStatementUseCase {
             val paymentTransaction = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
-                description = "Pagamento Amex ${statement.statementMonth}",
+                description = labels.amexStatementPayment(statement.statementMonth),
                 amount = amount,
                 categoryId = "credit_card_payment",
                 type = TransactionType.EXPENSE,
@@ -35,7 +36,7 @@ class PayAmexStatementUseCase {
             val incomeTransaction = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
-                description = "Rimborso Amex ${statement.statementMonth}",
+                description = labels.amexStatementRefund(statement.statementMonth),
                 amount = amount,
                 categoryId = "credit_card_adjustment",
                 type = TransactionType.INCOME,
@@ -65,7 +66,7 @@ class PayAmexStatementUseCase {
             TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 date = paymentDate,
-                description = "Rata Amex ${payment.sequenceNumber}/${plan?.installmentCount ?: "-"}",
+                description = labels.amexInstallment(payment.sequenceNumber, plan?.installmentCount),
                 amount = txAmount,
                 categoryId = "credit_card_payment",
                 type = TransactionType.EXPENSE,

@@ -6,6 +6,7 @@ import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.CreditCardType
+import com.expense.management.domain.model.TransactionLabels
 import com.expense.management.ui.screens.AddTransactionUiState
 import com.expense.management.utils.DateUtils
 import java.time.LocalDate
@@ -23,7 +24,7 @@ sealed interface AddTransactionSaveResult {
     data class Error(val message: String) : AddTransactionSaveResult
 }
 
-class AddTransactionSaveUseCase {
+class AddTransactionSaveUseCase(private val labels: TransactionLabels = TransactionLabels.Default) {
 
     operator fun invoke(
         uiState: AddTransactionUiState,
@@ -260,7 +261,7 @@ class AddTransactionSaveUseCase {
                             TransactionEntity(
                                 id = "${newId}_mirror",
                                 date = installmentDateToSave,
-                                description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()} ($installmentLabel ${i + 1}/$finalInstallmentsCount) (Future Payment)",
+                                description = "[${selectedCard?.name ?: labels.unnamedCard}] ${uiState.description.trim()} ($installmentLabel ${i + 1}/$finalInstallmentsCount) ${labels.futurePayment}",
                                 amount = currentInstallmentAmount,
                                 categoryId = expenseCategoryId,
                                 type = TransactionType.EXPENSE,
@@ -282,7 +283,7 @@ class AddTransactionSaveUseCase {
                             TransactionEntity(
                                 id = "${newId}_mirror",
                                 date = installmentDateToSave,
-                                description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()} ($installmentLabel ${i + 1}/$finalInstallmentsCount)",
+                                description = "[${selectedCard?.name ?: labels.unnamedCard}] ${uiState.description.trim()} ($installmentLabel ${i + 1}/$finalInstallmentsCount)",
                                 amount = currentInstallmentAmount,
                                 categoryId = incomeCategoryId,
                                 type = TransactionType.INCOME,
@@ -366,7 +367,7 @@ class AddTransactionSaveUseCase {
                             TransactionEntity(
                                 id = "${newId}_mirror",
                                 date = occurrenceDateStr,
-                                description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()} (Future Payment)",
+                                description = "[${selectedCard?.name ?: labels.unnamedCard}] ${uiState.description.trim()} ${labels.futurePayment}",
                                 amount = amount,
                                 categoryId = expenseCategoryId,
                                 type = TransactionType.EXPENSE,
@@ -388,7 +389,7 @@ class AddTransactionSaveUseCase {
                             TransactionEntity(
                                 id = "${newId}_mirror",
                                 date = occurrenceDateStr,
-                                description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()}",
+                                description = "[${selectedCard?.name ?: labels.unnamedCard}] ${uiState.description.trim()}",
                                 amount = amount,
                                 categoryId = incomeCategoryId,
                                 type = TransactionType.INCOME,
@@ -462,7 +463,7 @@ class AddTransactionSaveUseCase {
                         TransactionEntity(
                             id = "${transactionId}_mirror",
                             date = dateToSave,
-                            description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()} (Future Payment)",
+                            description = "[${selectedCard?.name ?: labels.unnamedCard}] ${uiState.description.trim()} ${labels.futurePayment}",
                             amount = amount,
                             categoryId = expenseCategoryId,
                             type = TransactionType.EXPENSE,
@@ -485,7 +486,7 @@ class AddTransactionSaveUseCase {
                             TransactionEntity(
                                 id = "${transactionId}_mirror",
                                 date = dateToSave,
-                                description = "[${selectedCard?.name ?: "Credit Card"}] ${uiState.description.trim()}",
+                                description = "[${selectedCard?.name ?: labels.unnamedCard}] ${uiState.description.trim()}",
                                 amount = amount,
                                 categoryId = incomeCategoryId,
                                 type = TransactionType.INCOME,
