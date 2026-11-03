@@ -51,5 +51,6 @@ Non raccolti, non condivisi. In particolare **Info finanziarie: No**, perché i 
 3. **Wear OS.** Il movimento passa dall'orologio al telefono dello stesso utente tramite il Data Layer di Play
    Services, tra due app dello stesso sviluppatore. La guida esclude dalla condivisione i trasferimenti avviati
    dall'utente che se li aspetta; non c'è un server dello sviluppatore. Proposta: non dichiararlo.
-4. **Se in C5 si aggiunge un crash reporting** (es. Firebase Crashlytics), questo modulo va aggiornato:
-   Diagnostica e ID, finalità "Analisi", più eventuale "Arresti anomali".
+4. **Crash reporting**: deciso il 2026-11-03 di NON aggiungere SDK (solo Android vitals di Play Console),
+   quindi nessuna voce in più. Se in futuro si aggiunge (es. Firebase Crashlytics), dichiarare
+   "Log degli arresti anomali" e "Diagnostica", finalità "Analisi".
