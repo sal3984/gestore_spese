@@ -1,13 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backup automatico su Android 11 e precedenti (Android 12+ usa data_extraction_rules.xml).
+    Solo cio' che serve a ritrovare i dati su un nuovo telefono: database, preferenze e immagini
+    delle categorie. Con le sole regole include tutto il resto resta fuori: copie .pre-vNN.bak del
+    database, file tecnici di ML Kit e datatransport, cache.
+    Il nome del database deve restare allineato a DATABASE_NAME (AppDatabase.kt): lo verifica
+    BackupRulesTest.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <include domain="database" path="spese_db_v6" />
+    <include domain="database" path="spese_db_v6-wal" />
+    <include domain="database" path="spese_db_v6-shm" />
+    <include domain="sharedpref" path="prefs.xml" />
+    <include domain="file" path="category_images/" />
 </full-backup-content>

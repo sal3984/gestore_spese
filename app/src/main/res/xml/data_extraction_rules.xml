@@ -1,19 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backup automatico e trasferimento da telefono a telefono su Android 12+: stesse regole di
+    backup_rules.xml (database, preferenze, immagini delle categorie; esclusi .bak, file tecnici, cache).
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <include domain="database" path="spese_db_v6" />
+        <include domain="database" path="spese_db_v6-wal" />
+        <include domain="database" path="spese_db_v6-shm" />
+        <include domain="sharedpref" path="prefs.xml" />
+        <include domain="file" path="category_images/" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <include domain="database" path="spese_db_v6" />
+        <include domain="database" path="spese_db_v6-wal" />
+        <include domain="database" path="spese_db_v6-shm" />
+        <include domain="sharedpref" path="prefs.xml" />
+        <include domain="file" path="category_images/" />
     </device-transfer>
-    -->
 </data-extraction-rules>
