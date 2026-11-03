@@ -2,6 +2,8 @@ package com.expense.management
 
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -117,6 +122,20 @@ private fun mainAppContent(viewModel: ExpenseViewModel, creditCardViewModel: Cre
     val currentDashboardMonth by viewModel.currentDashboardMonth.collectAsStateWithLifecycle()
     val isAmountHidden by viewModel.isAmountHidden.collectAsStateWithLifecycle()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
+
+    // Blocco attivo: nuovo sblocco dopo un minuto fuori dall'app, niente anteprima nei recenti ne' screenshot
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onAppHidden() }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onAppShown() }
+    val activity = LocalActivity.current
+    DisposableEffect(activity, isBiometricEnabled) {
+        val window = activity?.window
+        if (isBiometricEnabled) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        onDispose { }
+    }
     val csvExportColumns by viewModel.csvExportColumns.collectAsStateWithLifecycle()
 
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()

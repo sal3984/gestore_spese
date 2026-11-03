@@ -20,6 +20,7 @@ import com.expense.management.data.toData
 import com.expense.management.domain.model.ActiveCreditCard
 import com.expense.management.domain.model.AmexInstallmentStrategy
 import com.expense.management.domain.model.AmexStatementSummary
+import com.expense.management.domain.model.AppLockTimer
 import com.expense.management.domain.model.CATEGORIES
 import com.expense.management.domain.model.CreditCardType
 import com.expense.management.domain.model.CurrentAccountCashFlow
@@ -81,6 +82,7 @@ class ExpenseViewModel(
     private val calculateCurrentAccountCashFlowUseCase: CalculateCurrentAccountCashFlowUseCase,
     private val calculateAmexStatementUseCase: CalculateAmexStatementUseCase,
     private val defaultCategoryNames: DefaultCategoryNames = DefaultCategoryNames.Default,
+    private val appLockTimer: AppLockTimer = AppLockTimer(),
 ) : ViewModel() {
 
     companion object {
@@ -113,6 +115,15 @@ class ExpenseViewModel(
 
     fun unlockApp() {
         _isAppUnlocked.value = true
+    }
+
+    /** L'app esce dallo schermo: parte il tempo dopo cui, con il blocco attivo, va sbloccata di nuovo. */
+    fun onAppHidden() = appLockTimer.onLeave()
+
+    fun onAppShown() {
+        if (appLockTimer.shouldLockOnReturn() && _isBiometricEnabled.value) {
+            _isAppUnlocked.value = false
+        }
     }
 
     // Dati Transazioni

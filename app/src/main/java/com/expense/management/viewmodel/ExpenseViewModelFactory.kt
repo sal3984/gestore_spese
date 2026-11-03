@@ -8,6 +8,7 @@ import com.expense.management.data.AndroidTransactionLabels
 import com.expense.management.data.AppDatabase
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.PaymentMethodRepositoryAdapter
+import com.expense.management.domain.model.AppLockTimer
 import com.expense.management.domain.usecase.CalculateAmexCurrentAccountOutflowUseCase
 import com.expense.management.domain.usecase.CalculateAmexStatementUseCase
 import com.expense.management.domain.usecase.CalculateBnplProjectionsUseCase
@@ -34,6 +35,7 @@ class ExpenseViewModelFactory(
     private val context: Context,
     private val sharedRepository: ExpenseRepository? = null,
     private val sharedCurrencyUtils: CurrencyUtils? = null,
+    private val appLockTimer: AppLockTimer = AppLockTimer(),
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val labels = AndroidTransactionLabels(context)
@@ -77,6 +79,7 @@ class ExpenseViewModelFactory(
                 calculateCurrentAccountCashFlowUseCase = CalculateCurrentAccountCashFlowUseCase(),
                 calculateAmexStatementUseCase = CalculateAmexStatementUseCase(),
                 defaultCategoryNames = categoryNames,
+                appLockTimer = appLockTimer,
             ) as T
         }
         if (modelClass.isAssignableFrom(PaymentMethodsViewModel::class.java)) {

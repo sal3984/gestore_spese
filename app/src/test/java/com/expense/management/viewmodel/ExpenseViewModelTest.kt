@@ -9,6 +9,7 @@ import com.expense.management.data.BillingCycleEntity
 import com.expense.management.data.ExpenseRepository
 import com.expense.management.data.TransactionEntity
 import com.expense.management.data.TransactionType
+import com.expense.management.domain.model.AppLockTimer
 import com.expense.management.utils.CurrencyUtils
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,8 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,6 +41,7 @@ class ExpenseViewModelTest {
     private lateinit var repository: ExpenseRepository
     private lateinit var viewModel: ExpenseViewModel
     private val today = LocalDate.now().toString()
+    private var clock = 0L
 
     @Before
     fun setUp() {
@@ -45,7 +49,7 @@ class ExpenseViewModelTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
         repository = ExpenseRepository(db.transactionDao(), db.categoryDao(), db.currencyDao(), db.paymentMethodDao(), db.amexDao(), db)
-        viewModel = ExpenseViewModelFactory(context, repository, mockk<CurrencyUtils>(relaxed = true))
+        viewModel = ExpenseViewModelFactory(context, repository, mockk<CurrencyUtils>(relaxed = true), AppLockTimer(now = { clock }))
             .create(ExpenseViewModel::class.java)
     }
 
@@ -70,6 +74,33 @@ class ExpenseViewModelTest {
         assertEquals(setOf("purchase", "rent"), monthList.map { it.id }.toSet())
         assertEquals(setOf("purchase", "rent"), report.map { it.id }.toSet())
         assertEquals(850.0, account.outflows, 0.001)
+    }
+
+    @Test
+    fun withTheLockOnTheAppLocksAgainAfterAMinuteAway() {
+        viewModel.updateBiometricEnabled(true)
+        viewModel.unlockApp()
+
+        viewModel.onAppHidden()
+        clock += 30_000
+        viewModel.onAppShown()
+        assertTrue("rientro dopo 30 s: resta sbloccata", viewModel.isAppUnlocked.value)
+
+        viewModel.onAppHidden()
+        clock += 60_000
+        viewModel.onAppShown()
+        assertFalse("rientro dopo 60 s: va sbloccata di nuovo", viewModel.isAppUnlocked.value)
+    }
+
+    @Test
+    fun withTheLockOffTheAppNeverLocks() {
+        viewModel.updateBiometricEnabled(false)
+
+        viewModel.onAppHidden()
+        clock += 10 * 60_000
+        viewModel.onAppShown()
+
+        assertTrue(viewModel.isAppUnlocked.value)
     }
 
     private fun transaction(id: String, amount: Double, isCreditCard: Boolean) = TransactionEntity(
