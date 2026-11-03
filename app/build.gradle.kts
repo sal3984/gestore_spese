@@ -166,5 +166,5 @@ dependencies {
     implementation(libs.play.services.wearable)
 
     // ML Kit Text Recognition (per scansione ricevute)
-    implementation(libs.mlkit.text.recognition)
+    implementation(libs.play.services.mlkit.text.recognition)
 }
